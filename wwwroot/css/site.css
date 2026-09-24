@@ -1282,6 +1282,10 @@ textarea.form-control {
   color: var(--av-success);
 }
 
+.page-head .alerta-exito {
+  margin: 1.25rem 0 0;
+}
+
 .alerta-exito:focus {
   outline: 3px solid var(--av-success);
   outline-offset: 2px;

@@ -6,8 +6,8 @@
 
     const TAMANO_MAXIMO = 5 * 1024 * 1024; // 5 MB
 
-    // 1. Llevar el foco al mensaje de éxito o al resumen de errores (útil para lectores de pantalla).
-    const aviso = document.getElementById("alertaExito") || document.getElementById("resumenErrores");
+    // 1. Llevar el foco al resumen de errores (útil para lectores de pantalla).
+    const aviso = document.getElementById("resumenErrores");
     if (aviso) aviso.focus();
 
     // 2. Contador de caracteres de la descripción.

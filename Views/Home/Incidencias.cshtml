@@ -2,12 +2,28 @@
 @{
     ViewData["Title"] = "Incidencias";
     var estados = Enum.GetValues<EstadoIncidencia>();
+
+    // Id del reporte recién creado (viene de TempData después del POST).
+    var reporteCreadoId = TempData["ReporteCreadoId"] as int?;
 }
 
 <section class="page-head page-head--filtros">
     <div class="container">
         <h1 class="page-head__titulo">Incidencias del distrito</h1>
         <p class="page-head__sub">Revisa lo que han reportado los vecinos y el estado de cada caso.</p>
+        @if (reporteCreadoId != null)
+        {
+            <div class="alerta-exito" role="status" tabindex="-1" id="alertaExito">
+                <span class="alerta-exito__icono">@Iconos.Svg("check", 22)</span>
+                <div>
+                    <h2 class="alerta-exito__titulo">¡Reporte enviado correctamente!</h2>
+                    <p>Tu incidencia ha sido registrada y será revisada.</p>
+                    <div class="alerta-exito__acciones">
+                        <a class="link-flecha" asp-action="Detalle" asp-route-id="@reporteCreadoId">Ver mi reporte @Iconos.Svg("arrow-right", 16)</a>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 </section>
 
@@ -69,6 +85,15 @@
             }
         </div>
     }
+    else if (Model.Total == 0)
+    {
+        <div class="vacio">
+            <span class="vacio__icono">@Iconos.Svg("megaphone", 26)</span>
+            <h2 class="vacio__titulo">Aún no hay incidencias reportadas</h2>
+            <p>Cuando un vecino reporte un problema, aparecerá aquí. ¿Viste algo en tu comunidad?</p>
+            <a class="btn btn-av-primary" asp-action="Reportar">@Iconos.Svg("plus", 18) Reportar la primera incidencia</a>
+        </div>
+    }
     else
     {
         <div class="vacio">
@@ -86,6 +111,9 @@
 @section Scripts {
     <script>
         // Al cambiar un filtro, se aplica automáticamente (el botón "Filtrar" sigue funcionando sin JavaScript).
+        // Lleva el foco al mensaje de confirmación para que los lectores de pantalla lo anuncien.
+        document.getElementById("alertaExito")?.focus();
+
         document.querySelectorAll("[data-autoenviar]").forEach(select =>
             select.addEventListener("change", () => select.form.submit()));
     </script>
