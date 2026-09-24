@@ -1,0 +1,92 @@
+@model IncidenciasListadoViewModel
+@{
+    ViewData["Title"] = "Incidencias";
+    var estados = Enum.GetValues<EstadoIncidencia>();
+}
+
+<section class="page-head page-head--filtros">
+    <div class="container">
+        <h1 class="page-head__titulo">Incidencias del distrito</h1>
+        <p class="page-head__sub">Revisa lo que han reportado los vecinos y el estado de cada caso.</p>
+    </div>
+</section>
+
+<div class="container lista-seccion">
+    @* Los filtros usan GET: la búsqueda queda en la URL y se puede compartir. *@
+    <form class="filtros" method="get" asp-action="Incidencias" role="search" id="formFiltros">
+        <div class="filtros__buscar">
+            <label for="buscar">Buscar</label>
+            <div class="position-relative">
+                @Iconos.Svg("search", 18)
+                <input class="form-control" type="search" id="buscar" name="buscar" value="@Model.Buscar"
+                       placeholder="Buscar incidencia..." autocomplete="off" />
+            </div>
+        </div>
+
+        <div>
+            <label for="categoria">Categoría</label>
+            <select class="form-select" id="categoria" name="categoria" data-autoenviar>
+                <option value="">Todas</option>
+                @foreach (var categoria in Model.Categorias)
+                {
+                    <option value="@categoria.Slug" selected="@(categoria.Slug == Model.Categoria)">@categoria.NombreCorto</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label for="estado">Estado</label>
+            <select class="form-select" id="estado" name="estado" data-autoenviar>
+                <option value="">Todos</option>
+                @foreach (var estado in estados)
+                {
+                    <option value="@estado" selected="@(estado == Model.Estado)">@estado.Texto()</option>
+                }
+            </select>
+        </div>
+
+        <div class="filtros__acciones">
+            <button type="submit" class="btn btn-av-primary">@Iconos.Svg("filter", 18) Filtrar</button>
+            @if (Model.HayFiltros)
+            {
+                <a class="btn btn-av-secondary" asp-action="Incidencias">@Iconos.Svg("x", 18) Limpiar</a>
+            }
+        </div>
+    </form>
+
+    <div class="resultados-info" role="status">
+        <span>Mostrando <strong>@Model.Incidencias.Count</strong> de @Model.Total incidencias</span>
+        <a class="link-flecha" asp-action="Reportar">@Iconos.Svg("plus", 18) Reportar una incidencia</a>
+    </div>
+
+    <h2 class="visually-hidden">Resultados</h2>
+    @if (Model.Incidencias.Any())
+    {
+        <div class="grid-incidencias">
+            @foreach (var incidencia in Model.Incidencias)
+            {
+                <partial name="_IncidenciaCard" model="incidencia" />
+            }
+        </div>
+    }
+    else
+    {
+        <div class="vacio">
+            <span class="vacio__icono">@Iconos.Svg("search", 26)</span>
+            <h2 class="vacio__titulo">No encontramos incidencias</h2>
+            <p>Prueba con otras palabras o quita algunos filtros. Si el problema aún no fue reportado, puedes hacerlo tú.</p>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+                <a class="btn btn-av-secondary" asp-action="Incidencias">Ver todas</a>
+                <a class="btn btn-av-primary" asp-action="Reportar">@Iconos.Svg("plus", 18) Reportar incidencia</a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Al cambiar un filtro, se aplica automáticamente (el botón "Filtrar" sigue funcionando sin JavaScript).
+        document.querySelectorAll("[data-autoenviar]").forEach(select =>
+            select.addEventListener("change", () => select.form.submit()));
+    </script>
+}

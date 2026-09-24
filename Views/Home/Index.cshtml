@@ -1,8 +1,113 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model InicioViewModel
+@{
+    ViewData["Title"] = "Inicio";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@* ===== HERO ===== *@
+<section class="hero">
+    <div class="container">
+        <div class="hero__grid">
+            <div class="hero__texto">
+                <p class="eyebrow">@Iconos.Svg("users", 16) Reporta, participa y mejora tu comunidad</p>
+                <h1 class="hero__titulo">¿Ves un problema en tu comunidad?</h1>
+                <p class="hero__lead">Repórtalo en menos de dos minutos y ayúdanos a mejorar nuestro distrito. Tu aviso llega a quienes pueden solucionarlo.</p>
+                <div class="hero__acciones">
+                    <a class="btn btn-av-primary btn-lg-av" asp-action="Reportar">
+                        @Iconos.Svg("plus", 20) Reportar una incidencia
+                    </a>
+                    <a class="btn btn-av-secondary btn-lg-av" asp-action="Incidencias">
+                        Ver incidencias @Iconos.Svg("arrow-right", 20)
+                    </a>
+                </div>
+
+                <dl class="hero__stats">
+                    <div><dt>Reportes</dt><dd>@Model.TotalReportes</dd></div>
+                    <div><dt>En revisión</dt><dd>@Model.TotalEnRevision</dd></div>
+                    <div><dt>Atendidas</dt><dd>@Model.TotalAtendidas</dd></div>
+                </dl>
+            </div>
+
+            <div class="hero__ilustracion" aria-hidden="true">
+                <partial name="_IlustracionDistrito" />
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ===== CÓMO FUNCIONA ===== *@
+<section class="seccion seccion--compacta" aria-labelledby="titulo-pasos">
+    <div class="container">
+        <h2 id="titulo-pasos" class="visually-hidden">Cómo funciona</h2>
+        <ol class="pasos">
+            <li class="paso">
+                <span class="paso__num">1</span>
+                <div>
+                    <h3 class="paso__titulo">Describe el problema</h3>
+                    <p class="paso__texto">Elige la categoría, cuenta qué pasa y agrega una foto si puedes.</p>
+                </div>
+            </li>
+            <li class="paso">
+                <span class="paso__num">2</span>
+                <div>
+                    <h3 class="paso__titulo">Indica la ubicación</h3>
+                    <p class="paso__texto">Una dirección o referencia clara ayuda a encontrarlo rápido.</p>
+                </div>
+            </li>
+            <li class="paso">
+                <span class="paso__num">3</span>
+                <div>
+                    <h3 class="paso__titulo">Sigue su estado</h3>
+                    <p class="paso__texto">Revisa si tu reporte está pendiente, en revisión o atendido.</p>
+                </div>
+            </li>
+        </ol>
+    </div>
+</section>
+
+@* ===== CATEGORÍAS ===== *@
+<section class="seccion" aria-labelledby="titulo-categorias">
+    <div class="container">
+        <div class="seccion__cabecera">
+            <h2 id="titulo-categorias" class="seccion__titulo">¿Qué puedes reportar?</h2>
+            <p class="seccion__sub">Elige una categoría para empezar tu reporte.</p>
+        </div>
+        <div class="grid-categorias">
+            @foreach (var categoria in Model.Categorias)
+            {
+                <partial name="_CategoriaCard" model="categoria" />
+            }
+        </div>
+    </div>
+</section>
+
+@* ===== INCIDENCIAS RECIENTES ===== *@
+<section class="seccion seccion--alterna" aria-labelledby="titulo-recientes">
+    <div class="container">
+        <div class="seccion__cabecera seccion__cabecera--fila">
+            <div>
+                <h2 id="titulo-recientes" class="seccion__titulo">Incidencias recientes</h2>
+                <p class="seccion__sub">Lo último que han reportado tus vecinos.</p>
+            </div>
+            <a class="link-flecha" asp-action="Incidencias">Ver todas @Iconos.Svg("arrow-right", 18)</a>
+        </div>
+        <div class="grid-incidencias">
+            @foreach (var incidencia in Model.Recientes)
+            {
+                <partial name="_IncidenciaCard" model="incidencia" />
+            }
+        </div>
+    </div>
+</section>
+
+@* ===== LLAMADO FINAL ===== *@
+<section class="seccion">
+    <div class="container">
+        <div class="cta-banda">
+            <div>
+                <h2 class="cta-banda__titulo">Tu reporte hace la diferencia</h2>
+                <p class="cta-banda__texto">Cada aviso ayuda a priorizar lo que más necesita el distrito.</p>
+            </div>
+            <a class="btn btn-av-light btn-lg-av" asp-action="Reportar">@Iconos.Svg("plus", 20) Reportar una incidencia</a>
+        </div>
+    </div>
+</section>

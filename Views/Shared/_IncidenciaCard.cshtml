@@ -1,0 +1,24 @@
+@model IncidenciaViewModel
+@* Tarjeta de incidencia usada en Inicio e Incidencias. *@
+<article class="inc-card">
+    <div class="inc-card__top">
+        <span class="chip-cat" data-cat="@Model.Categoria.Slug">
+            @Iconos.Svg(Model.Categoria.Icono, 14) @Model.Categoria.Nombre
+        </span>
+        <partial name="_EstadoBadge" model="Model.Estado" />
+    </div>
+
+    <h3 class="inc-card__titulo">
+        <a asp-controller="Home" asp-action="Detalle" asp-route-id="@Model.Id">@Model.Titulo</a>
+    </h3>
+    <p class="inc-card__desc">@Model.Descripcion</p>
+
+    <ul class="inc-card__meta">
+        <li>@Iconos.Svg("map-pin", 16) <span>@Model.Ubicacion</span></li>
+        <li>@Iconos.Svg("calendar", 16) <time datetime="@Model.Fecha.ToString("yyyy-MM-dd")">@Model.FechaCorta</time></li>
+    </ul>
+
+    <div class="inc-card__footer">
+        <span class="inc-card__detalle" aria-hidden="true">Ver detalle @Iconos.Svg("arrow-right", 16)</span>
+    </div>
+</article>

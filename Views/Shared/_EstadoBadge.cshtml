@@ -1,0 +1,6 @@
+@model EstadoIncidencia
+@* Etiqueta de estado: color + icono + texto (no depende solo del color). *@
+<span class="estado @Model.ClaseCss()">
+    @Iconos.Svg(Model.Icono(), 14)
+    @Model.Texto()
+</span>

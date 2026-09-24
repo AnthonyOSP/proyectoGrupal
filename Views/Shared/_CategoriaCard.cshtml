@@ -1,0 +1,8 @@
+@model CategoriaViewModel
+@* Tarjeta de categoría. Lleva al formulario con la categoría ya seleccionada. *@
+<a class="cat-card" asp-controller="Home" asp-action="Reportar" asp-route-categoria="@Model.Slug">
+    <span class="cat-card__icono" data-cat="@Model.Slug">@Iconos.Svg(Model.Icono, 24)</span>
+    <span class="cat-card__titulo">@Model.Nombre</span>
+    <span class="cat-card__desc">@Model.Descripcion</span>
+    <span class="cat-card__accion">Reportar @Iconos.Svg("arrow-right", 16)</span>
+</a>

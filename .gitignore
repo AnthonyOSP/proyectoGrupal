@@ -1,0 +1,69 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+[Ll]og/
+[Ll]ogs/
+out/
+publish/
+*.dll
+*.pdb
+*.exe
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Test results and coverage
+[Tt]est[Rr]esult*/
+*.trx
+coverage*.json
+coverage*.xml
+
+# Secrets and local configuration
+appsettings.*.local.json
+secrets.json
+*.env
+.env
+.env.*
+
+# Local databases (SQLite). Las migraciones en Migrations/ SÍ se versionan.
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.mdf
+*.ldf
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Operating system
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# Misc
+*.log
+*.tmp
+*.swp
+*~

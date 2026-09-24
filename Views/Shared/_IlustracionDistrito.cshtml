@@ -1,0 +1,79 @@
+@* Ilustración vectorial propia de un distrito (sin imágenes externas).
+   Los colores usan variables CSS definidas en site.css. *@
+<svg class="ilustracion" viewBox="0 0 480 400" xmlns="http://www.w3.org/2000/svg" role="presentation">
+    <!-- Fondo -->
+    <circle cx="250" cy="200" r="178" fill="var(--il-cielo)" />
+
+    <!-- Edificios del fondo -->
+    <g fill="var(--il-edificio-2)">
+        <rect x="118" y="120" width="56" height="170" rx="6" />
+        <rect x="300" y="96" width="62" height="194" rx="6" />
+    </g>
+    <!-- Edificios del frente -->
+    <g fill="var(--il-edificio)">
+        <rect x="160" y="160" width="74" height="130" rx="6" />
+        <rect x="244" y="138" width="66" height="152" rx="6" />
+        <rect x="336" y="182" width="58" height="108" rx="6" />
+    </g>
+    <!-- Ventanas -->
+    <g fill="var(--il-ventana)">
+        <rect x="174" y="178" width="14" height="14" rx="2" /><rect x="204" y="178" width="14" height="14" rx="2" />
+        <rect x="174" y="206" width="14" height="14" rx="2" /><rect x="204" y="206" width="14" height="14" rx="2" />
+        <rect x="174" y="234" width="14" height="14" rx="2" /><rect x="204" y="234" width="14" height="14" rx="2" />
+        <rect x="258" y="156" width="14" height="14" rx="2" /><rect x="284" y="156" width="14" height="14" rx="2" />
+        <rect x="258" y="184" width="14" height="14" rx="2" /><rect x="284" y="184" width="14" height="14" rx="2" />
+        <rect x="258" y="212" width="14" height="14" rx="2" /><rect x="284" y="212" width="14" height="14" rx="2" />
+        <rect x="350" y="200" width="12" height="12" rx="2" /><rect x="370" y="200" width="12" height="12" rx="2" />
+        <rect x="350" y="224" width="12" height="12" rx="2" /><rect x="370" y="224" width="12" height="12" rx="2" />
+    </g>
+    <!-- Puerta -->
+    <rect x="266" y="252" width="22" height="38" rx="3" fill="var(--il-edificio-2)" />
+
+    <!-- Árboles -->
+    <g>
+        <rect x="104" y="258" width="6" height="34" rx="3" fill="var(--il-tronco)" />
+        <circle cx="107" cy="248" r="22" fill="var(--il-arbol)" />
+        <rect x="408" y="262" width="6" height="30" rx="3" fill="var(--il-tronco)" />
+        <circle cx="411" cy="254" r="18" fill="var(--il-arbol)" />
+    </g>
+
+    <!-- Poste de luz -->
+    <g>
+        <rect x="138" y="196" width="5" height="96" rx="2.5" fill="var(--il-poste)" />
+        <path d="M140 198 h18" stroke="var(--il-poste)" stroke-width="5" stroke-linecap="round" />
+        <rect x="150" y="198" width="16" height="7" rx="3" fill="var(--il-luz)" />
+    </g>
+
+    <!-- Vereda y pista -->
+    <rect x="72" y="288" width="356" height="12" rx="6" fill="var(--il-vereda)" />
+    <rect x="72" y="300" width="356" height="46" rx="10" fill="var(--il-pista)" />
+    <g stroke="var(--il-linea)" stroke-width="4" stroke-linecap="round">
+        <path d="M100 323 h32" /><path d="M170 323 h32" /><path d="M240 323 h32" /><path d="M310 323 h32" /><path d="M380 323 h26" />
+    </g>
+
+    <!-- Pin de ubicación principal -->
+    <g class="ilustracion__pin">
+        <path d="M250 40c-27 0-48 21-48 47 0 35 48 79 48 79s48-44 48-79c0-26-21-47-48-47Z" fill="var(--il-pin)" />
+        <circle cx="250" cy="86" r="22" fill="#fff" />
+        <path d="M250 74v14" stroke="var(--il-pin)" stroke-width="5" stroke-linecap="round" />
+        <circle cx="250" cy="97" r="3" fill="var(--il-pin)" />
+    </g>
+
+    <!-- Tarjeta flotante: reporte -->
+    <g>
+        <rect x="18" y="138" width="132" height="54" rx="12" fill="#fff" stroke="var(--il-borde)" />
+        <circle cx="42" cy="165" r="12" fill="var(--il-chip-amarillo)" />
+        <path d="M42 159v6l4 2" stroke="var(--il-chip-amarillo-texto)" stroke-width="2.4" stroke-linecap="round" fill="none" />
+        <rect x="62" y="154" width="72" height="8" rx="4" fill="var(--il-texto)" />
+        <rect x="62" y="170" width="48" height="7" rx="3.5" fill="var(--il-texto-suave)" />
+    </g>
+
+    <!-- Tarjeta flotante: atendida -->
+    <g>
+        <rect x="338" y="30" width="126" height="54" rx="12" fill="#fff" stroke="var(--il-borde)" />
+        <circle cx="362" cy="57" r="12" fill="var(--il-chip-verde)" />
+        <path d="m356 57 4 4 8-8" stroke="var(--il-chip-verde-texto)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        <rect x="382" y="46" width="66" height="8" rx="4" fill="var(--il-texto)" />
+        <rect x="382" y="62" width="42" height="7" rx="3.5" fill="var(--il-texto-suave)" />
+    </g>
+</svg>

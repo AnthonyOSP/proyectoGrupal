@@ -1,0 +1,107 @@
+@model IncidenciaViewModel
+@{
+    ViewData["Title"] = Model.Titulo;
+
+    // Pasos de la línea de progreso. Un paso está "hecho" si el estado actual ya lo superó.
+    var pasos = new[]
+    {
+        (Nombre: "Reportada", Descripcion: "El vecino registró la incidencia.", Nivel: EstadoIncidencia.Pendiente),
+        (Nombre: "En revisión", Descripcion: "La municipalidad está evaluando el caso.", Nivel: EstadoIncidencia.EnRevision),
+        (Nombre: "Atendida", Descripcion: "El problema fue solucionado.", Nivel: EstadoIncidencia.Atendida)
+    };
+}
+
+<section class="page-head">
+    <div class="container">
+        <nav class="migas" aria-label="Ruta de navegación">
+            <ol>
+                <li><a asp-action="Index">Inicio</a></li>
+                <li><a asp-action="Incidencias">Incidencias</a></li>
+                <li aria-current="page">Detalle</li>
+            </ol>
+        </nav>
+        <div class="detalle-cabecera__chips">
+            <span class="chip-cat" data-cat="@Model.Categoria.Slug">@Iconos.Svg(Model.Categoria.Icono, 14) @Model.Categoria.Nombre</span>
+            <span class="estado estado--grande @Model.Estado.ClaseCss()">@Iconos.Svg(Model.Estado.Icono(), 16) @Model.Estado.Texto()</span>
+        </div>
+        <h1 class="page-head__titulo">@Model.Titulo</h1>
+        <p class="page-head__sub">Reporte #@Model.Id.ToString("D4") · <time datetime="@Model.Fecha.ToString("yyyy-MM-dd")">@Model.FechaTexto</time></p>
+    </div>
+</section>
+
+<div class="container">
+    <div class="detalle-layout">
+        <div>
+            @* Espacio para la fotografía (en la Etapa 2 vendrá de la base de datos). *@
+            <div class="detalle-foto bloque p-0 border-0">
+                @if (Model.FotoUrl != null)
+                {
+                    <img src="@Model.FotoUrl" alt="Fotografía de la incidencia: @Model.Titulo" loading="lazy" />
+                }
+                else
+                {
+                    <div class="foto-placeholder" data-cat="@Model.Categoria.Slug">
+                        <span class="foto-placeholder__icono">@Iconos.Svg("image", 30)</span>
+                        <p>Este reporte aún no tiene fotografía</p>
+                    </div>
+                }
+            </div>
+
+            <section class="bloque" aria-labelledby="titulo-descripcion">
+                <h2 class="bloque__titulo" id="titulo-descripcion">Descripción</h2>
+                <p class="bloque__texto">@Model.Descripcion</p>
+            </section>
+
+            <section class="bloque" aria-labelledby="titulo-datos">
+                <h2 class="bloque__titulo" id="titulo-datos">Información del reporte</h2>
+                <dl class="datos">
+                    <div>
+                        <span class="datos__icono" aria-hidden="true">@Iconos.Svg("map-pin", 20)</span>
+                        <div><dt>Ubicación</dt><dd>@Model.Ubicacion</dd></div>
+                    </div>
+                    <div>
+                        <span class="datos__icono" aria-hidden="true">@Iconos.Svg("calendar", 20)</span>
+                        <div><dt>Fecha de reporte</dt><dd>@Model.FechaTexto</dd></div>
+                    </div>
+                    <div>
+                        <span class="datos__icono" aria-hidden="true">@Iconos.Svg(Model.Categoria.Icono, 20)</span>
+                        <div><dt>Categoría</dt><dd>@Model.Categoria.Nombre</dd></div>
+                    </div>
+                </dl>
+            </section>
+        </div>
+
+        <aside aria-labelledby="titulo-progreso">
+            <section class="bloque">
+                <h2 class="bloque__titulo" id="titulo-progreso">Seguimiento</h2>
+                <ol class="progreso">
+                    @for (var i = 0; i < pasos.Length; i++)
+                    {
+                        var paso = pasos[i];
+                        var esActual = paso.Nivel == Model.Estado;
+                        var hecho = paso.Nivel < Model.Estado || (esActual && Model.Estado == EstadoIncidencia.Atendida);
+                        var clase = hecho ? "is-hecho" : esActual ? "is-actual" : "is-pendiente";
+
+                        <li class="progreso__paso @clase" aria-current="@(esActual ? "step" : null)">
+                            <span class="progreso__marca" aria-hidden="true">
+                                @if (hecho) { @Iconos.Svg("check", 16) } else { @(i + 1) }
+                            </span>
+                            <span>
+                                <span class="progreso__nombre">
+                                    @paso.Nombre
+                                    <span class="visually-hidden">(@(hecho ? "completado" : esActual ? "etapa actual" : "pendiente"))</span>
+                                </span>
+                                <span class="progreso__desc">@paso.Descripcion</span>
+                            </span>
+                        </li>
+                    }
+                </ol>
+            </section>
+
+            <div class="detalle-acciones">
+                <a class="btn btn-av-secondary" asp-action="Incidencias">@Iconos.Svg("arrow-left", 18) Volver a incidencias</a>
+                <a class="btn btn-av-primary" asp-action="Reportar" asp-route-categoria="@Model.Categoria.Slug">@Iconos.Svg("plus", 18) Reportar otra incidencia</a>
+            </div>
+        </aside>
+    </div>
+</div>

@@ -1,0 +1,15 @@
+@{
+    ViewData["Title"] = "Incidencia no encontrada";
+}
+
+<div class="container seccion">
+    <div class="vacio">
+        <span class="vacio__icono">@Iconos.Svg("search", 26)</span>
+        <h1 class="vacio__titulo">No encontramos esta incidencia</h1>
+        <p>Es posible que el enlace esté incompleto o que el reporte ya no exista.</p>
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a class="btn btn-av-secondary" asp-action="Index">Ir al inicio</a>
+            <a class="btn btn-av-primary" asp-action="Incidencias">Ver incidencias</a>
+        </div>
+    </div>
+</div>

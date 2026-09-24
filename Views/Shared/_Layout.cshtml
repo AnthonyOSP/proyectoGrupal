@@ -1,47 +1,91 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+@{
+    // Acción actual, para resaltar el enlace activo del menú.
+    var accion = ViewContext.RouteData.Values["action"]?.ToString();
+    string Activo(params string[] acciones) => acciones.Contains(accion) ? "active" : "";
+    string? Actual(params string[] acciones) => acciones.Contains(accion) ? "page" : null;
+}
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - proyectoGrupal</title>
-    <script type="importmap"></script>
+    <meta name="description" content="Alerta Vecinal: reporta, participa y mejora tu comunidad." />
+    <meta name="theme-color" content="#1d4ed8" />
+    <title>@ViewData["Title"] · Alerta Vecinal</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" />
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/proyectoGrupal.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">proyectoGrupal</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+    <header class="site-header">
+        <nav class="navbar navbar-expand-lg" aria-label="Navegación principal">
+            <div class="container">
+                <a class="brand" asp-controller="Home" asp-action="Index" aria-label="Alerta Vecinal, ir al inicio">
+                    <span class="brand__mark" aria-hidden="true">@Iconos.Svg("megaphone", 20)</span>
+                    <span class="brand__text">Alerta<span>Vecinal</span></span>
+                </a>
+
+                <button class="navbar-toggler menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal"
+                        aria-controls="menuPrincipal" aria-expanded="false" aria-label="Abrir menú">
+                    @Iconos.Svg("menu", 24)
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+
+                <div class="collapse navbar-collapse" id="menuPrincipal">
+                    <ul class="navbar-nav mx-lg-auto">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link @Activo("Index")" aria-current="@Actual("Index")" asp-controller="Home" asp-action="Index">Inicio</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link @Activo("Reportar")" aria-current="@Actual("Reportar")" asp-controller="Home" asp-action="Reportar">Reportar incidencia</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @Activo("Incidencias", "Detalle")" aria-current="@Actual("Incidencias")" asp-controller="Home" asp-action="Incidencias">Incidencias</a>
                         </li>
                     </ul>
+                    <a class="btn btn-av-primary nav-cta" asp-controller="Home" asp-action="Reportar">
+                        @Iconos.Svg("plus", 18) Reportar ahora
+                    </a>
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="border-top footer text-muted">
+    <main id="contenido" tabindex="-1">
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
         <div class="container">
-            &copy; 2026 - proyectoGrupal - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            <div class="site-footer__grid">
+                <div>
+                    <a class="brand brand--footer" asp-controller="Home" asp-action="Index">
+                        <span class="brand__mark" aria-hidden="true">@Iconos.Svg("megaphone", 18)</span>
+                        <span class="brand__text">Alerta<span>Vecinal</span></span>
+                    </a>
+                    <p class="site-footer__lema">Una plataforma para participar y ayudar a mejorar nuestra comunidad.</p>
+                </div>
+                <nav aria-label="Enlaces del pie de página">
+                    <h2 class="site-footer__titulo">Navegación</h2>
+                    <ul class="site-footer__links">
+                        <li><a asp-controller="Home" asp-action="Index">Inicio</a></li>
+                        <li><a asp-controller="Home" asp-action="Reportar">Reportar incidencia</a></li>
+                        <li><a asp-controller="Home" asp-action="Incidencias">Incidencias</a></li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="site-footer__base">
+                <span>&copy; @DateTime.Now.Year Alerta Vecinal</span>
+                <span class="site-footer__tag">Proyecto académico</span>
+            </div>
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
