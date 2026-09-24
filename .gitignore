@@ -55,6 +55,7 @@ secrets.json
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude/
 
 # Operating system
 .DS_Store
