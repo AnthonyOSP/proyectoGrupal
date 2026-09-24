@@ -90,12 +90,24 @@
             </div>
             <a class="link-flecha" asp-action="Incidencias">Ver todas @Iconos.Svg("arrow-right", 18)</a>
         </div>
-        <div class="grid-incidencias">
-            @foreach (var incidencia in Model.Recientes)
-            {
-                <partial name="_IncidenciaCard" model="incidencia" />
-            }
-        </div>
+        @if (Model.Recientes.Any())
+        {
+            <div class="grid-incidencias">
+                @foreach (var incidencia in Model.Recientes)
+                {
+                    <partial name="_IncidenciaCard" model="incidencia" />
+                }
+            </div>
+        }
+        else
+        {
+            <div class="vacio">
+                <span class="vacio__icono">@Iconos.Svg("megaphone", 26)</span>
+                <h3 class="vacio__titulo">Todavía no hay reportes</h3>
+                <p>Sé el primero en reportar un problema de tu comunidad.</p>
+                <a class="btn btn-av-primary" asp-action="Reportar">@Iconos.Svg("plus", 18) Reportar una incidencia</a>
+            </div>
+        }
     </div>
 </section>
 

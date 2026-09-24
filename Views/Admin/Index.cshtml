@@ -1,0 +1,97 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+
+    // Tarjetas de estadísticas. Cada una lleva al listado ya filtrado.
+    var tarjetas = new[]
+    {
+        (Titulo: "Total de incidencias", Valor: Model.Total, Icono: "inbox", Clase: "stat--total", Estado: (EstadoIncidencia?)null),
+        (Titulo: "Pendientes", Valor: Model.Pendientes, Icono: EstadoIncidencia.Pendiente.Icono(), Clase: "stat--pendiente", Estado: (EstadoIncidencia?)EstadoIncidencia.Pendiente),
+        (Titulo: "En revisión", Valor: Model.EnRevision, Icono: EstadoIncidencia.EnRevision.Icono(), Clase: "stat--revision", Estado: (EstadoIncidencia?)EstadoIncidencia.EnRevision),
+        (Titulo: "Atendidas", Valor: Model.Atendidas, Icono: EstadoIncidencia.Atendida.Icono(), Clase: "stat--atendida", Estado: (EstadoIncidencia?)EstadoIncidencia.Atendida)
+    };
+}
+
+<header class="admin-cabecera">
+    <div>
+        <h1 class="admin-cabecera__titulo">Dashboard</h1>
+        <p class="admin-cabecera__sub">Resumen de las incidencias reportadas por los vecinos.</p>
+    </div>
+    <a class="btn btn-av-primary" asp-action="Incidencias">@Iconos.Svg("list", 18) Gestionar incidencias</a>
+</header>
+
+<section aria-labelledby="titulo-estadisticas">
+    <h2 id="titulo-estadisticas" class="visually-hidden">Estadísticas</h2>
+    <div class="stats">
+        @foreach (var tarjeta in tarjetas)
+        {
+            <a class="stat @tarjeta.Clase" asp-action="Incidencias" asp-route-estado="@tarjeta.Estado">
+                <span class="stat__icono">@Iconos.Svg(tarjeta.Icono, 20)</span>
+                <span class="stat__titulo">@tarjeta.Titulo</span>
+                <span class="stat__valor">@tarjeta.Valor</span>
+                <span class="stat__link">Ver @Iconos.Svg("arrow-right", 14)</span>
+            </a>
+        }
+    </div>
+
+    @if (Model.Total > 0)
+    {
+        <div class="admin-card distribucion">
+            <div class="distribucion__cabecera">
+                <h3 class="admin-card__titulo">Distribución por estado</h3>
+                <span class="distribucion__resuelto">@Model.Porcentaje(Model.Atendidas)% atendidas</span>
+            </div>
+            <div class="distribucion__barra" role="img"
+                 aria-label="@Model.Pendientes pendientes, @Model.EnRevision en revisión y @Model.Atendidas atendidas de @Model.Total incidencias">
+                <span class="seg seg--pendiente" style="width: @Model.Porcentaje(Model.Pendientes)%"></span>
+                <span class="seg seg--revision" style="width: @Model.Porcentaje(Model.EnRevision)%"></span>
+                <span class="seg seg--atendida" style="width: @Model.Porcentaje(Model.Atendidas)%"></span>
+            </div>
+            <ul class="distribucion__leyenda">
+                <li><span class="punto seg--pendiente"></span> Pendiente <strong>@Model.Pendientes</strong></li>
+                <li><span class="punto seg--revision"></span> En revisión <strong>@Model.EnRevision</strong></li>
+                <li><span class="punto seg--atendida"></span> Atendida <strong>@Model.Atendidas</strong></li>
+            </ul>
+        </div>
+    }
+</section>
+
+<section class="admin-card admin-card--lista" aria-labelledby="titulo-ultimas">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-ultimas">Últimas incidencias</h2>
+        <a class="link-flecha" asp-action="Incidencias">Ver todas @Iconos.Svg("arrow-right", 16)</a>
+    </div>
+
+    @if (Model.UltimasIncidencias.Any())
+    {
+        <ul class="ultimas">
+            @foreach (var incidencia in Model.UltimasIncidencias)
+            {
+                <li class="ultimas__item">
+                    <div class="ultimas__info">
+                        <span class="ultimas__titulo">
+                            <span class="admin-id">#@incidencia.Id</span> @incidencia.Titulo
+                        </span>
+                        <span class="ultimas__meta">
+                            <span class="chip-cat" data-cat="@incidencia.Categoria.Slug">@Iconos.Svg(incidencia.Categoria.Icono, 14) @incidencia.Categoria.Nombre</span>
+                            <time datetime="@incidencia.Fecha.ToString("yyyy-MM-ddTHH:mm")" title="@incidencia.FechaTexto">@incidencia.FechaRelativa</time>
+                        </span>
+                    </div>
+                    <partial name="_EstadoBadge" model="incidencia.Estado" />
+                    <a class="btn btn-av-secondary btn-sm-av" asp-action="Detalle" asp-route-id="@incidencia.Id"
+                       aria-label="Ver incidencia #@incidencia.Id: @incidencia.Titulo">
+                        @Iconos.Svg("eye", 16) Ver
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <div class="vacio vacio--compacto">
+            <span class="vacio__icono">@Iconos.Svg("inbox", 26)</span>
+            <h3 class="vacio__titulo">Aún no hay incidencias</h3>
+            <p>Cuando los vecinos reporten problemas, aparecerán aquí.</p>
+        </div>
+    }
+</section>

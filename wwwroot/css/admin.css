@@ -1,0 +1,665 @@
+/* =========================================================
+   Alerta Vecinal — Panel administrativo
+   Reutiliza las variables y componentes de site.css
+   (botones, estados, chips, formularios, tarjetas).
+   Índice:
+     1. Estructura (sidebar + contenido)
+     2. Cabecera y tarjetas
+     3. Estadísticas
+     4. Últimas incidencias
+     5. Tabla responsive
+     6. Detalle y cambio de estado
+   ========================================================= */
+
+:root {
+  --adm-sidebar: #0f172a;
+  --adm-sidebar-texto: #cbd5e1;
+  --adm-sidebar-hover: #1e293b;
+  --adm-sidebar-ancho: 256px;
+}
+
+/* ---------- 1. Estructura ---------- */
+.admin-body {
+  background: #f1f5f9;
+}
+
+.admin-shell {
+  min-height: 100dvh;
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--adm-sidebar);
+  color: var(--adm-sidebar-texto);
+}
+
+.admin-sidebar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 1rem;
+}
+
+.brand--admin .brand__text {
+  color: #fff;
+  display: block;
+  line-height: 1.2;
+}
+
+.brand--admin .brand__text span {
+  color: #93c5fd;
+}
+
+.admin-sidebar__tag {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.admin-menu-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #fff;
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: var(--av-radius-sm);
+}
+
+.admin-nav {
+  flex-direction: column;
+  padding: 0.5rem 0.75rem 1rem;
+  border-top: 1px solid #1e293b;
+}
+
+.admin-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 48px;
+  padding: 0.5rem 0.875rem;
+  font-weight: 700;
+  color: var(--adm-sidebar-texto);
+  text-decoration: none;
+  border-radius: var(--av-radius-sm);
+  transition: background-color var(--av-transition), color var(--av-transition);
+}
+
+.admin-nav__link:hover {
+  color: #fff;
+  background: var(--adm-sidebar-hover);
+}
+
+.admin-nav__link.active {
+  color: #fff;
+  background: var(--av-primary);
+}
+
+.admin-nav__volver {
+  margin-top: 0.5rem;
+  border-top: 1px solid #1e293b;
+  border-radius: 0;
+  padding-top: 0.75rem;
+}
+
+.admin-sidebar :focus-visible {
+  outline-color: #93c5fd;
+}
+
+.admin-aviso {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #854d0e;
+  background: #fef9c3;
+  border-bottom: 1px solid #fde68a;
+}
+
+.admin-contenido {
+  padding: 1.25rem 1rem 3rem;
+  max-width: 1200px;
+}
+
+/* Escritorio: sidebar fija a la izquierda */
+@media (min-width: 992px) {
+  .admin-shell {
+    display: grid;
+    grid-template-columns: var(--adm-sidebar-ancho) minmax(0, 1fr);
+  }
+
+  .admin-sidebar {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-sidebar__top {
+    padding: 1.25rem 1.25rem 1rem;
+  }
+
+  .admin-nav {
+    flex: 1;
+    display: flex;
+    padding: 1rem 0.75rem;
+  }
+
+  .admin-nav__volver {
+    margin-top: auto;
+  }
+
+  .admin-aviso {
+    padding: 0.625rem 2rem;
+  }
+
+  .admin-contenido {
+    padding: 2rem 2rem 4rem;
+  }
+}
+
+/* ---------- 2. Cabecera y tarjetas ---------- */
+.admin-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-cabecera__titulo {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+}
+
+.admin-cabecera__sub {
+  margin: 0;
+  color: var(--av-muted);
+}
+
+.admin-card {
+  padding: 1.25rem;
+  background: var(--av-surface);
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius);
+}
+
+.admin-card + .admin-card,
+.stats + .admin-card,
+.admin-card--lista {
+  margin-top: 1.25rem;
+}
+
+.admin-card__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-card__titulo {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.admin-id {
+  font-family: var(--av-font-heading);
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--av-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-id--grande {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  background: var(--av-surface);
+  border: 1px solid var(--av-border);
+  border-radius: 999px;
+}
+
+.btn-sm-av {
+  min-height: 40px;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+}
+
+.filtros--admin {
+  margin-top: 0;
+  box-shadow: none;
+  border-radius: var(--av-radius);
+}
+
+.vacio--compacto {
+  padding: 2rem 1rem;
+  border: 0;
+}
+
+/* ---------- 3. Estadísticas ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 1200px) {
+  .stats {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "titulo icono"
+    "valor valor"
+    "link link";
+  gap: 0.25rem;
+  padding: 1rem;
+  background: var(--av-surface);
+  border: 1px solid var(--av-border);
+  border-top: 4px solid var(--stat-color);
+  border-radius: var(--av-radius);
+  color: inherit;
+  text-decoration: none;
+  transition: box-shadow var(--av-transition), border-color var(--av-transition);
+}
+
+.stat:hover {
+  box-shadow: var(--av-shadow);
+  color: inherit;
+}
+
+.stat__titulo {
+  grid-area: titulo;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--av-muted);
+}
+
+.stat__icono {
+  grid-area: icono;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--stat-fg);
+  background: var(--stat-bg);
+  border-radius: var(--av-radius-sm);
+}
+
+.stat__valor {
+  grid-area: valor;
+  font-family: var(--av-font-heading);
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--av-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__link {
+  grid-area: link;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--av-primary);
+}
+
+.stat--total    { --stat-color: var(--av-primary);    --stat-bg: var(--av-primary-soft);  --stat-fg: var(--av-primary); }
+.stat--pendiente { --stat-color: #f59e0b;              --stat-bg: var(--av-pendiente-bg);  --stat-fg: var(--av-pendiente-text); }
+.stat--revision { --stat-color: #3b82f6;               --stat-bg: var(--av-revision-bg);   --stat-fg: var(--av-revision-text); }
+.stat--atendida { --stat-color: #22c55e;               --stat-bg: var(--av-atendida-bg);   --stat-fg: var(--av-atendida-text); }
+
+@media (min-width: 768px) {
+  .stat { padding: 1.25rem; }
+}
+
+/* Barra de distribución por estado */
+.distribucion__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.875rem;
+}
+
+.distribucion__resuelto {
+  font-weight: 700;
+  color: var(--av-atendida-text);
+}
+
+.distribucion__barra {
+  display: flex;
+  height: 12px;
+  overflow: hidden;
+  background: var(--av-border);
+  border-radius: 999px;
+}
+
+.seg--pendiente { background: #f59e0b; }
+.seg--revision  { background: #3b82f6; }
+.seg--atendida  { background: #22c55e; }
+
+.distribucion__barra .seg + .seg {
+  border-left: 2px solid var(--av-surface);
+}
+
+.distribucion__leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.875rem 0 0;
+  font-size: 0.875rem;
+  color: var(--av-muted);
+}
+
+.distribucion__leyenda li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.distribucion__leyenda strong {
+  color: var(--av-ink);
+}
+
+.punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ---------- 4. Últimas incidencias ---------- */
+.ultimas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ultimas__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "info info"
+    "estado accion";
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--av-border);
+}
+
+.ultimas__info { grid-area: info; min-width: 0; }
+.ultimas__item > .estado { grid-area: estado; justify-self: start; }
+.ultimas__item > .btn { grid-area: accion; }
+
+.ultimas__titulo {
+  display: block;
+  font-weight: 700;
+  color: var(--av-ink);
+  overflow-wrap: anywhere;
+}
+
+.ultimas__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--av-muted);
+}
+
+@media (min-width: 768px) {
+  .ultimas__item {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "info estado accion";
+    gap: 1rem;
+  }
+}
+
+/* ---------- 5. Tabla responsive ---------- */
+.admin-card--tabla {
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-tabla th {
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--av-muted);
+  background: var(--av-bg);
+  border-bottom: 1px solid var(--av-border);
+  white-space: nowrap;
+}
+
+.admin-tabla td {
+  padding: 0.875rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--av-border);
+}
+
+.admin-tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-tabla tbody tr {
+  transition: background-color var(--av-transition);
+}
+
+.admin-tabla tbody tr:hover {
+  background: #f8fafc;
+}
+
+.admin-tabla__titulo {
+  display: block;
+  font-weight: 700;
+  color: var(--av-ink);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.admin-tabla__titulo:hover {
+  color: var(--av-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-tabla__ubicacion {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
+  color: var(--av-muted);
+}
+
+.admin-tabla__acciones {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.admin-tabla__acciones .btn + .btn {
+  margin-left: 0.375rem;
+}
+
+/* Tablet y móvil: cada fila se convierte en una tarjeta */
+@media (max-width: 1199.98px) {
+  .admin-card--tabla {
+    background: transparent;
+    border: 0;
+    overflow: visible;
+  }
+
+  .admin-tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .admin-tabla,
+  .admin-tabla tbody,
+  .admin-tabla tr,
+  .admin-tabla td {
+    display: block;
+  }
+
+  .admin-tabla tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .admin-tabla tr {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem 1rem;
+    padding: 1rem;
+    background: var(--av-surface);
+    border: 1px solid var(--av-border);
+    border-radius: var(--av-radius);
+  }
+
+  .admin-tabla td {
+    padding: 0;
+    border: 0;
+  }
+
+  .admin-tabla__principal {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+
+  .admin-tabla__id {
+    order: -2;
+    grid-column: 1 / -1;
+  }
+
+  /* Etiqueta visible antes de categoría, fecha y estado */
+  .admin-tabla td[data-label="Categoría"]::before,
+  .admin-tabla td[data-label="Fecha"]::before,
+  .admin-tabla td[data-label="Estado"]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--av-muted);
+  }
+
+  .admin-tabla td[data-label="Categoría"] {
+    grid-column: 1 / -1;
+  }
+
+  .admin-tabla__acciones {
+    grid-column: 1 / -1;
+    display: flex !important;
+    gap: 0.5rem;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid var(--av-border) !important;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .admin-tabla__acciones .btn {
+    flex: 1;
+    padding-inline: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .admin-tabla__acciones .btn + .btn {
+    margin-left: 0;
+  }
+}
+
+/* ---------- 6. Detalle y cambio de estado ---------- */
+.detalle-layout--admin {
+  padding: 0;
+}
+
+@media (min-width: 992px) {
+  .detalle-layout--admin {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .cambiar-estado {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+.foto-placeholder--admin {
+  aspect-ratio: 21 / 9;
+}
+
+.cambiar-estado__actual {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--av-muted);
+}
+
+.cambiar-estado .campo {
+  margin-bottom: 1rem;
+}
+
+.cambiar-estado__nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  font-size: 0.875rem;
+  color: var(--av-muted);
+}
+
+.cambiar-estado__nota .icono {
+  margin-top: 2px;
+}
+
+/* Deja espacio al saltar a #cambiar-estado desde el listado */
+#cambiar-estado {
+  scroll-margin-top: 1.5rem;
+}

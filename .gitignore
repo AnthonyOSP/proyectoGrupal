@@ -25,11 +25,10 @@ packages/
 *.userosscache
 *.sln.docstates
 *.DotSettings.user
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
+
+# SQLTools (extensión de VS Code): archivos de sesión con consultas locales
+*.session.sql
 
 # Test results and coverage
 [Tt]est[Rr]esult*/
@@ -55,6 +54,7 @@ secrets.json
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude/
 
 # Operating system
 .DS_Store

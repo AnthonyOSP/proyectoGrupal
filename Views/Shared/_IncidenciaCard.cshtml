@@ -15,7 +15,7 @@
 
     <ul class="inc-card__meta">
         <li>@Iconos.Svg("map-pin", 16) <span>@Model.Ubicacion</span></li>
-        <li>@Iconos.Svg("calendar", 16) <time datetime="@Model.Fecha.ToString("yyyy-MM-dd")">@Model.FechaCorta</time></li>
+        <li>@Iconos.Svg("calendar", 16) <time datetime="@Model.Fecha.ToString("yyyy-MM-ddTHH:mm")" title="@Model.FechaTexto">@Model.FechaRelativa</time></li>
     </ul>
 
     <div class="inc-card__footer">

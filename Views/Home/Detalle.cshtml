@@ -25,14 +25,14 @@
             <span class="estado estado--grande @Model.Estado.ClaseCss()">@Iconos.Svg(Model.Estado.Icono(), 16) @Model.Estado.Texto()</span>
         </div>
         <h1 class="page-head__titulo">@Model.Titulo</h1>
-        <p class="page-head__sub">Reporte #@Model.Id.ToString("D4") · <time datetime="@Model.Fecha.ToString("yyyy-MM-dd")">@Model.FechaTexto</time></p>
+        <p class="page-head__sub">Reporte #@Model.Id.ToString("D4") · <time datetime="@Model.Fecha.ToString("yyyy-MM-ddTHH:mm")">@Model.FechaTexto</time>@if (Model.EsReciente) {<text> (@Model.FechaRelativa.ToLower())</text>}</p>
     </div>
 </section>
 
 <div class="container">
     <div class="detalle-layout">
         <div>
-            @* Espacio para la fotografía (en la Etapa 2 vendrá de la base de datos). *@
+            @* Fotografía guardada en FotoUrl. Si no hay, se muestra un espacio reservado. *@
             <div class="detalle-foto bloque p-0 border-0">
                 @if (Model.FotoUrl != null)
                 {
@@ -61,7 +61,7 @@
                     </div>
                     <div>
                         <span class="datos__icono" aria-hidden="true">@Iconos.Svg("calendar", 20)</span>
-                        <div><dt>Fecha de reporte</dt><dd>@Model.FechaTexto</dd></div>
+                        <div><dt>Fecha de reporte</dt><dd>@Model.FechaTexto, @Model.Fecha.ToString("h:mm tt", new System.Globalization.CultureInfo("es-PE"))</dd></div>
                     </div>
                     <div>
                         <span class="datos__icono" aria-hidden="true">@Iconos.Svg(Model.Categoria.Icono, 20)</span>

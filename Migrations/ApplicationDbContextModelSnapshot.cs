@@ -52,7 +52,7 @@ namespace proyectoGrupal.Migrations
 
                     b.Property<string>("Ubicacion")
                         .IsRequired()
-                        .HasMaxLength(200)
+                        .HasMaxLength(250)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

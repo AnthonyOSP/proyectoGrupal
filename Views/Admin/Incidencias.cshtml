@@ -1,0 +1,132 @@
+@model IncidenciasListadoViewModel
+@{
+    ViewData["Title"] = "Incidencias";
+    var estados = Enum.GetValues<EstadoIncidencia>();
+}
+
+<header class="admin-cabecera">
+    <div>
+        <h1 class="admin-cabecera__titulo">Incidencias</h1>
+        <p class="admin-cabecera__sub">Revisa los reportes y actualiza su estado.</p>
+    </div>
+</header>
+
+@* Filtros por GET: quedan en la URL y funcionan sin JavaScript. *@
+<form class="filtros filtros--admin" method="get" asp-action="Incidencias" role="search">
+    <div class="filtros__buscar">
+        <label for="buscar">Buscar</label>
+        <div class="position-relative">
+            @Iconos.Svg("search", 18)
+            <input class="form-control" type="search" id="buscar" name="buscar" value="@Model.Buscar"
+                   placeholder="Título, descripción o ubicación..." autocomplete="off" />
+        </div>
+    </div>
+
+    <div>
+        <label for="categoria">Categoría</label>
+        <select class="form-select" id="categoria" name="categoria" data-autoenviar>
+            <option value="">Todas</option>
+            @foreach (var categoria in Model.Categorias)
+            {
+                <option value="@categoria.Slug" selected="@(categoria.Slug == Model.Categoria)">@categoria.Nombre</option>
+            }
+        </select>
+    </div>
+
+    <div>
+        <label for="estado">Estado</label>
+        <select class="form-select" id="estado" name="estado" data-autoenviar>
+            <option value="">Todos</option>
+            @foreach (var estado in estados)
+            {
+                <option value="@estado" selected="@(estado == Model.Estado)">@estado.Texto()</option>
+            }
+        </select>
+    </div>
+
+    <div class="filtros__acciones">
+        <button type="submit" class="btn btn-av-primary">@Iconos.Svg("filter", 18) Filtrar</button>
+        @if (Model.HayFiltros)
+        {
+            <a class="btn btn-av-secondary" asp-action="Incidencias">@Iconos.Svg("x", 18) Limpiar</a>
+        }
+    </div>
+</form>
+
+<p class="resultados-info" role="status">
+    <span>Mostrando <strong>@Model.Incidencias.Count</strong> de @Model.Total incidencias</span>
+</p>
+
+@if (Model.Incidencias.Any())
+{
+    @* Tabla en escritorio; en móvil cada fila se muestra como tarjeta (ver admin.css). *@
+    <div class="admin-card admin-card--tabla">
+        <table class="admin-tabla">
+            <caption class="visually-hidden">Listado de incidencias</caption>
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Incidencia</th>
+                    <th scope="col">Categoría</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var incidencia in Model.Incidencias)
+                {
+                    <tr>
+                        <td class="admin-tabla__id" data-label="ID"><span class="admin-id">#@incidencia.Id</span></td>
+                        <td class="admin-tabla__principal" data-label="Incidencia">
+                            <a class="admin-tabla__titulo" asp-action="Detalle" asp-route-id="@incidencia.Id">@incidencia.Titulo</a>
+                            <span class="admin-tabla__ubicacion">@Iconos.Svg("map-pin", 14) @incidencia.Ubicacion</span>
+                        </td>
+                        <td data-label="Categoría">
+                            <span class="chip-cat" data-cat="@incidencia.Categoria.Slug">@Iconos.Svg(incidencia.Categoria.Icono, 14) @incidencia.Categoria.Nombre</span>
+                        </td>
+                        <td data-label="Fecha">
+                            <time datetime="@incidencia.Fecha.ToString("yyyy-MM-ddTHH:mm")" title="@incidencia.FechaTexto">@incidencia.Fecha.ToString("dd/MM/yyyy")</time>
+                        </td>
+                        <td data-label="Estado"><partial name="_EstadoBadge" model="incidencia.Estado" /></td>
+                        <td class="admin-tabla__acciones">
+                            <a class="btn btn-av-secondary btn-sm-av" asp-action="Detalle" asp-route-id="@incidencia.Id"
+                               aria-label="Ver incidencia #@incidencia.Id">
+                                @Iconos.Svg("eye", 16) Ver
+                            </a>
+                            <a class="btn btn-av-primary btn-sm-av" asp-action="Detalle" asp-route-id="@incidencia.Id" asp-fragment="cambiar-estado"
+                               aria-label="Cambiar estado de la incidencia #@incidencia.Id">
+                                @Iconos.Svg("pencil", 16) Cambiar estado
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="vacio">
+        <span class="vacio__icono">@Iconos.Svg(Model.Total == 0 ? "inbox" : "search", 26)</span>
+        @if (Model.Total == 0)
+        {
+            <h2 class="vacio__titulo">Aún no hay incidencias</h2>
+            <p>Cuando los vecinos reporten problemas, aparecerán aquí.</p>
+        }
+        else
+        {
+            <h2 class="vacio__titulo">Ninguna incidencia coincide con los filtros</h2>
+            <p>Prueba con otras palabras o quita algunos filtros.</p>
+            <a class="btn btn-av-secondary" asp-action="Incidencias">Ver todas</a>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Al cambiar un filtro se aplica automáticamente (el botón "Filtrar" funciona sin JavaScript).
+        document.querySelectorAll("[data-autoenviar]").forEach(select =>
+            select.addEventListener("change", () => select.form.submit()));
+    </script>
+}

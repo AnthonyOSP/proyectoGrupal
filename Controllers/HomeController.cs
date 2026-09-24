@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using proyectoGrupal.Mock;
+using Microsoft.EntityFrameworkCore;
+using proyectoGrupal.Data;
+using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.ViewModels;
 
@@ -8,18 +10,32 @@ namespace proyectoGrupal.Controllers;
 
 public class HomeController : Controller
 {
-    // GET: /
-    public IActionResult Index()
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<HomeController> _logger;
+
+    // ASP.NET entrega el DbContext y el logger por inyección de dependencias (ver Program.cs).
+    public HomeController(ApplicationDbContext context, ILogger<HomeController> logger)
     {
-        var incidencias = DatosDemo.Incidencias;
+        _context = context;
+        _logger = logger;
+    }
+
+    // GET: /
+    public async Task<IActionResult> Index()
+    {
+        var recientes = await _context.Incidencias
+            .AsNoTracking()
+            .OrderByDescending(i => i.FechaRegistro)
+            .Take(3)
+            .ToListAsync();
 
         var modelo = new InicioViewModel
         {
-            Categorias = DatosDemo.Categorias,
-            Recientes = incidencias.OrderByDescending(i => i.Fecha).Take(3).ToList(),
-            TotalReportes = incidencias.Count,
-            TotalEnRevision = incidencias.Count(i => i.Estado == EstadoIncidencia.EnRevision),
-            TotalAtendidas = incidencias.Count(i => i.Estado == EstadoIncidencia.Atendida)
+            Categorias = CatalogoCategorias.Todas,
+            Recientes = recientes.Select(IncidenciaViewModel.DesdeEntidad).ToList(),
+            TotalReportes = await _context.Incidencias.CountAsync(),
+            TotalEnRevision = await _context.Incidencias.CountAsync(i => i.Estado == EstadosIncidencia.EnRevision),
+            TotalAtendidas = await _context.Incidencias.CountAsync(i => i.Estado == EstadosIncidencia.Atendida)
         };
 
         return View(modelo);
@@ -28,12 +44,14 @@ public class HomeController : Controller
     // GET: /Home/Reportar?categoria=alumbrado
     public IActionResult Reportar(string? categoria)
     {
-        ViewBag.Categorias = DatosDemo.Categorias;
+        // El parámetro "categoria" (slug de la URL) queda en ModelState y el <select> lo usaría
+        // en lugar del modelo. Se limpia para que se aplique el nombre completo de abajo.
+        ModelState.Clear();
 
         // Permite llegar desde una tarjeta de categoría con la categoría ya elegida.
-        var modelo = new ReporteFormViewModel
+        var modelo = new CrearIncidenciaViewModel
         {
-            Categoria = DatosDemo.BuscarCategoria(categoria)?.Slug
+            Categoria = CatalogoCategorias.PorSlug(categoria)?.Nombre
         };
 
         return View(modelo);
@@ -42,66 +60,79 @@ public class HomeController : Controller
     // POST: /Home/Reportar
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Reportar(ReporteFormViewModel modelo)
+    public async Task<IActionResult> Reportar(CrearIncidenciaViewModel modelo)
     {
-        if (DatosDemo.BuscarCategoria(modelo.Categoria) == null)
+        // La categoría debe ser una de la lista (no se confía en el HTML del navegador).
+        if (!CategoriasIncidencia.Todas.Contains(modelo.Categoria))
         {
             ModelState.AddModelError(nameof(modelo.Categoria), "Elige una categoría de la lista.");
         }
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Categorias = DatosDemo.Categorias;
             return View(modelo);
         }
 
-        // ETAPA 1: el reporte todavía NO se guarda.
-        // En la Etapa 2 aquí se guardará en SQLite con Entity Framework.
-        TempData["ReporteEnviado"] = modelo.Titulo;
-        return RedirectToAction(nameof(Reportar));
+        // Id, Estado y FechaRegistro los decide el servidor, nunca el formulario.
+        var incidencia = new Incidencia
+        {
+            Titulo = modelo.Titulo!.Trim(),
+            Descripcion = modelo.Descripcion!.Trim(),
+            Categoria = modelo.Categoria!,
+            Ubicacion = modelo.Ubicacion!.Trim(),
+            FotoUrl = string.IsNullOrWhiteSpace(modelo.FotoUrl) ? null : modelo.FotoUrl.Trim(),
+            Estado = EstadosIncidencia.Pendiente,
+            FechaRegistro = DateTime.Now
+        };
+
+        try
+        {
+            _context.Incidencias.Add(incidencia);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            // El detalle técnico queda en el log; el vecino solo ve un mensaje amigable.
+            _logger.LogError(ex, "Error al guardar la incidencia \"{Titulo}\"", incidencia.Titulo);
+            ModelState.AddModelError(string.Empty, "No pudimos registrar tu incidencia. Inténtalo nuevamente.");
+            return View(modelo);
+        }
+
+        // TempData sobrevive a la redirección y se muestra una sola vez.
+        TempData["ReporteCreadoId"] = incidencia.Id;
+        return RedirectToAction(nameof(Incidencias));
     }
 
     // GET: /Home/Incidencias?buscar=poste&categoria=alumbrado&estado=EnRevision
-    public IActionResult Incidencias(string? buscar, string? categoria, EstadoIncidencia? estado)
+    public async Task<IActionResult> Incidencias(string? buscar, string? categoria, EstadoIncidencia? estado)
     {
-        IEnumerable<IncidenciaViewModel> resultado = DatosDemo.Incidencias;
+        var categoriaElegida = CatalogoCategorias.PorSlug(categoria);
 
-        if (!string.IsNullOrWhiteSpace(buscar))
-        {
-            var texto = buscar.Trim();
-            resultado = resultado.Where(i =>
-                i.Titulo.Contains(texto, StringComparison.CurrentCultureIgnoreCase) ||
-                i.Descripcion.Contains(texto, StringComparison.CurrentCultureIgnoreCase) ||
-                i.Ubicacion.Contains(texto, StringComparison.CurrentCultureIgnoreCase));
-        }
-
-        if (!string.IsNullOrWhiteSpace(categoria))
-        {
-            resultado = resultado.Where(i => i.Categoria.Slug == categoria);
-        }
-
-        if (estado != null)
-        {
-            resultado = resultado.Where(i => i.Estado == estado);
-        }
+        var incidencias = await _context.Incidencias
+            .AsNoTracking()
+            .Filtrar(buscar, categoriaElegida, estado)
+            .OrderByDescending(i => i.FechaRegistro)
+            .ToListAsync();
 
         var modelo = new IncidenciasListadoViewModel
         {
-            Incidencias = resultado.OrderByDescending(i => i.Fecha).ToList(),
-            Categorias = DatosDemo.Categorias,
+            Incidencias = incidencias.Select(IncidenciaViewModel.DesdeEntidad).ToList(),
+            Categorias = CatalogoCategorias.Todas,
             Buscar = buscar,
-            Categoria = categoria,
+            Categoria = categoriaElegida?.Slug,
             Estado = estado,
-            Total = DatosDemo.Incidencias.Count
+            Total = await _context.Incidencias.CountAsync()
         };
 
         return View(modelo);
     }
 
-    // GET: /Home/Detalle/2
-    public IActionResult Detalle(int id)
+    // GET: /Home/Detalle/5
+    public async Task<IActionResult> Detalle(int id)
     {
-        var incidencia = DatosDemo.Incidencias.FirstOrDefault(i => i.Id == id);
+        var incidencia = await _context.Incidencias
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == id);
 
         if (incidencia == null)
         {
@@ -109,7 +140,7 @@ public class HomeController : Controller
             return View("NoEncontrada");
         }
 
-        return View(incidencia);
+        return View(IncidenciaViewModel.DesdeEntidad(incidencia));
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

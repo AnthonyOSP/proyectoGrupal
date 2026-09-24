@@ -1,0 +1,77 @@
+@{
+    // Acción actual, para resaltar el enlace activo del menú.
+    var accion = ViewContext.RouteData.Values["action"]?.ToString();
+    string Activo(params string[] acciones) => acciones.Contains(accion) ? "active" : "";
+    string? Actual(params string[] acciones) => acciones.Contains(accion) ? "page" : null;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>@ViewData["Title"] · Admin · Alerta Vecinal</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="admin-body">
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+    <div class="admin-shell">
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar__top">
+                <a class="brand brand--admin" asp-controller="Admin" asp-action="Index" aria-label="Alerta Vecinal, panel administrativo">
+                    <span class="brand__mark" aria-hidden="true">@Iconos.Svg("megaphone", 20)</span>
+                    <span>
+                        <span class="brand__text">Alerta<span>Vecinal</span></span>
+                        <span class="admin-sidebar__tag">Panel administrativo</span>
+                    </span>
+                </a>
+                <button class="admin-menu-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuAdmin"
+                        aria-controls="menuAdmin" aria-expanded="false" aria-label="Abrir menú">
+                    @Iconos.Svg("menu", 24)
+                </button>
+            </div>
+
+            <nav class="collapse d-lg-flex admin-nav" id="menuAdmin" aria-label="Navegación del panel">
+                <ul>
+                    <li>
+                        <a class="admin-nav__link @Activo("Index")" aria-current="@Actual("Index")" asp-controller="Admin" asp-action="Index">
+                            @Iconos.Svg("dashboard", 20) Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a class="admin-nav__link @Activo("Incidencias", "Detalle", "CambiarEstado")" aria-current="@Actual("Incidencias")" asp-controller="Admin" asp-action="Incidencias">
+                            @Iconos.Svg("list", 20) Incidencias
+                        </a>
+                    </li>
+                </ul>
+                <a class="admin-nav__link admin-nav__volver" asp-controller="Home" asp-action="Index">
+                    @Iconos.Svg("arrow-left", 20) Volver al sitio
+                </a>
+            </nav>
+        </aside>
+
+        <div class="admin-main">
+            <p class="admin-aviso" role="note">
+                @Iconos.Svg("info", 16)
+                <span><strong>Modo demostración:</strong> este panel todavía no requiere inicio de sesión.</span>
+            </p>
+            <main id="contenido" tabindex="-1" class="admin-contenido">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
