@@ -1,3 +1,5 @@
+using proyectoGrupal.Models;
+
 namespace proyectoGrupal.ViewModels;
 
 // Estados posibles de una incidencia.
@@ -11,13 +13,21 @@ public enum EstadoIncidencia
 
 public static class EstadoIncidenciaExtensions
 {
-    // Texto que se muestra al usuario.
+    // Texto que se muestra al usuario y que se guarda en la base de datos.
     public static string Texto(this EstadoIncidencia estado) => estado switch
     {
-        EstadoIncidencia.Pendiente => "Pendiente",
-        EstadoIncidencia.EnRevision => "En revisión",
-        EstadoIncidencia.Atendida => "Atendida",
+        EstadoIncidencia.Pendiente => EstadosIncidencia.Pendiente,
+        EstadoIncidencia.EnRevision => EstadosIncidencia.EnRevision,
+        EstadoIncidencia.Atendida => EstadosIncidencia.Atendida,
         _ => estado.ToString()
+    };
+
+    // Convierte el texto guardado en SQLite ("En revisión") al enum.
+    public static EstadoIncidencia DesdeTexto(string texto) => texto switch
+    {
+        EstadosIncidencia.EnRevision => EstadoIncidencia.EnRevision,
+        EstadosIncidencia.Atendida => EstadoIncidencia.Atendida,
+        _ => EstadoIncidencia.Pendiente
     };
 
     // Clase CSS que define el color del estado (ver site.css).

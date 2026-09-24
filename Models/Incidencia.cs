@@ -21,7 +21,7 @@ public class Incidencia
     public string Categoria { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La ubicación es obligatoria.")]
-    [StringLength(200, ErrorMessage = "La ubicación no puede superar los 200 caracteres.")]
+    [StringLength(250, ErrorMessage = "La ubicación no puede superar los 250 caracteres.")]
     public string Ubicacion { get; set; } = string.Empty;
 
     // Opcional: no todas las incidencias tienen foto.

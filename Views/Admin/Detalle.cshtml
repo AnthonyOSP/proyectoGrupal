@@ -1,0 +1,128 @@
+@model IncidenciaViewModel
+@{
+    ViewData["Title"] = $"Incidencia #{Model.Id}";
+
+    var mensaje = TempData["MensajeAdmin"] as string;
+    var errorEstado = ViewData.ModelState["estado"]?.Errors.FirstOrDefault()?.ErrorMessage;
+}
+
+<nav class="migas" aria-label="Ruta de navegación">
+    <ol>
+        <li><a asp-action="Index">Dashboard</a></li>
+        <li><a asp-action="Incidencias">Incidencias</a></li>
+        <li aria-current="page">#@Model.Id</li>
+    </ol>
+</nav>
+
+<header class="admin-cabecera">
+    <div>
+        <div class="detalle-cabecera__chips">
+            <span class="admin-id admin-id--grande">#@Model.Id</span>
+            <span class="chip-cat" data-cat="@Model.Categoria.Slug">@Iconos.Svg(Model.Categoria.Icono, 14) @Model.Categoria.Nombre</span>
+            <partial name="_EstadoBadge" model="Model.Estado" />
+        </div>
+        <h1 class="admin-cabecera__titulo">@Model.Titulo</h1>
+        <p class="admin-cabecera__sub">Reportada el @Model.FechaTexto a las @Model.Fecha.ToString("HH:mm")</p>
+    </div>
+    <a class="btn btn-av-secondary" asp-controller="Home" asp-action="Detalle" asp-route-id="@Model.Id" target="_blank" rel="noopener">
+        @Iconos.Svg("external", 18) Ver en el sitio público
+    </a>
+</header>
+
+@if (mensaje != null)
+{
+    <div class="alerta-exito" role="status" tabindex="-1" id="mensajeAdmin">
+        <span class="alerta-exito__icono">@Iconos.Svg("check", 22)</span>
+        <div>
+            <p class="alerta-exito__titulo mb-0">@mensaje</p>
+        </div>
+    </div>
+}
+
+<div class="detalle-layout detalle-layout--admin">
+    <div>
+        <div class="detalle-foto bloque p-0 border-0">
+            @if (Model.FotoUrl != null)
+            {
+                <img src="@Model.FotoUrl" alt="Fotografía de la incidencia: @Model.Titulo" loading="lazy" />
+            }
+            else
+            {
+                <div class="foto-placeholder foto-placeholder--admin" data-cat="@Model.Categoria.Slug">
+                    <span class="foto-placeholder__icono">@Iconos.Svg("image", 26)</span>
+                    <p>Sin fotografía</p>
+                </div>
+            }
+        </div>
+
+        <section class="bloque" aria-labelledby="titulo-descripcion">
+            <h2 class="bloque__titulo" id="titulo-descripcion">Descripción</h2>
+            <p class="bloque__texto">@Model.Descripcion</p>
+        </section>
+
+        <section class="bloque" aria-labelledby="titulo-datos">
+            <h2 class="bloque__titulo" id="titulo-datos">Datos del reporte</h2>
+            <dl class="datos">
+                <div>
+                    <span class="datos__icono" aria-hidden="true">@Iconos.Svg("list", 20)</span>
+                    <div><dt>ID</dt><dd>#@Model.Id</dd></div>
+                </div>
+                <div>
+                    <span class="datos__icono" aria-hidden="true">@Iconos.Svg("map-pin", 20)</span>
+                    <div><dt>Ubicación</dt><dd>@Model.Ubicacion</dd></div>
+                </div>
+                <div>
+                    <span class="datos__icono" aria-hidden="true">@Iconos.Svg("calendar", 20)</span>
+                    <div><dt>Fecha de registro</dt><dd>@Model.FechaTexto, @Model.Fecha.ToString("HH:mm")</dd></div>
+                </div>
+                <div>
+                    <span class="datos__icono" aria-hidden="true">@Iconos.Svg(Model.Categoria.Icono, 20)</span>
+                    <div><dt>Categoría</dt><dd>@Model.Categoria.Nombre</dd></div>
+                </div>
+            </dl>
+        </section>
+    </div>
+
+    <aside>
+        <section class="bloque cambiar-estado" id="cambiar-estado" aria-labelledby="titulo-cambiar-estado">
+            <h2 class="bloque__titulo" id="titulo-cambiar-estado">Cambiar estado</h2>
+            <p class="cambiar-estado__actual">Estado actual: <partial name="_EstadoBadge" model="Model.Estado" /></p>
+
+            @* Solo se envían el id (en la URL) y el nuevo estado. Los demás datos no se pueden modificar. *@
+            <form asp-action="CambiarEstado" asp-route-id="@Model.Id" method="post" id="formEstado">
+                <div class="campo">
+                    <label class="campo__label" for="estado">Nuevo estado</label>
+                    <select class="form-select @(errorEstado != null ? "input-validation-error" : "")" id="estado" name="estado"
+                            aria-describedby="@(errorEstado != null ? "estado-error" : null)">
+                        @foreach (var estado in EstadosIncidencia.Todos)
+                        {
+                            <option value="@estado" selected="@(estado == Model.Estado.Texto())">@estado</option>
+                        }
+                    </select>
+                    @if (errorEstado != null)
+                    {
+                        <span class="field-validation-error" id="estado-error" role="alert">@errorEstado</span>
+                    }
+                </div>
+                <button type="submit" class="btn btn-av-primary w-100" id="btnEstado">
+                    @Iconos.Svg("check", 18) <span class="btn-texto">Actualizar estado</span>
+                </button>
+            </form>
+            <p class="cambiar-estado__nota">@Iconos.Svg("info", 16) Solo se modifica el estado. Los datos reportados por el vecino no cambian.</p>
+        </section>
+    </aside>
+</div>
+
+@section Scripts {
+    <script>
+        // Anuncia el mensaje de confirmación a los lectores de pantalla.
+        document.getElementById("mensajeAdmin")?.focus();
+
+        // Evita envíos dobles mientras se guarda.
+        document.getElementById("formEstado").addEventListener("submit", () => {
+            const boton = document.getElementById("btnEstado");
+            boton.disabled = true;
+            boton.querySelector(".btn-texto").textContent = "Guardando...";
+        });
+    </script>
+}
