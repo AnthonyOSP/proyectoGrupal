@@ -23,8 +23,13 @@ public class IncidenciaViewModel
 
     public EstadoIncidencia Estado { get; set; }
 
-    // Ruta de la foto. Si es null se muestra un espacio reservado.
+    // Ruta de la foto protegida guardada en SQLite.
     public string? FotoUrl { get; set; }
+
+    // Solo se muestran fotos generadas por el servidor (carpeta /uploads/incidencias/).
+    // Así un valor manipulado en la base de datos no puede cargar una imagen externa.
+    public string? FotoSegura =>
+        FotoUrl != null && FotoUrl.StartsWith(Services.FotoIncidenciaService.CarpetaRelativa) ? FotoUrl : null;
 
     // Convierte la entidad de la base de datos en el ViewModel de la vista.
     public static IncidenciaViewModel DesdeEntidad(Incidencia incidencia) => new()

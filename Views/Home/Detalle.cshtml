@@ -32,20 +32,14 @@
 <div class="container">
     <div class="detalle-layout">
         <div>
-            @* Fotografía guardada en FotoUrl. Si no hay, se muestra un espacio reservado. *@
-            <div class="detalle-foto bloque p-0 border-0">
-                @if (Model.FotoUrl != null)
-                {
-                    <img src="@Model.FotoUrl" alt="Fotografía de la incidencia: @Model.Titulo" loading="lazy" />
-                }
-                else
-                {
-                    <div class="foto-placeholder" data-cat="@Model.Categoria.Slug">
-                        <span class="foto-placeholder__icono">@Iconos.Svg("image", 30)</span>
-                        <p>Este reporte aún no tiene fotografía</p>
-                    </div>
-                }
-            </div>
+            @* Fotografía protegida (rostros pixelados). Si el reporte no tiene foto, no se muestra nada. *@
+            @if (Model.FotoSegura != null)
+            {
+                <figure class="detalle-foto">
+                    <img src="@Model.FotoSegura" alt="Fotografía de la incidencia: @Model.Titulo" />
+                    <figcaption>@Iconos.Svg("shield", 16) Por privacidad, los rostros detectados se ocultan automáticamente.</figcaption>
+                </figure>
+            }
 
             <section class="bloque" aria-labelledby="titulo-descripcion">
                 <h2 class="bloque__titulo" id="titulo-descripcion">Descripción</h2>
