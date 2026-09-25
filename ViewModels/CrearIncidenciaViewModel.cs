@@ -27,9 +27,8 @@ public class CrearIncidenciaViewModel
     [StringLength(250, ErrorMessage = "La ubicación no puede superar los 250 caracteres.")]
     public string? Ubicacion { get; set; }
 
-    // Enlace a una foto. Queda preparado para cuando exista la subida real de imágenes.
-    [Display(Name = "Fotografía")]
-    [Url(ErrorMessage = "El enlace de la foto no es válido.")]
-    [StringLength(500)]
-    public string? FotoUrl { get; set; }
+    // Fotografía opcional. Se procesa en el servidor (rostros pixelados) antes de guardarse.
+    // No hay campo FotoUrl: la ruta de la foto la genera el servidor, nunca el formulario.
+    [Display(Name = "Fotografía de la incidencia")]
+    public IFormFile? Foto { get; set; }
 }

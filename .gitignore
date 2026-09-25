@@ -67,3 +67,14 @@ desktop.ini
 *.tmp
 *.swp
 *~
+
+# Fotografías subidas por los vecinos: NUNCA se suben al repositorio
+wwwroot/uploads/
+
+# Credenciales de Google Cloud (archivos JSON de cuentas de servicio)
+*service-account*.json
+*-credentials*.json
+google-credentials*.json
+gcp-*.json
+application_default_credentials.json
+credentials/

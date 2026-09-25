@@ -52,9 +52,9 @@
         mostrarError("");
         if (!archivo) return;
 
-        if (!archivo.type.startsWith("image/")) {
+        if (!["image/jpeg", "image/png"].includes(archivo.type)) {
             limpiarFoto();
-            mostrarError("El archivo debe ser una imagen (JPG o PNG).");
+            mostrarError("Solo se permiten fotografías JPG o PNG.");
             return;
         }
         if (archivo.size > TAMANO_MAXIMO) {
@@ -103,6 +103,7 @@
         }
         boton.classList.add("is-loading");
         boton.disabled = true;
-        boton.querySelector(".btn-texto").textContent = "Enviando...";
+        // Si hay foto, el servidor la procesa (detección de rostros), así que puede tardar unos segundos.
+        boton.querySelector(".btn-texto").textContent = input.files.length > 0 ? "Protegiendo foto..." : "Enviando...";
     });
 })();
