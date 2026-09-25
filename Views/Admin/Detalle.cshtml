@@ -41,19 +41,13 @@
 
 <div class="detalle-layout detalle-layout--admin">
     <div>
-        <div class="detalle-foto bloque p-0 border-0">
-            @if (Model.FotoUrl != null)
-            {
-                <img src="@Model.FotoUrl" alt="Fotografía de la incidencia: @Model.Titulo" loading="lazy" />
-            }
-            else
-            {
-                <div class="foto-placeholder foto-placeholder--admin" data-cat="@Model.Categoria.Slug">
-                    <span class="foto-placeholder__icono">@Iconos.Svg("image", 26)</span>
-                    <p>Sin fotografía</p>
-                </div>
-            }
-        </div>
+        @if (Model.FotoSegura != null)
+        {
+            <figure class="detalle-foto">
+                <img src="@Model.FotoSegura" alt="Fotografía de la incidencia: @Model.Titulo" />
+                <figcaption>@Iconos.Svg("shield", 16) Foto protegida: los rostros detectados se pixelaron antes de guardarla.</figcaption>
+            </figure>
+        }
 
         <section class="bloque" aria-labelledby="titulo-descripcion">
             <h2 class="bloque__titulo" id="titulo-descripcion">Descripción</h2>

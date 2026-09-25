@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
+using proyectoGrupal.Services;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
@@ -11,12 +12,14 @@ namespace proyectoGrupal.Controllers;
 public class HomeController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly FotoIncidenciaService _fotos;
     private readonly ILogger<HomeController> _logger;
 
-    // ASP.NET entrega el DbContext y el logger por inyección de dependencias (ver Program.cs).
-    public HomeController(ApplicationDbContext context, ILogger<HomeController> logger)
+    // ASP.NET entrega estas dependencias por inyección de dependencias (ver Program.cs).
+    public HomeController(ApplicationDbContext context, FotoIncidenciaService fotos, ILogger<HomeController> logger)
     {
         _context = context;
+        _fotos = fotos;
         _logger = logger;
     }
 
@@ -58,8 +61,12 @@ public class HomeController : Controller
     }
 
     // POST: /Home/Reportar
+    // El límite de 20 MB permite responder con un mensaje amigable a fotos de hasta 20 MB;
+    // la foto en sí se valida con un máximo de 5 MB.
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(20 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 20 * 1024 * 1024)]
     public async Task<IActionResult> Reportar(CrearIncidenciaViewModel modelo)
     {
         // La categoría debe ser una de la lista (no se confía en el HTML del navegador).
@@ -68,9 +75,34 @@ public class HomeController : Controller
             ModelState.AddModelError(nameof(modelo.Categoria), "Elige una categoría de la lista.");
         }
 
+        // Validación rápida de la foto (tamaño y extensión) junto con los demás campos.
+        if (modelo.Foto != null)
+        {
+            var errorFoto = FotoIncidenciaService.ValidarArchivo(modelo.Foto);
+            if (errorFoto != null)
+            {
+                ModelState.AddModelError(nameof(modelo.Foto), errorFoto);
+            }
+        }
+
         if (!ModelState.IsValid)
         {
             return View(modelo);
+        }
+
+        // Proteger la foto: Google Vision detecta rostros, se pixelan y SOLO se guarda la versión protegida.
+        // Si algo falla, no se guarda ninguna foto y el vecino puede intentarlo otra vez.
+        string? fotoUrl = null;
+        if (modelo.Foto != null)
+        {
+            var resultado = await _fotos.ProcesarYGuardarAsync(modelo.Foto, HttpContext.RequestAborted);
+            if (!resultado.Exito)
+            {
+                ModelState.AddModelError(nameof(modelo.Foto), resultado.Error!);
+                return View(modelo);
+            }
+
+            fotoUrl = resultado.Url;
         }
 
         // Id, Estado y FechaRegistro los decide el servidor, nunca el formulario.
@@ -80,7 +112,7 @@ public class HomeController : Controller
             Descripcion = modelo.Descripcion!.Trim(),
             Categoria = modelo.Categoria!,
             Ubicacion = modelo.Ubicacion!.Trim(),
-            FotoUrl = string.IsNullOrWhiteSpace(modelo.FotoUrl) ? null : modelo.FotoUrl.Trim(),
+            FotoUrl = fotoUrl,
             Estado = EstadosIncidencia.Pendiente,
             FechaRegistro = DateTime.Now
         };
@@ -94,6 +126,13 @@ public class HomeController : Controller
         {
             // El detalle técnico queda en el log; el vecino solo ve un mensaje amigable.
             _logger.LogError(ex, "Error al guardar la incidencia \"{Titulo}\"", incidencia.Titulo);
+
+            // Si la incidencia no se guardó, tampoco debe quedar su foto en el servidor.
+            if (fotoUrl != null)
+            {
+                _fotos.Eliminar(fotoUrl);
+            }
+
             ModelState.AddModelError(string.Empty, "No pudimos registrar tu incidencia. Inténtalo nuevamente.");
             return View(modelo);
         }
