@@ -1,0 +1,39 @@
+# Archivos que NO deben entrar a la imagen Docker
+
+# Compilación local (la imagen compila por su cuenta)
+bin/
+obj/
+
+# Git y editores
+.git/
+.vs/
+.vscode/
+.idea/
+.claude/
+
+# Base de datos local y fotos de vecinos (datos privados)
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.session.sql
+wwwroot/uploads/
+
+# Credenciales de Google Cloud (en Render se configuran como Secret File)
+*service-account*.json
+*-credentials*.json
+google-credentials*.json
+gcp-*.json
+application_default_credentials.json
+credentials/
+
+# Secretos locales
+.env
+.env.*
+secrets.json
+appsettings.*.local.json
+
+# Archivos de Docker y documentación
+Dockerfile
+.dockerignore
+README.md

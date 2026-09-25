@@ -1,8 +1,25 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using proyectoGrupal.Data;
 using proyectoGrupal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// En Render (y otros hosts) el puerto llega en la variable de entorno PORT.
+var puerto = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(puerto))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{puerto}");
+}
+
+// Render atiende el HTTPS y reenvía la petición a la app por HTTP.
+// Estos encabezados le indican a la app el esquema (https) y la IP original del visitante.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -17,6 +34,15 @@ builder.Services.AddSingleton<IFaceDetectionService, GoogleVisionFaceDetectionSe
 builder.Services.AddScoped<FotoIncidenciaService>();
 
 var app = builder.Build();
+
+// Crea la base de datos y aplica las migraciones pendientes al iniciar.
+// Necesario en Docker/Render, donde no existe "dotnet ef database update".
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
+}
+
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
