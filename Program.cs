@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using proyectoGrupal.Data;
+using proyectoGrupal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,11 @@ builder.Services.AddControllersWithViews();
 // Base de datos SQLite (cadena de conexión en appsettings.json)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Protección de fotografías: detección de rostros con Google Cloud Vision + pixelado local.
+// Credenciales: variable de entorno GOOGLE_APPLICATION_CREDENTIALS (ver README.md).
+builder.Services.AddSingleton<IFaceDetectionService, GoogleVisionFaceDetectionService>();
+builder.Services.AddScoped<FotoIncidenciaService>();
 
 var app = builder.Build();
 
@@ -21,6 +27,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Sirve archivos creados en tiempo de ejecución, como las fotos de /uploads/incidencias.
+// (MapStaticAssets solo conoce los archivos que existían al compilar).
+app.UseStaticFiles();
+
 app.UseRouting();
 
 app.UseAuthorization();
