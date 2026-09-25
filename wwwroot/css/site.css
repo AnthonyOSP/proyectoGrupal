@@ -1718,16 +1718,21 @@ textarea.form-control {
 
 /* ---------- 11. Footer ---------- */
 .site-footer {
-  padding: 2.5rem 0 1.5rem;
-  background: var(--av-ink);
-  color: #cbd5e1;
+  position: relative;
+  padding: 3rem 0 1.25rem;
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.22), transparent 28%),
+    linear-gradient(180deg, #0f172a 0%, #111827 100%);
+  color: #dbeafe;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .site-footer__grid {
   display: grid;
-  gap: 2rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid #1e293b;
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  align-items: start;
 }
 
 @media (min-width: 768px) {
@@ -1744,53 +1749,76 @@ textarea.form-control {
   color: #93c5fd;
 }
 
+.brand--footer .brand__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  background: rgba(147, 197, 253, 0.14);
+  border: 1px solid rgba(147, 197, 253, 0.24);
+}
+
 .site-footer__lema {
-  margin: 0.75rem 0 0;
-  max-width: 24rem;
+  margin: 0.85rem 0 0;
+  max-width: 26rem;
+  color: #cbd5e1;
+  line-height: 1.7;
 }
 
 .site-footer__titulo {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #fff;
-  margin-bottom: 0.5rem;
+  letter-spacing: 0.08em;
+  color: #f8fafc;
+  margin: 0 0 0.75rem;
 }
 
 .site-footer__links {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: grid;
+  gap: 0.25rem;
 }
 
 .site-footer__links a {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  color: #cbd5e1;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.7rem;
+  color: #dbeafe;
   text-decoration: none;
+  transition: transform var(--av-transition), background-color var(--av-transition), color var(--av-transition);
 }
 
 .site-footer__links a:hover {
   color: #fff;
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  background: rgba(148, 163, 184, 0.08);
+  text-decoration: none;
+  transform: translateX(4px);
 }
 
 .site-footer__base {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+  align-items: center;
   gap: 0.75rem;
   padding-top: 1.25rem;
   font-size: 0.875rem;
+  color: #cbd5e1;
 }
 
 .site-footer__tag {
-  padding: 0.125rem 0.625rem;
-  border: 1px solid #334155;
+  padding: 0.2rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 999px;
+  background: rgba(15, 23, 42, 0.5);
+  color: #e2e8f0;
 }
 
 .site-footer :focus-visible {
