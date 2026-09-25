@@ -157,6 +157,7 @@ Views/           Páginas Razor (.cshtml)
 Helpers/         Iconos SVG, catálogo de categorías y filtros
 Services/        Protección de fotos: Google Cloud Vision + pixelado de rostros
 Migrations/      Historial de cambios de la base de datos (NO borrar)
+Dockerfile       Imagen Docker para publicar en Render (ver sección 10)
 wwwroot/         CSS, JavaScript y librerías
 ```
 
@@ -259,3 +260,64 @@ Ya está configurado en `.gitignore`, pero revisa siempre con `git status` antes
 - **El archivo JSON de credenciales.** Quien lo tenga puede usar el proyecto de Google Cloud y generar cobros. Si se sube por error, **elimina la clave** en Google Cloud Console (Cuentas de servicio → Claves) y crea una nueva.
 - **La carpeta `wwwroot/uploads/`**, con fotos de vecinos.
 - **La base de datos `alerta_vecinal.db`.**
+
+---
+
+## 10. Publicar en Render (Docker)
+
+El proyecto incluye un `Dockerfile` listo para Render. Al iniciar, la aplicación crea la base de datos SQLite y aplica las migraciones automáticamente.
+
+### 10.1 Antes de publicar: lee esto
+
+- **El panel `/Admin` queda público.** Todavía no hay inicio de sesión (Etapa 5), así que cualquiera que conozca la URL puede cambiar estados. Comparte el enlace solo con quien deba verlo.
+- **Los datos no son permanentes en el plan gratuito.** El disco del contenedor se borra en cada despliegue y cada vez que Render reinicia el servicio. Las incidencias y las fotos se pierden. Es suficiente para una demostración, pero no para uso real.
+- **El plan gratuito se "duerme"** tras unos 15 minutos sin visitas. La primera visita después tarda cerca de un minuto en responder, y al despertar la base de datos empieza vacía.
+- **Limita el uso de Google Vision** (cuota diaria baja en Google Cloud Console), porque ahora cualquier persona podría subir fotos.
+
+### 10.2 Crear el servicio
+
+1. Sube los cambios a GitHub (el `Dockerfile` debe estar en la rama que vas a publicar, por ejemplo `main`).
+2. Entra a https://dashboard.render.com → **New → Web Service** y conecta el repositorio `proyectoGrupal`.
+3. Configura:
+   - **Language / Runtime:** `Docker` (Render lo detecta por el `Dockerfile`).
+   - **Branch:** `main`.
+   - **Instance Type:** `Free`.
+4. No hace falta configurar el puerto: Render asigna la variable `PORT` y la aplicación la usa automáticamente.
+
+### 10.3 Credenciales de Google Vision en Render (Secret File)
+
+El archivo JSON **no** se sube a GitHub. En Render se carga como archivo secreto:
+
+1. En el servicio, ve a **Environment → Secret Files → Add Secret File**.
+2. **Filename:** `google-credentials.json`. **Contents:** pega el contenido completo del JSON de tu cuenta de servicio.
+3. En **Environment Variables**, agrega:
+
+   | Key | Value |
+   |---|---|
+   | `GOOGLE_APPLICATION_CREDENTIALS` | `/etc/secrets/google-credentials.json` |
+
+4. Guarda. Render vuelve a desplegar el servicio.
+
+Sin este paso, la aplicación funciona, pero no acepta fotos (muestra el mensaje "No fue posible procesar la fotografía...").
+
+### 10.4 Desplegar y comprobar
+
+1. Pulsa **Deploy** (o espera el despliegue automático). La primera compilación tarda unos minutos.
+2. Abre la URL que te da Render (`https://<nombre>.onrender.com`) y prueba reportar una incidencia.
+3. Si algo falla, revisa la pestaña **Logs** del servicio.
+
+Cada vez que hagas `git push` a la rama configurada, Render vuelve a desplegar automáticamente.
+
+### 10.5 Probar la imagen en tu computadora (opcional)
+
+Requiere Docker Desktop instalado:
+
+```bash
+docker build -t alerta-vecinal .
+docker run -p 8080:8080 \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/secrets/google.json \
+  -v "$GOOGLE_APPLICATION_CREDENTIALS":/secrets/google.json:ro \
+  alerta-vecinal
+```
+
+Luego abre http://localhost:8080.
