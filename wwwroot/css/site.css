@@ -13,7 +13,8 @@
      9. Listado y filtros
     10. Detalle
     11. Footer
-    12. Utilidades y accesibilidad
+    12. Cuenta: iniciar sesión y registro
+    13. Utilidades y accesibilidad
    ========================================================= */
 
 /* ---------- 1. Variables ---------- */
@@ -310,11 +311,54 @@ h1, h2, h3, h4 {
   .site-header .navbar-nav {
     gap: 0.25rem;
   }
-  .nav-cta {
-    width: 100%;
+  .nav-acciones {
+    display: grid;
+    gap: 0.5rem;
     margin: 0.75rem 0 0.25rem;
+  }
+  .nav-cta,
+  .nav-entrar {
+    width: 100%;
     min-height: 48px;
   }
+  .nav-usuario {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--av-border);
+  }
+}
+
+/* Sesión: iniciar sesión, correo del usuario y cerrar sesión */
+.nav-usuario {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.nav-usuario form {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.nav-usuario__correo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--av-muted);
+}
+
+.nav-usuario__correo > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-salir {
+  padding-inline: 0.75rem;
 }
 
 @media (min-width: 992px) {
@@ -329,6 +373,36 @@ h1, h2, h3, h4 {
     background: transparent;
     box-shadow: inset 0 -2px 0 var(--av-primary);
     border-radius: 0;
+  }
+  .nav-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .nav-usuario {
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--av-border);
+  }
+  .nav-usuario__correo {
+    max-width: 150px;
+  }
+}
+
+/* Escritorio mediano: "Cerrar sesión" queda solo con ícono para que el menú quepa en una línea */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .nav-salir__texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1200px) {
+  .nav-usuario__correo {
+    max-width: 200px;
   }
 }
 
@@ -1825,7 +1899,125 @@ textarea.form-control {
   outline-color: #93c5fd;
 }
 
-/* ---------- 12. Utilidades y accesibilidad ---------- */
+/* ---------- 12. Cuenta: iniciar sesión y registro ---------- */
+.auth-seccion {
+  padding: 2rem 0 3rem;
+  background:
+    radial-gradient(700px 320px at 50% 0%, var(--av-primary-soft), transparent 70%),
+    var(--av-bg);
+}
+
+@media (min-width: 768px) {
+  .auth-seccion { padding: 3.5rem 0 4.5rem; }
+}
+
+.auth-card {
+  max-width: 460px;
+  margin-inline: auto;
+  padding: 1.5rem 1.25rem;
+  background: var(--av-surface);
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius-lg);
+  box-shadow: var(--av-shadow);
+}
+
+@media (min-width: 768px) {
+  .auth-card { padding: 2.25rem 2rem; }
+}
+
+.auth-card__cabecera {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.auth-card__icono {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 0.75rem;
+  color: var(--av-primary);
+  background: var(--av-primary-soft);
+  border-radius: 14px;
+}
+
+.auth-card__titulo {
+  margin-bottom: 0.375rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.auth-card__sub {
+  margin: 0;
+  color: var(--av-muted);
+}
+
+.auth-card__boton {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.auth-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  color: var(--av-primary-hover);
+  background: var(--av-primary-soft);
+  border: 1px solid var(--av-primary-100);
+  border-radius: var(--av-radius);
+}
+
+.auth-aviso .icono {
+  margin-top: 0.1875rem;
+}
+
+.campo-check {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 44px;
+  padding-left: 0;
+}
+
+.campo-check .form-check-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  float: none;
+  border: 1.5px solid var(--av-border-strong);
+  cursor: pointer;
+}
+
+.campo-check .form-check-input:checked {
+  background-color: var(--av-primary);
+  border-color: var(--av-primary);
+}
+
+.campo-check .form-check-input:focus {
+  border-color: var(--av-primary);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.18);
+}
+
+.campo-check .form-check-label {
+  cursor: pointer;
+}
+
+.auth-alterna {
+  margin: 1.5rem 0 0;
+  padding-top: 1.25rem;
+  text-align: center;
+  color: var(--av-muted);
+  border-top: 1px solid var(--av-border);
+}
+
+.auth-alterna a {
+  font-weight: 700;
+}
+
+/* ---------- 13. Utilidades y accesibilidad ---------- */
 
 /* Foco visible y consistente para teclado */
 :focus-visible {

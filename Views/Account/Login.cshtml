@@ -1,0 +1,64 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+
+    // Aviso cuando el visitante llegó aquí al intentar reportar una incidencia.
+    var vieneDeReportar = Model.ReturnUrl?.StartsWith("/Home/Reportar", StringComparison.OrdinalIgnoreCase) == true;
+}
+
+<section class="auth-seccion">
+    <div class="container">
+        <div class="auth-card">
+            <div class="auth-card__cabecera">
+                <span class="auth-card__icono">@Iconos.Svg("log-in", 24)</span>
+                <h1 class="auth-card__titulo">Iniciar sesión</h1>
+                <p class="auth-card__sub">Ingresa con tu cuenta para reportar incidencias en tu distrito.</p>
+            </div>
+
+            @if (vieneDeReportar)
+            {
+                <p class="auth-aviso" role="note">
+                    @Iconos.Svg("info", 18)
+                    <span>Para reportar una incidencia necesitas iniciar sesión. Te llevaremos al formulario al entrar.</span>
+                </p>
+            }
+
+            <form asp-action="Login" method="post" novalidate>
+                <div asp-validation-summary="ModelOnly" class="resumen-errores" role="alert"></div>
+
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div class="campo">
+                    <label class="campo__label" asp-for="Email">Correo electrónico</label>
+                    <input class="form-control" asp-for="Email" type="email" autocomplete="username"
+                           placeholder="tucorreo@ejemplo.com" maxlength="256" autofocus />
+                    <span asp-validation-for="Email"></span>
+                </div>
+
+                <div class="campo">
+                    <label class="campo__label" asp-for="Password">Contraseña</label>
+                    <input class="form-control" asp-for="Password" autocomplete="current-password" maxlength="100" />
+                    <span asp-validation-for="Password"></span>
+                </div>
+
+                <div class="campo form-check campo-check">
+                    <input class="form-check-input" asp-for="RememberMe" />
+                    <label class="form-check-label" asp-for="RememberMe">Recordarme en este dispositivo</label>
+                </div>
+
+                <button type="submit" class="btn btn-av-primary btn-lg-av auth-card__boton">
+                    @Iconos.Svg("log-in", 18) Iniciar sesión
+                </button>
+            </form>
+
+            <p class="auth-alterna">
+                ¿Todavía no tienes cuenta?
+                <a asp-action="Register" asp-route-returnUrl="@Model.ReturnUrl">Regístrate</a>
+            </p>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using proyectoGrupal.Constants;
 using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
@@ -8,7 +10,10 @@ using proyectoGrupal.ViewModels;
 namespace proyectoGrupal.Controllers;
 
 // Panel administrativo: revisar incidencias y cambiar su estado.
-// ETAPA 4: todavía no requiere inicio de sesión. En la Etapa 5 se protegerá con [Authorize].
+// Todas las acciones exigen el rol Administrador:
+//   - sin sesión        → /Account/Login
+//   - sesión sin el rol → /Account/AccessDenied
+[Authorize(Roles = RoleNames.Administrador)]
 public class AdminController : Controller
 {
     private readonly ApplicationDbContext _context;
