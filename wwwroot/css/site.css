@@ -386,11 +386,28 @@ h1, h2, h3, h4 {
   .nav-usuario__correo {
     max-width: 150px;
   }
+  /* Los enlaces y botones del menú nunca se parten en dos líneas */
+  .site-header .nav-link,
+  .nav-cta,
+  .nav-salir {
+    white-space: nowrap;
+  }
+  /* Administrador: el correo queda solo como ícono (texto para lectores de pantalla y al pasar el mouse) */
+  .nav-usuario--compacto .nav-usuario__correo > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
-/* Escritorio mediano: "Cerrar sesión" queda solo con ícono para que el menú quepa en una línea */
+/* Escritorio mediano: el correo y "Cerrar sesión" quedan solo con ícono para que el menú quepa en una línea
+   (el texto sigue disponible para lectores de pantalla y el correo aparece al pasar el mouse) */
 @media (min-width: 992px) and (max-width: 1199.98px) {
-  .nav-salir__texto {
+  .nav-salir__texto,
+  .nav-usuario__correo > span {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -766,6 +783,23 @@ h1, h2, h3, h4 {
 
 .inc-card:focus-within {
   border-color: var(--av-primary);
+}
+
+/* Foto protegida (solo en "Mis incidencias"): ocupa el borde superior de la tarjeta */
+.inc-card__foto {
+  display: block;
+  width: calc(100% + 2.5rem);
+  max-width: none;
+  margin: -1.25rem -1.25rem 1rem;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--av-bg);
+  border-bottom: 1px solid var(--av-border);
+  border-radius: var(--av-radius) var(--av-radius) 0 0;
+}
+
+.mis-incidencias {
+  padding-top: 1.5rem;
 }
 
 .inc-card__top {
