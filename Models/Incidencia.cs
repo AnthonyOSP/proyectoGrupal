@@ -35,6 +35,13 @@ public class Incidencia
 
     public DateTime FechaRegistro { get; set; } = DateTime.Now;
 
+    // Punto del mapa elegido por el vecino (grados decimales, WGS84). Opcional: las incidencias
+    // anteriores a la Etapa 13 no tienen coordenadas. Se guardan las dos o ninguna (lo valida el formulario).
+    // decimal: SQLite lo guarda como texto exacto (sin errores de redondeo binario).
+    public decimal? Latitud { get; set; }
+
+    public decimal? Longitud { get; set; }
+
     // Usuario que reportó la incidencia (Id de AspNetUsers). Lo asigna siempre el servidor,
     // nunca el formulario. Es null en las incidencias creadas antes de la Etapa 7.
     public string? UsuarioId { get; set; }

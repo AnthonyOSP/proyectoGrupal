@@ -7,6 +7,7 @@ using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
@@ -21,17 +22,20 @@ public class AdminController : Controller
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAlgoliaIncidenciaService _algolia;
+    private readonly IPieSocketRealtimeService _realtime;
     private readonly ILogger<AdminController> _logger;
 
     public AdminController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         IAlgoliaIncidenciaService algolia,
+        IPieSocketRealtimeService realtime,
         ILogger<AdminController> logger)
     {
         _context = context;
         _userManager = userManager;
         _algolia = algolia;
+        _realtime = realtime;
         _logger = logger;
     }
 
@@ -174,6 +178,7 @@ public class AdminController : Controller
 
         var estadoAnterior = incidencia.Estado;
         incidencia.Estado = estado;
+        var fechaCambio = DateTime.Now;
 
         // Registro del cambio. El administrador sale de la sesión (Identity) y la fecha del servidor:
         // ninguno de estos datos llega desde el formulario.
@@ -182,7 +187,7 @@ public class AdminController : Controller
             IncidenciaId = incidencia.Id,
             EstadoAnterior = estadoAnterior,
             EstadoNuevo = estado,
-            FechaCambio = DateTime.Now,
+            FechaCambio = fechaCambio,
             UsuarioId = _userManager.GetUserId(User)
         });
 
@@ -208,6 +213,11 @@ public class AdminController : Controller
         TempData["MensajeAdmin"] = indexado || !_algolia.EstaConfigurado
             ? "Estado actualizado correctamente."
             : "Estado actualizado correctamente. El índice de búsqueda no se pudo actualizar: puedes resincronizarlo desde el Dashboard.";
+
+        // Aviso en tiempo real (seguimiento del ciudadano y panel). Solo DESPUÉS de confirmar SQLite:
+        // si PieSocket falla, el estado y el historial ya están guardados y no se deshacen.
+        await _realtime.NotificarEstadoActualizadoAsync(incidencia, estadoAnterior, fechaCambio);
+
         return RedirectToAction(nameof(Detalle), new { id });
     }
 }

@@ -1,0 +1,36 @@
+@model string
+@inject IPieSocketRealtimeService Realtime
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@* Actualización en tiempo real (PieSocket) para la página actual. El modelo es el canal a escuchar.
+   Solo datos públicos: URL del WebSocket, API key (pública por diseño) y el canal.
+   El API secret nunca llega al navegador: el JWT de acceso lo entrega /Realtime/Autorizar
+   después de comprobar permisos en el servidor. *@
+@if (Realtime.EstaConfigurado)
+{
+    <div class="realtime" id="realtime"
+         data-url="@Realtime.UrlWebSocket" data-api-key="@Realtime.ApiKeyPublica" data-canal="@Model"
+         data-autorizar="@Url.Action("Autorizar", "Realtime")"
+         data-token="@Antiforgery.GetAndStoreTokens(Context).RequestToken">
+        <span class="realtime__estado" data-estado="conectando" role="status" aria-live="polite">
+            <span class="realtime__punto" aria-hidden="true"></span>
+            <span class="realtime__texto">Tiempo real: conectando…</span>
+        </span>
+        <button type="button" class="realtime__reintentar" hidden>@Iconos.Svg("arrow-right", 14) Reintentar</button>
+    </div>
+    <div class="realtime-aviso" id="realtimeAviso" role="status" aria-live="polite" hidden>
+        <span class="realtime-aviso__icono" aria-hidden="true">@Iconos.Svg("info", 18)</span>
+        <span class="realtime-aviso__texto"></span>
+        <button type="button" class="realtime-aviso__cerrar" aria-label="Cerrar aviso">@Iconos.Svg("x", 16)</button>
+    </div>
+    <script src="~/js/realtime.js" asp-append-version="true"></script>
+}
+else if (ViewData["RealtimeAvisoDesactivado"] is true)
+{
+    @* Solo en el panel: explica por qué no se actualiza solo. El ciudadano no ve nada. *@
+    <p class="realtime realtime--desactivado">
+        <span class="realtime__estado" data-estado="desactivado">
+            <span class="realtime__punto" aria-hidden="true"></span>
+            <span class="realtime__texto">Actualización en tiempo real desactivada (PieSocket no configurado)</span>
+        </span>
+    </p>
+}
