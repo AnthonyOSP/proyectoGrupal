@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using proyectoGrupal.Helpers;
 
 namespace proyectoGrupal.ViewModels;
 
@@ -42,4 +43,16 @@ public class CrearIncidenciaViewModel
     // No hay campo FotoUrl: la ruta de la foto la genera el servidor, nunca el formulario.
     [Display(Name = "Fotografía de la incidencia")]
     public IFormFile? Foto { get; set; }
+
+    // Punto del mapa (opcional). Llegan como texto desde campos ocultos que llena el mapa y el
+    // servidor los interpreta siempre con punto decimal. El controlador valida formato, rango y
+    // que vengan en pareja (CoordenadasGeograficas.Leer), junto con los demás campos.
+    // No es la "Ubicacion" textual: son datos distintos y los dos se guardan.
+    [Display(Name = "Latitud")]
+    [StringLength(CoordenadasGeograficas.LargoMaximoTexto, ErrorMessage = "La latitud no es un número válido.")]
+    public string? Latitud { get; set; }
+
+    [Display(Name = "Longitud")]
+    [StringLength(CoordenadasGeograficas.LargoMaximoTexto, ErrorMessage = "La longitud no es un número válido.")]
+    public string? Longitud { get; set; }
 }

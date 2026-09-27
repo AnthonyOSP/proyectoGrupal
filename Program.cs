@@ -5,6 +5,8 @@ using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
+using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.PieSocket;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,6 +80,38 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddSingleton<IFaceDetectionService, GoogleVisionFaceDetectionService>();
 builder.Services.AddScoped<FotoIncidenciaService>();
 
+// Búsqueda de incidencias con Algolia (índice de búsqueda; SQLite sigue siendo la fuente de verdad).
+// Claves en variables de entorno o User Secrets (ver README). Sin ellas, la búsqueda usa SQLite.
+builder.Services.Configure<AlgoliaOptions>(opciones =>
+{
+    opciones.ApplicationId = builder.Configuration["ALGOLIA_APPLICATION_ID"];
+    opciones.AdminApiKey = builder.Configuration["ALGOLIA_ADMIN_API_KEY"];
+    opciones.HostPruebas = builder.Configuration["ALGOLIA_HOST_PRUEBAS"];
+    var indice = builder.Configuration["ALGOLIA_INDEX_NAME"];
+    if (!string.IsNullOrWhiteSpace(indice))
+    {
+        opciones.IndexName = indice.Trim();
+    }
+});
+builder.Services.AddSingleton<IAlgoliaIncidenciaService, AlgoliaIncidenciaService>();
+builder.Services.AddScoped<BusquedaIncidenciasService>();
+
+// Tiempo real con PieSocket (solo transporte de avisos; SQLite sigue siendo la fuente de verdad).
+// Claves en variables de entorno o User Secrets (ver README). Sin ellas, no hay tiempo real y todo lo demás funciona.
+builder.Services.Configure<PieSocketOptions>(opciones =>
+{
+    opciones.ApiKey = builder.Configuration["PIESOCKET_API_KEY"];
+    opciones.ApiSecret = builder.Configuration["PIESOCKET_API_SECRET"];
+    opciones.ClusterId = builder.Configuration["PIESOCKET_CLUSTER_ID"]?.Trim();
+    opciones.HostPruebas = builder.Configuration["PIESOCKET_HOST_PRUEBAS"];
+});
+builder.Services.AddHttpClient(PieSocketRealtimeService.NombreClienteHttp, cliente =>
+{
+    // Si PieSocket no responde, el reporte o el cambio de estado no esperan más que esto.
+    cliente.Timeout = TimeSpan.FromSeconds(3);
+});
+builder.Services.AddSingleton<IPieSocketRealtimeService, PieSocketRealtimeService>();
+
 var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
@@ -88,6 +122,10 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);
 }
+
+// Crea los clientes de Algolia y PieSocket al iniciar: el log indica enseguida si están configurados.
+app.Services.GetRequiredService<IAlgoliaIncidenciaService>();
+app.Services.GetRequiredService<IPieSocketRealtimeService>();
 
 app.UseForwardedHeaders();
 

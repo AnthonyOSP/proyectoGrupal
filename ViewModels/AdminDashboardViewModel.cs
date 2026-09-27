@@ -10,6 +10,10 @@ public class AdminDashboardViewModel
 
     public List<IncidenciaViewModel> UltimasIncidencias { get; set; } = new();
 
+    // Estado de la búsqueda con Algolia (solo informativo: nunca incluye claves).
+    public bool AlgoliaConfigurado { get; set; }
+    public string IndiceBusqueda { get; set; } = "";
+
     // Porcentaje de un estado respecto al total (para la barra de distribución).
     public int Porcentaje(int cantidad) => Total == 0 ? 0 : (int)Math.Round(cantidad * 100.0 / Total);
 }

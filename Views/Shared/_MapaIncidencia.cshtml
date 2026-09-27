@@ -1,0 +1,25 @@
+@model IncidenciaViewModel
+@* Ubicación geográfica de una incidencia (Detalle y Seguimiento). Solo datos públicos del reporte.
+   Sin coordenadas (por ejemplo, incidencias anteriores a la Etapa 13) se muestra un mensaje, no un mapa vacío.
+   La página que lo usa carga Leaflet y mapa-incidencias.js solo si Model.TieneUbicacion. *@
+<section class="bloque mapa-bloque" aria-labelledby="titulo-mapa-@Model.Id">
+    <h2 class="bloque__titulo" id="titulo-mapa-@Model.Id">Ubicación en el mapa</h2>
+    @if (Model.TieneUbicacion)
+    {
+        <div class="mapa mapa--punto" data-mapa="punto" role="region" aria-label="Mapa con la ubicación de la incidencia"
+             data-lat="@CoordenadasGeograficas.Formatear(Model.Latitud!.Value)"
+             data-lng="@CoordenadasGeograficas.Formatear(Model.Longitud!.Value)"
+             data-etiqueta="Ubicación de la incidencia"></div>
+        <p class="mapa-coordenadas">
+            @Iconos.Svg("map-pin", 16)
+            <span>Latitud @CoordenadasGeograficas.Mostrar(Model.Latitud!.Value) · Longitud @CoordenadasGeograficas.Mostrar(Model.Longitud!.Value)</span>
+        </p>
+    }
+    else
+    {
+        <p class="mapa-sin-ubicacion">
+            @Iconos.Svg("info", 18)
+            <span>Esta incidencia no tiene una ubicación geográfica registrada.</span>
+        </p>
+    }
+</section>

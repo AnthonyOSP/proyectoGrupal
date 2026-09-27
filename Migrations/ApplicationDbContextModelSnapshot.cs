@@ -278,6 +278,12 @@ namespace proyectoGrupal.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("Latitud")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Longitud")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Titulo")
                         .IsRequired()
                         .HasMaxLength(100)
