@@ -24,9 +24,14 @@
         <h1 class="admin-cabecera__titulo">@Model.Titulo</h1>
         <p class="admin-cabecera__sub">Reportada el @Model.FechaTexto a las @Model.Fecha.ToString("HH:mm")</p>
     </div>
-    <a class="btn btn-av-secondary" asp-controller="Home" asp-action="Detalle" asp-route-id="@Model.Id" target="_blank" rel="noopener">
-        @Iconos.Svg("external", 18) Ver en el sitio público
-    </a>
+    <div class="seguimiento-acciones seguimiento-acciones--admin">
+        <a class="btn btn-av-secondary" asp-action="Seguimiento" asp-route-id="@Model.Id">
+            @Iconos.Svg("clock", 18) Ver seguimiento
+        </a>
+        <a class="btn btn-av-secondary" asp-controller="Home" asp-action="Detalle" asp-route-id="@Model.Id" target="_blank" rel="noopener">
+            @Iconos.Svg("external", 18) Ver en el sitio público
+        </a>
+    </div>
 </header>
 
 @if (mensaje != null)

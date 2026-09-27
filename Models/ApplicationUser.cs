@@ -9,4 +9,7 @@ public class ApplicationUser : IdentityUser
 {
     // Incidencias que reportó este usuario (relación 1 usuario → N incidencias).
     public ICollection<Incidencia> Incidencias { get; set; } = new List<Incidencia>();
+
+    // Registros de historial hechos por este usuario (1 usuario → N cambios de estado).
+    public ICollection<HistorialEstadoIncidencia> CambiosDeEstado { get; set; } = new List<HistorialEstadoIncidencia>();
 }

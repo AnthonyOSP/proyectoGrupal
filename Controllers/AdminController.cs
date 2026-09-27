@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using proyectoGrupal.Constants;
@@ -17,11 +18,13 @@ namespace proyectoGrupal.Controllers;
 public class AdminController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<AdminController> _logger;
 
-    public AdminController(ApplicationDbContext context, ILogger<AdminController> logger)
+    public AdminController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<AdminController> logger)
     {
         _context = context;
+        _userManager = userManager;
         _logger = logger;
     }
 
@@ -86,6 +89,27 @@ public class AdminController : Controller
         return View(IncidenciaViewModel.DesdeEntidad(incidencia));
     }
 
+    // GET: /Admin/Seguimiento/5
+    // Historial completo de cualquier incidencia, con el correo de quien hizo cada cambio.
+    // Solo lectura: el historial solo se escribe en CambiarEstado.
+    [HttpGet]
+    public async Task<IActionResult> Seguimiento(int id)
+    {
+        var incidencia = await _context.Incidencias
+            .AsNoTracking()
+            .Include(i => i.Historial)
+                .ThenInclude(h => h.Usuario)
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (incidencia == null)
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return View("NoEncontrada");
+        }
+
+        return View(SeguimientoViewModel.DesdeEntidad(incidencia, mostrarUsuarios: true));
+    }
+
     // POST: /Admin/CambiarEstado/5
     // Solo recibe el id y el nuevo estado: ningún otro campo de la incidencia puede cambiarse aquí.
     [HttpPost]
@@ -118,6 +142,19 @@ public class AdminController : Controller
         var estadoAnterior = incidencia.Estado;
         incidencia.Estado = estado;
 
+        // Registro del cambio. El administrador sale de la sesión (Identity) y la fecha del servidor:
+        // ninguno de estos datos llega desde el formulario.
+        _context.HistorialEstadosIncidencia.Add(new HistorialEstadoIncidencia
+        {
+            IncidenciaId = incidencia.Id,
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = estado,
+            FechaCambio = DateTime.Now,
+            UsuarioId = _userManager.GetUserId(User)
+        });
+
+        // Un solo SaveChangesAsync: EF Core guarda el nuevo estado y el historial en la misma transacción.
+        // Si falla, no queda ninguno de los dos.
         try
         {
             await _context.SaveChangesAsync();

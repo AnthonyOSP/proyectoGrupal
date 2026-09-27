@@ -1,0 +1,31 @@
+@model SeguimientoViewModel
+@{
+    ViewData["Title"] = $"Seguimiento #{Model.Incidencia.Id}";
+    var incidencia = Model.Incidencia;
+}
+
+<nav class="migas" aria-label="Ruta de navegación">
+    <ol>
+        <li><a asp-action="Index">Dashboard</a></li>
+        <li><a asp-action="Incidencias">Incidencias</a></li>
+        <li><a asp-action="Detalle" asp-route-id="@incidencia.Id">#@incidencia.Id</a></li>
+        <li aria-current="page">Seguimiento</li>
+    </ol>
+</nav>
+
+<header class="admin-cabecera">
+    <div>
+        <div class="detalle-cabecera__chips">
+            <span class="admin-id admin-id--grande">#@incidencia.Id</span>
+            <span class="chip-cat" data-cat="@incidencia.Categoria.Slug">@Iconos.Svg(incidencia.Categoria.Icono, 14) @incidencia.Categoria.Nombre</span>
+        </div>
+        <h1 class="admin-cabecera__titulo">@incidencia.Titulo</h1>
+        <p class="admin-cabecera__sub">Seguimiento de estados de la incidencia</p>
+    </div>
+    <div class="seguimiento-acciones seguimiento-acciones--admin">
+        <a class="btn btn-av-secondary" asp-action="Detalle" asp-route-id="@incidencia.Id">@Iconos.Svg("arrow-left", 18) Volver al detalle</a>
+        <a class="btn btn-av-primary" asp-action="Detalle" asp-route-id="@incidencia.Id" asp-fragment="cambiar-estado">@Iconos.Svg("pencil", 18) Cambiar estado</a>
+    </div>
+</header>
+
+<partial name="_Seguimiento" model="Model" />

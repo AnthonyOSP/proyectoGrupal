@@ -1,0 +1,93 @@
+@model SeguimientoViewModel
+@* Estado actual + línea de tiempo del historial. Se usa en /Home/Seguimiento (ciudadano) y /Admin/Seguimiento.
+   Solo lectura: no hay ningún formulario para modificar el historial. *@
+@{
+    var estado = Model.Incidencia.Estado;
+    var ultimo = Model.Historial.Count - 1;
+}
+
+<div class="seguimiento">
+    @* La fuente oficial del estado es Incidencia.Estado, no el historial. *@
+    <section class="bloque seguimiento-actual" aria-labelledby="titulo-estado-actual">
+        <h2 class="bloque__titulo" id="titulo-estado-actual">Estado actual</h2>
+        <span class="estado estado--grande @estado.ClaseCss()">@Iconos.Svg(estado.Icono(), 16) @estado.Texto()</span>
+        <p class="seguimiento-actual__fecha">
+            @if (Model.UltimaActualizacion is DateTime ultima)
+            {
+                <text>Última actualización: <time datetime="@ultima.ToString("yyyy-MM-ddTHH:mm")">@ultima.ToString("dd/MM/yyyy HH:mm")</time></text>
+            }
+            else
+            {
+                <text>Reportada el <time datetime="@Model.Incidencia.Fecha.ToString("yyyy-MM-ddTHH:mm")">@Model.Incidencia.Fecha.ToString("dd/MM/yyyy HH:mm")</time></text>
+            }
+        </p>
+    </section>
+
+    <section class="bloque seguimiento-historial" aria-labelledby="titulo-historial">
+        <h2 class="bloque__titulo" id="titulo-historial">Historial de estados</h2>
+
+        @if (Model.Historial.Count == 0)
+        {
+            <p class="seguimiento-nota">
+                @Iconos.Svg("info", 18)
+                <span>No existe historial disponible para esta incidencia. Los próximos cambios de estado aparecerán aquí.</span>
+            </p>
+        }
+        else
+        {
+            @if (Model.HistorialIncompleto)
+            {
+                <p class="seguimiento-nota">
+                    @Iconos.Svg("info", 18)
+                    <span>Esta incidencia se registró antes de que existiera el historial: solo se muestran los cambios posteriores.</span>
+                </p>
+            }
+
+            <ol class="linea-tiempo">
+                @for (var i = 0; i <= ultimo; i++)
+                {
+                    var registro = Model.Historial[i];
+
+                    // Texto según quién mira: el ciudadano nunca ve correos; el administrador sí.
+                    string autor;
+                    if (Model.MostrarUsuarios)
+                    {
+                        autor = registro.EsCreacion ? $"Registrado por {registro.RealizadoPor}" : $"Cambiado por {registro.RealizadoPor}";
+                    }
+                    else
+                    {
+                        autor = registro.EsCreacion ? "Registrado por ti" : "Actualizado por el equipo municipal";
+                    }
+
+                    <li class="linea-tiempo__item @(i == ultimo ? "is-ultimo" : "")">
+                        <span class="linea-tiempo__marca @registro.EstadoNuevo.ClaseCss()" aria-hidden="true">@Iconos.Svg(registro.EstadoNuevo.Icono(), 16)</span>
+                        <div class="linea-tiempo__contenido">
+                            <p class="linea-tiempo__estado">
+                                @registro.EstadoNuevo.Texto()
+                                @if (i == ultimo)
+                                {
+                                    <span class="linea-tiempo__reciente">Más reciente</span>
+                                }
+                            </p>
+                            <p class="linea-tiempo__texto">
+                                @if (registro.EsCreacion)
+                                {
+                                    <text>Reporte registrado</text>
+                                }
+                                else
+                                {
+                                    <text>Cambió de <strong>@registro.EstadoAnterior!.Value.Texto()</strong> a <strong>@registro.EstadoNuevo.Texto()</strong></text>
+                                }
+                            </p>
+                            <p class="linea-tiempo__meta">
+                                <time datetime="@registro.Fecha.ToString("yyyy-MM-ddTHH:mm")">@registro.FechaTexto</time>
+                                <span aria-hidden="true">·</span>
+                                <span class="linea-tiempo__autor">@autor</span>
+                            </p>
+                        </div>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+</div>
