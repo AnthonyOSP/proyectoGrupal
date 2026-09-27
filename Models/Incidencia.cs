@@ -40,4 +40,8 @@ public class Incidencia
     public string? UsuarioId { get; set; }
 
     public ApplicationUser? Usuario { get; set; }
+
+    // Cambios de estado registrados. Las incidencias anteriores a la Etapa 8 pueden no tener ninguno.
+    // La fuente oficial del estado sigue siendo la propiedad Estado.
+    public ICollection<HistorialEstadoIncidencia> Historial { get; set; } = new List<HistorialEstadoIncidencia>();
 }

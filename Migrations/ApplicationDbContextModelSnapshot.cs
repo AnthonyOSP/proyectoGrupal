@@ -209,6 +209,39 @@ namespace proyectoGrupal.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("proyectoGrupal.Models.HistorialEstadoIncidencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EstadoAnterior")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EstadoNuevo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FechaCambio")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("IncidenciaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IncidenciaId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("HistorialEstadosIncidencia");
+                });
+
             modelBuilder.Entity("proyectoGrupal.Models.Incidencia", b =>
                 {
                     b.Property<int>("Id")
@@ -308,6 +341,24 @@ namespace proyectoGrupal.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("proyectoGrupal.Models.HistorialEstadoIncidencia", b =>
+                {
+                    b.HasOne("proyectoGrupal.Models.Incidencia", "Incidencia")
+                        .WithMany("Historial")
+                        .HasForeignKey("IncidenciaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("proyectoGrupal.Models.ApplicationUser", "Usuario")
+                        .WithMany("CambiosDeEstado")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Incidencia");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("proyectoGrupal.Models.Incidencia", b =>
                 {
                     b.HasOne("proyectoGrupal.Models.ApplicationUser", "Usuario")
@@ -320,7 +371,14 @@ namespace proyectoGrupal.Migrations
 
             modelBuilder.Entity("proyectoGrupal.Models.ApplicationUser", b =>
                 {
+                    b.Navigation("CambiosDeEstado");
+
                     b.Navigation("Incidencias");
+                });
+
+            modelBuilder.Entity("proyectoGrupal.Models.Incidencia", b =>
+                {
+                    b.Navigation("Historial");
                 });
 #pragma warning restore 612, 618
         }

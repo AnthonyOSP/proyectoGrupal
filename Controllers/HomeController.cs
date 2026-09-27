@@ -130,6 +130,7 @@ public class HomeController : Controller
         }
 
         // Id, Estado, FechaRegistro y UsuarioId los decide el servidor, nunca el formulario.
+        var ahora = DateTime.Now;
         var incidencia = new Incidencia
         {
             Titulo = modelo.Titulo!.Trim(),
@@ -138,9 +139,19 @@ public class HomeController : Controller
             Ubicacion = modelo.Ubicacion!.Trim(),
             FotoUrl = fotoUrl,
             Estado = EstadosIncidencia.Pendiente,
-            FechaRegistro = DateTime.Now,
+            FechaRegistro = ahora,
             UsuarioId = usuario.Id
         };
+
+        // Primer registro del historial: la creación del reporte (sin estado anterior).
+        // Se guarda en el mismo SaveChangesAsync que la incidencia: se guardan los dos o ninguno.
+        incidencia.Historial.Add(new HistorialEstadoIncidencia
+        {
+            EstadoAnterior = null,
+            EstadoNuevo = EstadosIncidencia.Pendiente,
+            FechaCambio = ahora,
+            UsuarioId = usuario.Id
+        });
 
         try
         {
@@ -212,6 +223,36 @@ public class HomeController : Controller
             .ToListAsync();
 
         return View(incidencias.Select(IncidenciaViewModel.DesdeEntidad).ToList());
+    }
+
+    // GET: /Home/Seguimiento/5
+    // Historial de estados de una incidencia PROPIA. Si la incidencia no existe o es de otra persona,
+    // se responde 404 igual en ambos casos, para no revelar qué incidencias existen.
+    // Solo lectura: [HttpGet] rechaza cualquier POST (405).
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> Seguimiento(int id)
+    {
+        var usuarioId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(usuarioId))
+        {
+            return Challenge();
+        }
+
+        // El filtro por dueño está en la consulta: nunca se cargan datos de incidencias ajenas.
+        // No se incluye Historial.Usuario: el ciudadano no necesita ver quién hizo cada cambio.
+        var incidencia = await _context.Incidencias
+            .AsNoTracking()
+            .Include(i => i.Historial)
+            .FirstOrDefaultAsync(i => i.Id == id && i.UsuarioId == usuarioId);
+
+        if (incidencia == null)
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return View("NoEncontrada");
+        }
+
+        return View(SeguimientoViewModel.DesdeEntidad(incidencia, mostrarUsuarios: false));
     }
 
     // GET: /Home/Detalle/5

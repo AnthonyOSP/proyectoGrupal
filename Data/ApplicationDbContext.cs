@@ -18,6 +18,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Tabla "Incidencias"
     public DbSet<Incidencia> Incidencias { get; set; }
 
+    // Tabla "HistorialEstadosIncidencia"
+    public DbSet<HistorialEstadoIncidencia> HistorialEstadosIncidencia { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         // Obligatorio: configura las tablas de Identity.
@@ -30,6 +33,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasOne(i => i.Usuario)
             .WithMany(u => u.Incidencias)
             .HasForeignKey(i => i.UsuarioId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Incidencia 1 ── N HistorialEstadoIncidencia.
+        // El historial pertenece a la incidencia: si algún día se borra la incidencia, se borra su historial.
+        builder.Entity<HistorialEstadoIncidencia>()
+            .HasOne(h => h.Incidencia)
+            .WithMany(i => i.Historial)
+            .HasForeignKey(h => h.IncidenciaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ApplicationUser 1 ── N HistorialEstadoIncidencia (quién hizo cada cambio).
+        // Si se elimina la cuenta, el historial se conserva y queda sin usuario.
+        builder.Entity<HistorialEstadoIncidencia>()
+            .HasOne(h => h.Usuario)
+            .WithMany(u => u.CambiosDeEstado)
+            .HasForeignKey(h => h.UsuarioId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
     }
