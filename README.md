@@ -167,7 +167,8 @@ Models/          Incidencia, ApplicationUser (cuenta de usuario), estados y cate
 ViewModels/      Datos que usan las vistas y el formulario
 Views/           Páginas Razor (.cshtml)
 Helpers/         Iconos SVG, catálogo de categorías y filtros
-Services/        Protección de fotos: Google Cloud Vision + pixelado de rostros
+Services/        Protección de fotos (Google Cloud Vision + pixelado) y búsqueda de incidencias
+Services/Algolia Índice de búsqueda en Algolia (ver sección 12)
 Migrations/      Historial de cambios de la base de datos (NO borrar)
 Dockerfile       Imagen Docker para publicar en Render (ver sección 11)
 wwwroot/         CSS, JavaScript y librerías
@@ -420,3 +421,59 @@ docker run -p 8080:8080 \
 ```
 
 Luego abre http://localhost:8080.
+
+---
+
+## 12. Búsqueda de incidencias con Algolia
+
+La página `/Home/Incidencias` busca texto libre en el **título, la descripción, la categoría y la ubicación**, y lo combina con los filtros de categoría y estado.
+
+- **SQLite es la fuente de verdad.** Algolia es solo un *índice de búsqueda*: devuelve los números (Id) de las incidencias que coinciden, y la aplicación las lee de SQLite con los mismos filtros. El detalle (`/Home/Detalle/{id}`) siempre sale de SQLite.
+- **Qué se envía a Algolia:** solo datos que ya son públicos en el listado (Id, título, descripción, categoría, ubicación, estado y fecha). **Nunca** el usuario que reportó, su correo ni el historial.
+- **Cuándo se actualiza:** al crear una incidencia y cuando un administrador cambia su estado.
+- **Si Algolia falla:** la incidencia o el cambio de estado **se guardan igual** en SQLite. El error queda en el log y la búsqueda usa SQLite mientras tanto (con un aviso). Después, un administrador puede resincronizar (sección 12.3).
+- **Sin configurar Algolia** la aplicación funciona igual: la búsqueda usa SQLite (cada palabra debe aparecer en algún campo; sin tolerancia a errores de tipeo).
+
+### 12.1 Crear la cuenta y el índice
+
+1. Crea una cuenta gratuita en https://www.algolia.com y una aplicación.
+2. En **Settings → API Keys** copia el **Application ID** y la **Admin API Key**.
+3. No hace falta crear el índice a mano: la aplicación lo crea y lo configura (campos de búsqueda, filtros, idioma español y orden por fecha) en la primera sincronización.
+
+> La **Admin API Key** permite escribir y borrar datos. Solo la usa el servidor: nunca se envía al navegador, ni se escribe en el código, en `appsettings.json` o en este README.
+
+### 12.2 Variables de configuración
+
+| Variable | Obligatoria | Ejemplo |
+|---|---|---|
+| `ALGOLIA_APPLICATION_ID` | Sí | el Application ID de tu cuenta |
+| `ALGOLIA_ADMIN_API_KEY` | Sí | la Admin API Key (secreta) |
+| `ALGOLIA_INDEX_NAME` | No | `alerta_vecinal_incidencias` (valor por defecto) |
+
+Se configuran igual que el administrador inicial (sección 9.1):
+
+```bash
+# En tu computadora (User Secrets, fuera del repositorio)
+dotnet user-secrets set "ALGOLIA_APPLICATION_ID" "<tu-application-id>"
+dotnet user-secrets set "ALGOLIA_ADMIN_API_KEY" "<tu-admin-api-key>"
+dotnet user-secrets set "ALGOLIA_INDEX_NAME" "alerta_vecinal_incidencias_dev"
+```
+
+En Render, agrégalas en **Environment → Environment Variables**. Usa un nombre de índice distinto para cada entorno (por ejemplo `..._dev` en tu computadora y `..._prod` en Render) para no mezclar datos de prueba.
+
+Al iniciar, el log indica `Algolia configurado. Índice de búsqueda: ...` o `Algolia no está configurado ... usará SQLite`.
+
+### 12.3 Sincronización inicial (y resincronización)
+
+1. Inicia sesión como administrador y abre `/Admin`.
+2. En la tarjeta **Búsqueda de incidencias**, pulsa **Sincronizar todas las incidencias**.
+
+Esto copia todas las incidencias de SQLite a Algolia reemplazando el índice completo: se puede repetir cuando quieras (por ejemplo, después de que Algolia no estuvo disponible) sin crear duplicados. Solo los administradores pueden hacerlo.
+
+### 12.4 Problemas frecuentes
+
+| Problema | Solución |
+|---|---|
+| Aviso "La búsqueda avanzada no está disponible" | Algolia no respondió o las claves son incorrectas. Revisa el log del servidor y las variables de la sección 12.2 |
+| Una incidencia nueva no aparece al buscar | Algolia falló al indexarla. Pulsa **Sincronizar todas las incidencias** en `/Admin` |
+| La tarjeta del panel dice "Búsqueda básica (SQLite)" | Faltan `ALGOLIA_APPLICATION_ID` o `ALGOLIA_ADMIN_API_KEY` |
