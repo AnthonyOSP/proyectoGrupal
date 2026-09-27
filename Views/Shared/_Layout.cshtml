@@ -3,6 +3,14 @@
     var accion = ViewContext.RouteData.Values["action"]?.ToString();
     string Activo(params string[] acciones) => acciones.Contains(accion) ? "active" : "";
     string? Actual(params string[] acciones) => acciones.Contains(accion) ? "page" : null;
+
+    // El menú solo refleja la sesión; los permisos reales se comprueban en los controladores con [Authorize].
+    var autenticado = User.Identity?.IsAuthenticated == true;
+    var esAdministrador = autenticado && User.IsInRole(RoleNames.Administrador);
+
+    // Al iniciar sesión desde cualquier página, se vuelve a esa misma página.
+    var enCuenta = ViewContext.RouteData.Values["controller"]?.ToString() == "Account";
+    var paginaActual = enCuenta || Context.Request.Path == "/" ? null : $"{Context.Request.Path}{Context.Request.QueryString}";
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -42,15 +50,41 @@
                             <a class="nav-link @Activo("Index")" aria-current="@Actual("Index")" asp-controller="Home" asp-action="Index">Inicio</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link @Activo("Reportar")" aria-current="@Actual("Reportar")" asp-controller="Home" asp-action="Reportar">Reportar incidencia</a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link @Activo("Incidencias", "Detalle")" aria-current="@Actual("Incidencias")" asp-controller="Home" asp-action="Incidencias">Incidencias</a>
                         </li>
+                        @if (esAdministrador)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Admin" asp-action="Index">Panel administrativo</a>
+                            </li>
+                        }
                     </ul>
-                    <a class="btn btn-av-primary nav-cta" asp-controller="Home" asp-action="Reportar">
-                        @Iconos.Svg("plus", 18) Reportar ahora
-                    </a>
+                    <div class="nav-acciones">
+                        <a class="btn btn-av-primary nav-cta" aria-current="@Actual("Reportar")" asp-controller="Home" asp-action="Reportar">
+                            @Iconos.Svg("plus", 18) Reportar ahora
+                        </a>
+                        @if (autenticado)
+                        {
+                            <div class="nav-usuario">
+                                <span class="nav-usuario__correo" title="@User.Identity!.Name">
+                                    @Iconos.Svg("user", 18)
+                                    <span><span class="visually-hidden">Sesión iniciada como </span>@User.Identity!.Name</span>
+                                </span>
+                                @* Cerrar sesión solo por POST: el tag helper <form> agrega el token antiforgery. *@
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="btn btn-av-ghost nav-salir" title="Cerrar sesión">
+                                        @Iconos.Svg("log-out", 18) <span class="nav-salir__texto">Cerrar sesión</span>
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                        else
+                        {
+                            <a class="btn btn-av-secondary nav-entrar" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@paginaActual">
+                                @Iconos.Svg("log-in", 18) Iniciar sesión
+                            </a>
+                        }
+                    </div>
                 </div>
             </div>
         </nav>
