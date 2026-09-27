@@ -6,6 +6,7 @@ using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.PieSocket;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -95,6 +96,22 @@ builder.Services.Configure<AlgoliaOptions>(opciones =>
 builder.Services.AddSingleton<IAlgoliaIncidenciaService, AlgoliaIncidenciaService>();
 builder.Services.AddScoped<BusquedaIncidenciasService>();
 
+// Tiempo real con PieSocket (solo transporte de avisos; SQLite sigue siendo la fuente de verdad).
+// Claves en variables de entorno o User Secrets (ver README). Sin ellas, no hay tiempo real y todo lo demás funciona.
+builder.Services.Configure<PieSocketOptions>(opciones =>
+{
+    opciones.ApiKey = builder.Configuration["PIESOCKET_API_KEY"];
+    opciones.ApiSecret = builder.Configuration["PIESOCKET_API_SECRET"];
+    opciones.ClusterId = builder.Configuration["PIESOCKET_CLUSTER_ID"]?.Trim();
+    opciones.HostPruebas = builder.Configuration["PIESOCKET_HOST_PRUEBAS"];
+});
+builder.Services.AddHttpClient(PieSocketRealtimeService.NombreClienteHttp, cliente =>
+{
+    // Si PieSocket no responde, el reporte o el cambio de estado no esperan más que esto.
+    cliente.Timeout = TimeSpan.FromSeconds(3);
+});
+builder.Services.AddSingleton<IPieSocketRealtimeService, PieSocketRealtimeService>();
+
 var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
@@ -106,8 +123,9 @@ using (var scope = app.Services.CreateScope())
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);
 }
 
-// Crea el cliente de Algolia al iniciar: el log indica enseguida si está configurado o si se usará SQLite.
+// Crea los clientes de Algolia y PieSocket al iniciar: el log indica enseguida si están configurados.
 app.Services.GetRequiredService<IAlgoliaIncidenciaService>();
+app.Services.GetRequiredService<IPieSocketRealtimeService>();
 
 app.UseForwardedHeaders();
 

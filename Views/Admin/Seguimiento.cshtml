@@ -28,4 +28,7 @@
     </div>
 </header>
 
+@* Tiempo real: el seguimiento se actualiza solo cuando cambia el estado. *@
+<partial name="_Realtime" model="CanalesRealtime.Incidencia(incidencia.Id)" />
+
 <partial name="_Seguimiento" model="Model" />

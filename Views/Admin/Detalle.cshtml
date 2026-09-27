@@ -80,6 +80,8 @@
                 </div>
             </dl>
         </section>
+
+        <partial name="_MapaIncidencia" model="Model" />
     </div>
 
     <aside>
@@ -113,6 +115,11 @@
 </div>
 
 @section Scripts {
+    @if (Model.TieneUbicacion)
+    {
+        <script src="~/lib/leaflet/dist/leaflet.js"></script>
+        <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
+    }
     <script>
         // Anuncia el mensaje de confirmación a los lectores de pantalla.
         document.getElementById("mensajeAdmin")?.focus();
@@ -124,4 +131,12 @@
             boton.querySelector(".btn-texto").textContent = "Guardando...";
         });
     </script>
+}
+
+@* Leaflet solo si hay un punto que mostrar. *@
+@section Estilos {
+    @if (Model.TieneUbicacion)
+    {
+        <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
+    }
 }

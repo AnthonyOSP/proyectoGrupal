@@ -741,3 +741,14 @@
 .busqueda-admin__error .icono {
   margin-top: 0.25rem;
 }
+
+/* Mapa de incidencias del panel (encima de la lista) */
+.mapa-admin {
+  margin-bottom: 1.25rem;
+}
+
+.mapa-admin__conteo {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--av-muted);
+}

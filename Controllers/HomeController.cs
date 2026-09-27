@@ -8,6 +8,7 @@ using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
@@ -18,6 +19,7 @@ public class HomeController : Controller
     private readonly FotoIncidenciaService _fotos;
     private readonly BusquedaIncidenciasService _busqueda;
     private readonly IAlgoliaIncidenciaService _algolia;
+    private readonly IPieSocketRealtimeService _realtime;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILogger<HomeController> _logger;
@@ -28,6 +30,7 @@ public class HomeController : Controller
         FotoIncidenciaService fotos,
         BusquedaIncidenciasService busqueda,
         IAlgoliaIncidenciaService algolia,
+        IPieSocketRealtimeService realtime,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ILogger<HomeController> logger)
@@ -36,6 +39,7 @@ public class HomeController : Controller
         _fotos = fotos;
         _busqueda = busqueda;
         _algolia = algolia;
+        _realtime = realtime;
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
@@ -114,6 +118,14 @@ public class HomeController : Controller
             ModelState.AddModelError(nameof(modelo.Categoria), "Elige una categoría de la lista.");
         }
 
+        // Punto del mapa (opcional): número con punto decimal, dentro de rango y en pareja.
+        // Si no es válido, el reporte no se guarda (ni historial, ni Algolia, ni PieSocket).
+        var coordenadas = CoordenadasGeograficas.Leer(modelo.Latitud, modelo.Longitud);
+        if (!coordenadas.EsValido && ModelState[coordenadas.Campo!]?.Errors.Count is not > 0)
+        {
+            ModelState.AddModelError(coordenadas.Campo!, coordenadas.Error!);
+        }
+
         // Validación rápida de la foto (tamaño, extensión y tipo MIME) junto con los demás campos.
         // El contenido real de la imagen se comprueba después, en ProcesarYGuardarAsync.
         if (modelo.Foto != null)
@@ -156,7 +168,10 @@ public class HomeController : Controller
             FotoUrl = fotoUrl,
             Estado = EstadosIncidencia.Pendiente,
             FechaRegistro = ahora,
-            UsuarioId = usuario.Id
+            UsuarioId = usuario.Id,
+            // Valores ya validados (null si el vecino no marcó un punto en el mapa).
+            Latitud = coordenadas.Latitud,
+            Longitud = coordenadas.Longitud
         };
 
         // Primer registro del historial: la creación del reporte (sin estado anterior).
@@ -193,6 +208,10 @@ public class HomeController : Controller
         // Si Algolia falla, la incidencia NO se deshace; el servicio registra el problema y un
         // administrador puede resincronizar el índice desde el panel.
         await _algolia.IndexarAsync(incidencia);
+
+        // Aviso en tiempo real al panel de administración. Solo DESPUÉS de confirmar SQLite:
+        // si PieSocket falla, la incidencia y su historial ya están guardados y no se deshacen.
+        await _realtime.NotificarIncidenciaCreadaAsync(incidencia);
 
         // TempData sobrevive a la redirección y se muestra una sola vez.
         // Los datos de la confirmación salen de la incidencia guardada, no del formulario.

@@ -20,6 +20,12 @@
     <a class="btn btn-av-primary" asp-action="Incidencias">@Iconos.Svg("list", 18) Gestionar incidencias</a>
 </header>
 
+@* Tiempo real: avisa de nuevas incidencias y cambios de estado y refresca la zona marcada. *@
+@{ ViewData["RealtimeAvisoDesactivado"] = true; }
+<partial name="_Realtime" model="CanalesRealtime.Administracion" />
+
+@* Zona que se vuelve a pedir al servidor cuando llega un evento en tiempo real. *@
+<div data-realtime-region>
 <section aria-labelledby="titulo-estadisticas">
     <h2 id="titulo-estadisticas" class="visually-hidden">Estadísticas</h2>
     <div class="stats">
@@ -67,7 +73,7 @@
         <ul class="ultimas">
             @foreach (var incidencia in Model.UltimasIncidencias)
             {
-                <li class="ultimas__item">
+                <li class="ultimas__item" data-incidencia-id="@incidencia.Id">
                     <div class="ultimas__info">
                         <span class="ultimas__titulo">
                             <span class="admin-id">#@incidencia.Id</span> @incidencia.Titulo
@@ -95,6 +101,7 @@
         </div>
     }
 </section>
+</div>
 
 @* Índice de búsqueda (Algolia). SQLite es la fuente de verdad; aquí solo se ve el estado del índice
    y se puede reconstruir completo. Nunca se muestran claves. *@
