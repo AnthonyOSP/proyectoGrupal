@@ -34,4 +34,10 @@ public class Incidencia
     public string Estado { get; set; } = EstadosIncidencia.Pendiente;
 
     public DateTime FechaRegistro { get; set; } = DateTime.Now;
+
+    // Usuario que reportó la incidencia (Id de AspNetUsers). Lo asigna siempre el servidor,
+    // nunca el formulario. Es null en las incidencias creadas antes de la Etapa 7.
+    public string? UsuarioId { get; set; }
+
+    public ApplicationUser? Usuario { get; set; }
 }

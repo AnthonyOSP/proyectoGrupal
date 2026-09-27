@@ -22,5 +22,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         // Obligatorio: configura las tablas de Identity.
         base.OnModelCreating(builder);
+
+        // ApplicationUser 1 ── N Incidencia.
+        // UsuarioId es opcional: las incidencias anteriores a esta relación no tienen usuario.
+        // Si se elimina un usuario, sus incidencias se conservan (son reportes públicos) y quedan sin usuario.
+        builder.Entity<Incidencia>()
+            .HasOne(i => i.Usuario)
+            .WithMany(u => u.Incidencias)
+            .HasForeignKey(i => i.UsuarioId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

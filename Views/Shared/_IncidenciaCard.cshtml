@@ -1,6 +1,11 @@
 @model IncidenciaViewModel
-@* Tarjeta de incidencia usada en Inicio e Incidencias. *@
+@* Tarjeta de incidencia usada en Inicio, Incidencias y Mis incidencias.
+   Con ViewData["MostrarFoto"] = true muestra también la foto protegida, si existe. *@
 <article class="inc-card">
+    @if (ViewData["MostrarFoto"] is true && Model.FotoSegura != null)
+    {
+        <img class="inc-card__foto" src="@Model.FotoSegura" alt="Fotografía de la incidencia: @Model.Titulo" loading="lazy" />
+    }
     <div class="inc-card__top">
         <span class="chip-cat" data-cat="@Model.Categoria.Slug">
             @Iconos.Svg(Model.Categoria.Icono, 14) @Model.Categoria.Nombre

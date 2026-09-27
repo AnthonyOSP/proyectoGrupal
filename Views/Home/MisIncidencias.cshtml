@@ -1,0 +1,41 @@
+@model List<IncidenciaViewModel>
+@{
+    ViewData["Title"] = "Mis incidencias";
+
+    // En esta página las tarjetas muestran también la fotografía (ver _IncidenciaCard).
+    ViewData["MostrarFoto"] = true;
+}
+
+<section class="page-head">
+    <div class="container">
+        <h1 class="page-head__titulo">Mis incidencias</h1>
+        <p class="page-head__sub">Consulta los reportes que has registrado y revisa su estado.</p>
+    </div>
+</section>
+
+<div class="container lista-seccion mis-incidencias">
+    @if (Model.Any())
+    {
+        <div class="resultados-info" role="status">
+            <span>Has registrado <strong>@Model.Count</strong> @(Model.Count == 1 ? "incidencia" : "incidencias")</span>
+            <a class="link-flecha" asp-action="Reportar">@Iconos.Svg("plus", 18) Reportar una incidencia</a>
+        </div>
+
+        <h2 class="visually-hidden">Tus reportes</h2>
+        <div class="grid-incidencias">
+            @foreach (var incidencia in Model)
+            {
+                <partial name="_IncidenciaCard" model="incidencia" />
+            }
+        </div>
+    }
+    else
+    {
+        <div class="vacio">
+            <span class="vacio__icono">@Iconos.Svg("inbox", 26)</span>
+            <h2 class="vacio__titulo">No has registrado ninguna incidencia todavía</h2>
+            <p>Cuando reportes un problema de tu comunidad, podrás seguir su estado desde aquí.</p>
+            <a class="btn btn-av-primary" asp-action="Reportar">@Iconos.Svg("plus", 18) Reportar una incidencia</a>
+        </div>
+    }
+</div>
