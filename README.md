@@ -6,6 +6,65 @@ Proyecto académico del curso de Programación, hecho con **ASP.NET Core MVC (.N
 
 ---
 
+## Software y servicios de terceros
+
+Todo lo que el proyecto usa y no fue escrito por nosotros. Las versiones son las que están en `proyectoGrupal.csproj`, `dotnet-tools.json` y `wwwroot/lib`.
+
+### Plataforma y frameworks
+
+| Software                                                                                          | Versión                               | Para qué lo usamos                                        | Licencia        |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------- | --------------- |
+| [.NET](https://dotnet.microsoft.com) / ASP.NET Core MVC                                           | 10                                    | Aplicación web (controladores, vistas Razor)              | MIT             |
+| [Entity Framework Core](https://learn.microsoft.com/ef/core/)                                     | 10.0.11                               | Acceso a la base de datos y migraciones                   | MIT             |
+| [ASP.NET Core Identity](https://learn.microsoft.com/aspnet/core/security/authentication/identity) | 10.0.11                               | Cuentas, contraseñas (hash), roles y sesión               | MIT             |
+| [SQLite](https://www.sqlite.org)                                                                  | (incluido en el proveedor de EF Core) | Base de datos: **fuente de verdad** de toda la aplicación | Dominio público |
+
+### Paquetes NuGet
+
+| Paquete                                             | Versión | Para qué lo usamos                                                  | Licencia                     |
+| --------------------------------------------------- | ------- | ------------------------------------------------------------------- | ---------------------------- |
+| `Microsoft.EntityFrameworkCore`                     | 10.0.11 | ORM                                                                 | MIT                          |
+| `Microsoft.EntityFrameworkCore.Sqlite`              | 10.0.11 | Proveedor de SQLite                                                 | MIT                          |
+| `Microsoft.EntityFrameworkCore.Design`              | 10.0.11 | Crear migraciones (solo desarrollo)                                 | MIT                          |
+| `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | 10.0.11 | Tablas de Identity en SQLite                                        | MIT                          |
+| `Google.Cloud.Vision.V1`                            | 3.8.0   | Cliente de Google Cloud Vision (detección de rostros)               | Apache-2.0                   |
+| `SixLabors.ImageSharp`                              | 3.1.12  | Procesar las fotos: orientación, quitar metadatos y pixelar rostros | Six Labors Split License 1.0 |
+| `Algolia.Search`                                    | 7.49.0  | Cliente oficial de Algolia (búsqueda)                               | MIT                          |
+
+### Librerías del navegador (en `wwwroot/lib`)
+
+| Librería                                                                                 | Versión | Para qué la usamos                                        | Licencia     |
+| ---------------------------------------------------------------------------------------- | ------- | --------------------------------------------------------- | ------------ |
+| [Bootstrap](https://getbootstrap.com)                                                    | 5.3.3   | Estilos base, grilla y menú desplegable                   | MIT          |
+| [jQuery](https://jquery.com)                                                             | 3.7.1   | Requerido por la validación de formularios                | MIT          |
+| [jQuery Validation](https://jqueryvalidation.org)                                        | 1.21.0  | Validación de formularios en el navegador                 | MIT          |
+| [jQuery Validation Unobtrusive](https://github.com/aspnet/jquery-validation-unobtrusive) | 4.0.0   | Conecta las validaciones de ASP.NET con jQuery Validation | MIT          |
+| [Leaflet](https://leafletjs.com)                                                         | 1.9.4   | Mapas interactivos (sección 14)                           | BSD 2-Clause |
+
+El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site.js`) no usa otras librerías: el tiempo real usa el WebSocket nativo del navegador.
+
+### APIs y servicios externos
+
+| Servicio                                                 | Para qué lo usamos                                                    | ¿Necesita cuenta o clave?             | Sin configurarlo…                         | Detalles                                                       |
+| -------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------- | -------------------------------------------------------------- |
+| [Google Cloud Vision](https://cloud.google.com/vision)   | Detectar rostros en las fotos para pixelarlos antes de guardarlas     | Sí (`GOOGLE_APPLICATION_CREDENTIALS`) | La app funciona, pero no acepta fotos     | Sección 10                                                     |
+| [Algolia](https://www.algolia.com)                       | Búsqueda de incidencias (índice de búsqueda, no guarda datos propios) | Sí (`ALGOLIA_*`)                      | La búsqueda usa SQLite                    | Sección 12                                                     |
+| [PieSocket](https://piehost.com) (PieHost)               | Actualización en tiempo real del panel y del seguimiento              | Sí (`PIESOCKET_*`)                    | Las páginas no se actualizan solas        | Sección 13                                                     |
+| [OpenStreetMap](https://www.openstreetmap.org) (teselas) | Imágenes de los mapas                                                 | No                                    | — (se muestran siempre que haya internet) | Sección 14. Datos © OpenStreetMap contributors (licencia ODbL) |
+| [Google Fonts](https://fonts.google.com)                 | Tipografías Atkinson Hyperlegible y Plus Jakarta Sans                 | No                                    | El navegador usa una fuente del sistema   | SIL Open Font License                                          |
+
+Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, Algolia y PieSocket son opcionales: la aplicación arranca y funciona sin ellas.
+
+### Herramientas de desarrollo y despliegue
+
+| Herramienta                                               | Versión | Para qué la usamos                                          |
+| --------------------------------------------------------- | ------- | ----------------------------------------------------------- |
+| `dotnet-ef`                                               | 10.0.11 | Crear y aplicar migraciones (fijada en `dotnet-tools.json`) |
+| Imágenes Docker `mcr.microsoft.com/dotnet/sdk` y `aspnet` | 10.0    | Compilar y ejecutar la app en el contenedor (`Dockerfile`)  |
+| [Render](https://render.com)                              | —       | Hospedaje de la app publicada (sección 11)                  |
+
+---
+
 ## 1. Requisitos (instalar una sola vez)
 
 - **.NET SDK 10**: https://dotnet.microsoft.com/download/dotnet/10.0
@@ -141,18 +200,18 @@ sqlite3 alerta_vecinal.db "SELECT Id, Titulo, Categoria, Estado, FechaRegistro F
 
 ## 7. Problemas frecuentes
 
-| Problema | Solución |
-|---|---|
-| `no such table: Incidencias` | Ejecuta `dotnet tool run dotnet-ef database update` |
-| `dotnet-ef` no se encuentra | Ejecuta `dotnet tool restore` dentro de la carpeta del proyecto |
-| `address already in use` (puerto ocupado) | Ya hay otra copia de la app abierta. Ciérrala con `Ctrl + C` o cierra la otra terminal |
-| Quiero empezar con la base de datos vacía | Detén la app, borra `alerta_vecinal.db` y ejecuta `dotnet tool run dotnet-ef database update`. Se borran también las cuentas; el administrador se vuelve a crear al iniciar |
-| `/Admin` me lleva a "No tienes permiso" | Iniciaste sesión con una cuenta de ciudadano. Cierra sesión y entra con la cuenta de `ADMIN_EMAIL` |
-| En el log aparece "Administrador inicial no configurado" | Falta configurar `ADMIN_EMAIL` y/o `ADMIN_PASSWORD` (sección 9) |
-| En el log aparece "No se creó el administrador inicial" | `ADMIN_PASSWORD` no cumple las reglas: mínimo 6 caracteres, con al menos una letra y un número |
-| Olvidé la contraseña del administrador | Cambiar `ADMIN_PASSWORD` **no** modifica una cuenta existente. En local, borra la base de datos (fila anterior) y vuelve a iniciar |
-| Los cambios de CSS no se ven | Recarga la página sin caché: `Ctrl + Shift + R` (Windows) o `Cmd + Shift + R` (Mac) |
-| "No fue posible procesar la fotografía..." | Google Cloud Vision no está configurado o falló. Revisa la sección 10. Puedes enviar el reporte sin foto |
+| Problema                                                 | Solución                                                                                                                                                                    |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `no such table: Incidencias`                             | Ejecuta `dotnet tool run dotnet-ef database update`                                                                                                                         |
+| `dotnet-ef` no se encuentra                              | Ejecuta `dotnet tool restore` dentro de la carpeta del proyecto                                                                                                             |
+| `address already in use` (puerto ocupado)                | Ya hay otra copia de la app abierta. Ciérrala con `Ctrl + C` o cierra la otra terminal                                                                                      |
+| Quiero empezar con la base de datos vacía                | Detén la app, borra `alerta_vecinal.db` y ejecuta `dotnet tool run dotnet-ef database update`. Se borran también las cuentas; el administrador se vuelve a crear al iniciar |
+| `/Admin` me lleva a "No tienes permiso"                  | Iniciaste sesión con una cuenta de ciudadano. Cierra sesión y entra con la cuenta de `ADMIN_EMAIL`                                                                          |
+| En el log aparece "Administrador inicial no configurado" | Falta configurar `ADMIN_EMAIL` y/o `ADMIN_PASSWORD` (sección 9)                                                                                                             |
+| En el log aparece "No se creó el administrador inicial"  | `ADMIN_PASSWORD` no cumple las reglas: mínimo 6 caracteres, con al menos una letra y un número                                                                              |
+| Olvidé la contraseña del administrador                   | Cambiar `ADMIN_PASSWORD` **no** modifica una cuenta existente. En local, borra la base de datos (fila anterior) y vuelve a iniciar                                          |
+| Los cambios de CSS no se ven                             | Recarga la página sin caché: `Ctrl + Shift + R` (Windows) o `Cmd + Shift + R` (Mac)                                                                                         |
+| "No fue posible procesar la fotografía..."               | Google Cloud Vision no está configurado o falló. Revisa la sección 10. Puedes enviar el reporte sin foto                                                                    |
 
 ---
 
@@ -177,16 +236,16 @@ wwwroot/         CSS, JavaScript y librerías (Leaflet para los mapas en wwwroot
 
 Páginas disponibles y quién puede verlas:
 
-| Página | Ruta | Visitante | Ciudadano | Administrador |
-|---|---|:-:|:-:|:-:|
-| Inicio | `/` | ✓ | ✓ | ✓ |
-| Listado de incidencias | `/Home/Incidencias` | ✓ | ✓ | ✓ |
-| Detalle de una incidencia | `/Home/Detalle/{id}` | ✓ | ✓ | ✓ |
-| Reportar incidencia | `/Home/Reportar` | ✗ (va al login) | ✓ | ✓ |
-| Panel administrativo | `/Admin` | ✗ (va al login) | ✗ (acceso denegado) | ✓ |
-| Crear cuenta | `/Account/Register` | ✓ | — | — |
-| Iniciar sesión | `/Account/Login` | ✓ | — | — |
-| Cerrar sesión | botón del menú (POST a `/Account/Logout`) | — | ✓ | ✓ |
+| Página                    | Ruta                                      |    Visitante    |      Ciudadano      | Administrador |
+| ------------------------- | ----------------------------------------- | :-------------: | :-----------------: | :-----------: |
+| Inicio                    | `/`                                       |        ✓        |          ✓          |       ✓       |
+| Listado de incidencias    | `/Home/Incidencias`                       |        ✓        |          ✓          |       ✓       |
+| Detalle de una incidencia | `/Home/Detalle/{id}`                      |        ✓        |          ✓          |       ✓       |
+| Reportar incidencia       | `/Home/Reportar`                          | ✗ (va al login) |          ✓          |       ✓       |
+| Panel administrativo      | `/Admin`                                  | ✗ (va al login) | ✗ (acceso denegado) |       ✓       |
+| Crear cuenta              | `/Account/Register`                       |        ✓        |          —          |       —       |
+| Iniciar sesión            | `/Account/Login`                          |        ✓        |          —          |       —       |
+| Cerrar sesión             | botón del menú (POST a `/Account/Logout`) |        —        |          ✓          |       ✓       |
 
 ---
 
@@ -196,10 +255,10 @@ Las cuentas usan **ASP.NET Core Identity**. Sus tablas (`AspNetUsers`, `AspNetRo
 
 Hay dos roles, que se crean automáticamente al iniciar la aplicación:
 
-| Rol | Quién lo tiene | Qué puede hacer |
-|---|---|---|
-| `Ciudadano` | Toda persona que se registra en `/Account/Register` | Reportar incidencias |
-| `Administrador` | La cuenta configurada con `ADMIN_EMAIL` | Reportar y usar el panel `/Admin` (cambiar estados) |
+| Rol             | Quién lo tiene                                      | Qué puede hacer                                     |
+| --------------- | --------------------------------------------------- | --------------------------------------------------- |
+| `Ciudadano`     | Toda persona que se registra en `/Account/Register` | Reportar incidencias                                |
+| `Administrador` | La cuenta configurada con `ADMIN_EMAIL`             | Reportar y usar el panel `/Admin` (cambiar estados) |
 
 El formulario de registro no tiene campo de rol: el servidor asigna siempre `Ciudadano`.
 
@@ -209,9 +268,9 @@ Reglas de contraseña: mínimo 6 caracteres, con al menos una letra y un número
 
 Al iniciar, la aplicación lee dos valores de configuración:
 
-| Variable | Ejemplo |
-|---|---|
-| `ADMIN_EMAIL` | `admin@alertavecinal.local` |
+| Variable         | Ejemplo                                                                   |
+| ---------------- | ------------------------------------------------------------------------- |
+| `ADMIN_EMAIL`    | `admin@alertavecinal.local`                                               |
 | `ADMIN_PASSWORD` | una contraseña que elijas tú (mínimo 6 caracteres, una letra y un número) |
 
 - Si la cuenta **no existe**, la crea y le asigna el rol `Administrador`.
@@ -378,9 +437,9 @@ El proyecto incluye un `Dockerfile` listo para Render. Al iniciar, la aplicació
 
 En el servicio, ve a **Environment → Environment Variables** y agrega:
 
-| Key | Value |
-|---|---|
-| `ADMIN_EMAIL` | el correo del administrador |
+| Key              | Value                                 |
+| ---------------- | ------------------------------------- |
+| `ADMIN_EMAIL`    | el correo del administrador           |
 | `ADMIN_PASSWORD` | una contraseña segura, solo en Render |
 
 Render guarda estos valores fuera del repositorio. Al desplegar, el log debe mostrar `Administrador inicial ... creado.`
@@ -393,8 +452,8 @@ El archivo JSON **no** se sube a GitHub. En Render se carga como archivo secreto
 2. **Filename:** `google-credentials.json`. **Contents:** pega el contenido completo del JSON de tu cuenta de servicio.
 3. En **Environment Variables**, agrega:
 
-   | Key | Value |
-   |---|---|
+   | Key                              | Value                                  |
+   | -------------------------------- | -------------------------------------- |
    | `GOOGLE_APPLICATION_CREDENTIALS` | `/etc/secrets/google-credentials.json` |
 
 4. Guarda. Render vuelve a desplegar el servicio.
@@ -429,7 +488,7 @@ Luego abre http://localhost:8080.
 
 La página `/Home/Incidencias` busca texto libre en el **título, la descripción, la categoría y la ubicación**, y lo combina con los filtros de categoría y estado.
 
-- **SQLite es la fuente de verdad.** Algolia es solo un *índice de búsqueda*: devuelve los números (Id) de las incidencias que coinciden, y la aplicación las lee de SQLite con los mismos filtros. El detalle (`/Home/Detalle/{id}`) siempre sale de SQLite.
+- **SQLite es la fuente de verdad.** Algolia es solo un _índice de búsqueda_: devuelve los números (Id) de las incidencias que coinciden, y la aplicación las lee de SQLite con los mismos filtros. El detalle (`/Home/Detalle/{id}`) siempre sale de SQLite.
 - **Qué se envía a Algolia:** solo datos que ya son públicos en el listado (Id, título, descripción, categoría, ubicación, estado y fecha). **Nunca** el usuario que reportó, su correo ni el historial.
 - **Cuándo se actualiza:** al crear una incidencia y cuando un administrador cambia su estado.
 - **Si Algolia falla:** la incidencia o el cambio de estado **se guardan igual** en SQLite. El error queda en el log y la búsqueda usa SQLite mientras tanto (con un aviso). Después, un administrador puede resincronizar (sección 12.3).
@@ -445,11 +504,11 @@ La página `/Home/Incidencias` busca texto libre en el **título, la descripció
 
 ### 12.2 Variables de configuración
 
-| Variable | Obligatoria | Ejemplo |
-|---|---|---|
-| `ALGOLIA_APPLICATION_ID` | Sí | el Application ID de tu cuenta |
-| `ALGOLIA_ADMIN_API_KEY` | Sí | la Admin API Key (secreta) |
-| `ALGOLIA_INDEX_NAME` | No | `alerta_vecinal_incidencias` (valor por defecto) |
+| Variable                 | Obligatoria | Ejemplo                                          |
+| ------------------------ | ----------- | ------------------------------------------------ |
+| `ALGOLIA_APPLICATION_ID` | Sí          | el Application ID de tu cuenta                   |
+| `ALGOLIA_ADMIN_API_KEY`  | Sí          | la Admin API Key (secreta)                       |
+| `ALGOLIA_INDEX_NAME`     | No          | `alerta_vecinal_incidencias` (valor por defecto) |
 
 Se configuran igual que el administrador inicial (sección 9.1):
 
@@ -473,11 +532,11 @@ Esto copia todas las incidencias de SQLite a Algolia reemplazando el índice com
 
 ### 12.4 Problemas frecuentes
 
-| Problema | Solución |
-|---|---|
-| Aviso "La búsqueda avanzada no está disponible" | Algolia no respondió o las claves son incorrectas. Revisa el log del servidor y las variables de la sección 12.2 |
-| Una incidencia nueva no aparece al buscar | Algolia falló al indexarla. Pulsa **Sincronizar todas las incidencias** en `/Admin` |
-| La tarjeta del panel dice "Búsqueda básica (SQLite)" | Faltan `ALGOLIA_APPLICATION_ID` o `ALGOLIA_ADMIN_API_KEY` |
+| Problema                                             | Solución                                                                                                         |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Aviso "La búsqueda avanzada no está disponible"      | Algolia no respondió o las claves son incorrectas. Revisa el log del servidor y las variables de la sección 12.2 |
+| Una incidencia nueva no aparece al buscar            | Algolia falló al indexarla. Pulsa **Sincronizar todas las incidencias** en `/Admin`                              |
+| La tarjeta del panel dice "Búsqueda básica (SQLite)" | Faltan `ALGOLIA_APPLICATION_ID` o `ALGOLIA_ADMIN_API_KEY`                                                        |
 
 ---
 
@@ -485,13 +544,13 @@ Esto copia todas las incidencias de SQLite a Algolia reemplazando el índice com
 
 Algunas páginas se actualizan solas, sin presionar F5:
 
-| Página | Qué se actualiza | Quién la ve |
-|---|---|---|
-| `/Admin` y `/Admin/Incidencias` | Aviso de **nueva incidencia**, tabla, contadores y cambios de estado | Administradores |
-| `/Home/Seguimiento/{id}` | **Estado actual**, fecha de actualización e historial | El ciudadano dueño de la incidencia |
-| `/Admin/Seguimiento/{id}` | Lo mismo, para cualquier incidencia | Administradores |
+| Página                          | Qué se actualiza                                                     | Quién la ve                         |
+| ------------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
+| `/Admin` y `/Admin/Incidencias` | Aviso de **nueva incidencia**, tabla, contadores y cambios de estado | Administradores                     |
+| `/Home/Seguimiento/{id}`        | **Estado actual**, fecha de actualización e historial                | El ciudadano dueño de la incidencia |
+| `/Admin/Seguimiento/{id}`       | Lo mismo, para cualquier incidencia                                  | Administradores                     |
 
-Cada página muestra un indicador: *conectando*, *conectado*, *reconectando* o *desconectado*.
+Cada página muestra un indicador: _conectando_, _conectado_, _reconectando_ o _desconectado_.
 
 **Cómo funciona:**
 
@@ -502,10 +561,10 @@ Cada página muestra un indicador: *conectando*, *conectado*, *reconectando* o *
 
 ### 13.1 Canales
 
-| Canal | Eventos | Quién puede escucharlo |
-|---|---|---|
-| `private-admin-incidencias` | `incidencia.creada`, `incidencia.estado_actualizado` | Solo administradores |
-| `private-incidencia-{id}` | `incidencia.estado_actualizado` | El dueño de la incidencia y los administradores |
+| Canal                       | Eventos                                              | Quién puede escucharlo                          |
+| --------------------------- | ---------------------------------------------------- | ----------------------------------------------- |
+| `private-admin-incidencias` | `incidencia.creada`, `incidencia.estado_actualizado` | Solo administradores                            |
+| `private-incidencia-{id}`   | `incidencia.estado_actualizado`                      | El dueño de la incidencia y los administradores |
 
 Los canales `private-` exigen un JWT. El navegador lo pide a `POST /Realtime/Autorizar`, que comprueba en el servidor (con la sesión y la base de datos) si el usuario puede escuchar ese canal. El JWT vale solo para ese canal y dura 10 minutos. El **API secret nunca llega al navegador**.
 
@@ -513,17 +572,17 @@ Los canales `private-` exigen un JWT. El navegador lo pide a `POST /Realtime/Aut
 
 1. Crea una cuenta en https://piehost.com y, en el panel, crea un **PieSocket** (cluster).
 2. Copia el **Cluster ID**, la **API Key** y el **API Secret**.
-3. En la configuración del PieSocket, **deja desactivada la mensajería entre clientes** (*client-to-client messaging*): solo el servidor debe publicar eventos.
+3. En la configuración del PieSocket, **deja desactivada la mensajería entre clientes** (_client-to-client messaging_): solo el servidor debe publicar eventos.
 
 > La **API Key** es pública por diseño (el navegador la usa para conectarse). El **API Secret** firma los JWT y publica eventos: es secreto, solo lo usa el servidor y nunca va en el código, en `appsettings.json` ni en este README.
 
 ### 13.3 Variables de configuración
 
-| Variable | Ejemplo |
-|---|---|
+| Variable               | Ejemplo                                   |
+| ---------------------- | ----------------------------------------- |
 | `PIESOCKET_CLUSTER_ID` | el Cluster ID (por ejemplo `s12345.nyc1`) |
-| `PIESOCKET_API_KEY` | la API Key |
-| `PIESOCKET_API_SECRET` | el API Secret (secreto) |
+| `PIESOCKET_API_KEY`    | la API Key                                |
+| `PIESOCKET_API_SECRET` | el API Secret (secreto)                   |
 
 ```bash
 dotnet user-secrets set "PIESOCKET_CLUSTER_ID" "<tu-cluster-id>"
@@ -535,7 +594,7 @@ En Render, agrégalas en **Environment → Environment Variables**. Al iniciar, 
 
 ### 13.4 Ejecutar sin PieSocket
 
-No hace falta configurarlo para trabajar en el proyecto: sin estas variables la aplicación arranca y **todo funciona igual** (reportes, fotos, búsqueda con Algolia o SQLite, panel, historial y seguimiento). Lo único que cambia es que las páginas no se actualizan solas: hay que recargarlas. El panel muestra la nota *"Actualización en tiempo real desactivada"*; el ciudadano no ve ningún aviso.
+No hace falta configurarlo para trabajar en el proyecto: sin estas variables la aplicación arranca y **todo funciona igual** (reportes, fotos, búsqueda con Algolia o SQLite, panel, historial y seguimiento). Lo único que cambia es que las páginas no se actualizan solas: hay que recargarlas. El panel muestra la nota _"Actualización en tiempo real desactivada"_; el ciudadano no ve ningún aviso.
 
 ---
 
@@ -558,12 +617,12 @@ Además de la ubicación escrita (`Ubicacion`, por ejemplo "Av. Próceres con Jr
 
 ### 14.3 Dónde aparece el mapa
 
-| Página | Qué muestra |
-|---|---|
-| `/Home/Detalle/{id}` | El punto de la incidencia (o "Esta incidencia no tiene una ubicación geográfica registrada.") |
-| `/Home/Seguimiento/{id}` | El punto, debajo del historial (sigue funcionando cuando el estado cambia en tiempo real) |
-| `/Admin/Incidencias` | Un mapa con las incidencias **filtradas** (búsqueda, categoría y estado) que tienen punto. Cada marcador muestra título, categoría y estado |
-| `/Admin/Detalle/{id}` | El punto de la incidencia |
+| Página                   | Qué muestra                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/Home/Detalle/{id}`     | El punto de la incidencia (o "Esta incidencia no tiene una ubicación geográfica registrada.")                                               |
+| `/Home/Seguimiento/{id}` | El punto, debajo del historial (sigue funcionando cuando el estado cambia en tiempo real)                                                   |
+| `/Admin/Incidencias`     | Un mapa con las incidencias **filtradas** (búsqueda, categoría y estado) que tienen punto. Cada marcador muestra título, categoría y estado |
+| `/Admin/Detalle/{id}`    | El punto de la incidencia                                                                                                                   |
 
 Los mapas solo muestran datos públicos del reporte: **nunca** el nombre, correo o teléfono de quien lo hizo.
 
