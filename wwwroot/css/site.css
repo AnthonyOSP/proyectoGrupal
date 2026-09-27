@@ -1782,6 +1782,63 @@ textarea.form-control {
   padding-left: 2.75rem;
 }
 
+/* Con texto buscado: espacio a la derecha para el botón "Limpiar búsqueda" */
+.filtros__buscar .form-control.con-limpiar {
+  padding-right: 3rem;
+}
+
+/* Se oculta la "x" nativa del navegador: se usa el enlace propio, que conserva los filtros */
+.filtros__buscar input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.filtros__limpiar-busqueda {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--av-muted);
+  border-radius: var(--av-radius-sm);
+  transform: translateY(-50%);
+}
+
+.filtros__limpiar-busqueda:hover {
+  color: var(--av-ink);
+  background: var(--av-bg);
+}
+
+/* El ícono del enlace no usa la posición absoluta de la lupa */
+.filtros__buscar .filtros__limpiar-busqueda .icono {
+  position: static;
+  transform: none;
+  color: inherit;
+}
+
+.resultados-info__busqueda {
+  overflow-wrap: anywhere;
+}
+
+/* Aviso: búsqueda avanzada no disponible (no depende solo del color: lleva ícono y texto) */
+.aviso-busqueda {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  color: var(--av-pendiente-text);
+  background: var(--av-pendiente-bg);
+  border-radius: var(--av-radius);
+}
+
+.aviso-busqueda .icono {
+  margin-top: 0.1875rem;
+}
+
 .filtros__acciones {
   grid-column: 1 / -1;
   display: flex;
