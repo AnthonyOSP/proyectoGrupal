@@ -1,97 +1,155 @@
 @model CrearIncidenciaViewModel
 @{
-    ViewData["Title"] = "Reportar incidencia";
+    ViewData["Title"] = "Reportar una incidencia";
 
     // Error general (no de un campo), por ejemplo si falla el guardado en la base de datos.
     var errorGeneral = ViewData.ModelState[string.Empty]?.Errors.FirstOrDefault()?.ErrorMessage;
+
+    // Errores por campo, en el orden del formulario, con el id del control al que enlazan.
+    var primeraCategoria = $"Categoria_{CatalogoCategorias.Todas[0].Slug}";
+    var errores = new[]
+    {
+        (Campo: nameof(Model.Titulo), Destino: "Titulo"),
+        (Campo: nameof(Model.Categoria), Destino: primeraCategoria),
+        (Campo: nameof(Model.Descripcion), Destino: "Descripcion"),
+        (Campo: nameof(Model.Ubicacion), Destino: "Ubicacion"),
+        (Campo: nameof(Model.Foto), Destino: "Foto")
+    }
+    .Select(c => (c.Destino, Mensaje: ViewData.ModelState[c.Campo]?.Errors.FirstOrDefault()?.ErrorMessage))
+    .Where(c => c.Mensaje != null)
+    .ToList();
+
+    var errorCategoria = ViewData.ModelState[nameof(Model.Categoria)]?.Errors.Count > 0;
+    var categoriaElegida = CatalogoCategorias.Todas.FirstOrDefault(c => c.Nombre == Model.Categoria);
+
+    // Texto del resumen cuando un campo todavía está vacío.
+    const string SinCompletar = "Sin completar";
+
+    // Descripción abreviada para el resumen (el mismo límite que usa reportar.js).
+    static string Resumir(string texto) => texto.Length <= 160 ? texto : texto[..160].TrimEnd() + "…";
 }
 
 <section class="page-head">
     <div class="container">
-        <h1 class="page-head__titulo">Reportar incidencia</h1>
-        <p class="page-head__sub">Cuéntanos qué problema viste en el distrito. Los campos marcados con <span class="campo__requerido" aria-hidden="true">*</span> son obligatorios.</p>
+        <h1 class="page-head__titulo">Reportar una incidencia</h1>
+        <p class="page-head__sub">
+            Ayúdanos a mejorar nuestra comunidad. Cuéntanos qué sucede y dónde ocurre.
+            Los campos marcados con <span class="campo__requerido" aria-hidden="true">*</span><span class="visually-hidden">asterisco</span> son obligatorios.
+        </p>
     </div>
 </section>
 
 <div class="container">
     <div class="form-layout">
         <div>
+            @* POST normal (sin AJAX). El tag helper <form> agrega el token antiforgery.
+               No hay campos de Id, Estado, FechaRegistro ni UsuarioId: los decide el servidor. *@
             <form class="form-card" asp-action="Reportar" method="post" enctype="multipart/form-data" novalidate id="formReporte">
                 @if (!ViewData.ModelState.IsValid)
                 {
                     <div class="resumen-errores" role="alert" tabindex="-1" id="resumenErrores">
-                        <strong>@(errorGeneral ?? "Revisa los campos marcados en rojo antes de enviar.")</strong>
+                        <strong>@(errorGeneral ?? "Revisa estos campos antes de enviar:")</strong>
+                        @if (errores.Count > 0)
+                        {
+                            <ul>
+                                @foreach (var error in errores)
+                                {
+                                    <li><a href="#@error.Destino">@error.Mensaje</a></li>
+                                }
+                            </ul>
+                        }
                     </div>
                 }
 
                 <fieldset class="form-grupo">
-                    <legend class="form-grupo__titulo"><span class="form-grupo__num">1</span> ¿Qué ocurre?</legend>
+                    <legend class="form-grupo__titulo"><span class="form-grupo__num">1</span> ¿Qué está pasando?</legend>
 
                     <div class="campo">
-                        <label class="campo__label" asp-for="Titulo">Título de la incidencia<span class="campo__requerido" aria-hidden="true">*</span></label>
-                        <input class="form-control" asp-for="Titulo" placeholder="Ej. Poste de alumbrado sin funcionar"
-                               autocomplete="off" maxlength="100" aria-describedby="Titulo-ayuda" />
+                        <label class="campo__label" asp-for="Titulo">Título del problema<span class="campo__requerido" aria-hidden="true">*</span></label>
+                        <input class="form-control" asp-for="Titulo" placeholder="Ej. Poste de alumbrado apagado"
+                               autocomplete="off" maxlength="@CrearIncidenciaViewModel.TituloMaximo" aria-describedby="Titulo-ayuda"
+                               data-contador="Titulo-contador" data-resumen-origen="Titulo" />
                         <span asp-validation-for="Titulo"></span>
-                        <div class="campo__ayuda" id="Titulo-ayuda"><span>Un título corto y claro.</span></div>
+                        <div class="campo__ayuda" id="Titulo-ayuda">
+                            <span>Un título corto y claro (mínimo @CrearIncidenciaViewModel.TituloMinimo caracteres).</span>
+                            <span class="campo__contador" id="Titulo-contador" data-minimo="@CrearIncidenciaViewModel.TituloMinimo">@(Model.Titulo?.Length ?? 0) / @CrearIncidenciaViewModel.TituloMaximo caracteres</span>
+                        </div>
                     </div>
 
-                    <div class="campo">
-                        <label class="campo__label" asp-for="Categoria">Categoría<span class="campo__requerido" aria-hidden="true">*</span></label>
-                        <select class="form-select" asp-for="Categoria">
-                            <option value="">Selecciona una categoría</option>
+                    @* Categorías como tarjetas: son radios reales (se eligen con teclado, flechas o toque).
+                       El valor enviado es el nombre guardado en la base; el servidor comprueba que sea de la lista. *@
+                    <fieldset class="campo cat-opciones-grupo" aria-describedby="Categoria-error-contenedor">
+                        <legend class="campo__label">Categoría<span class="campo__requerido" aria-hidden="true">*</span></legend>
+                        <div class="cat-opciones @(errorCategoria ? "is-invalido" : "")">
                             @foreach (var categoria in CatalogoCategorias.Todas)
                             {
-                                <option value="@categoria.Nombre">@categoria.Nombre</option>
+                                <label class="cat-opcion" data-cat="@categoria.Slug" title="@categoria.Descripcion">
+                                    <input type="radio" asp-for="Categoria" value="@categoria.Nombre" id="Categoria_@categoria.Slug"
+                                           data-resumen-origen="Categoria" />
+                                    <span class="cat-opcion__icono" aria-hidden="true">@Iconos.Svg(categoria.Icono, 20)</span>
+                                    <span class="cat-opcion__nombre">@categoria.Nombre</span>
+                                    <span class="cat-opcion__check" aria-hidden="true">@Iconos.Svg("check", 14)</span>
+                                </label>
                             }
-                        </select>
-                        <span asp-validation-for="Categoria"></span>
-                    </div>
+                        </div>
+                        <span id="Categoria-error-contenedor"><span asp-validation-for="Categoria"></span></span>
+                    </fieldset>
 
                     <div class="campo">
                         <label class="campo__label" asp-for="Descripcion">Descripción<span class="campo__requerido" aria-hidden="true">*</span></label>
-                        <textarea class="form-control" asp-for="Descripcion" rows="5" maxlength="1000"
-                                  placeholder="Describe lo que ocurre y proporciona cualquier detalle que pueda ayudar..."
-                                  aria-describedby="Descripcion-ayuda" data-contador="Descripcion-contador"></textarea>
+                        <textarea class="form-control" asp-for="Descripcion" rows="5" maxlength="@CrearIncidenciaViewModel.DescripcionMaximo"
+                                  placeholder="Describe qué sucede, desde cuándo ocurre y cómo afecta a los vecinos..."
+                                  aria-describedby="Descripcion-ayuda Descripcion-contador" data-contador="Descripcion-contador"
+                                  data-resumen-origen="Descripcion"></textarea>
                         <span asp-validation-for="Descripcion"></span>
                         <div class="campo__ayuda" id="Descripcion-ayuda">
-                            <span>¿Desde cuándo pasa? ¿A quién afecta?</span>
-                            <span id="Descripcion-contador" aria-live="polite">@(Model.Descripcion?.Length ?? 0)/1000</span>
+                            <span>Mínimo @CrearIncidenciaViewModel.DescripcionMinimo caracteres. ¿Desde cuándo pasa? ¿A quién afecta?</span>
+                            <span class="campo__contador" id="Descripcion-contador" aria-live="polite" data-minimo="@CrearIncidenciaViewModel.DescripcionMinimo">@(Model.Descripcion?.Length ?? 0) / @CrearIncidenciaViewModel.DescripcionMaximo caracteres</span>
                         </div>
                     </div>
                 </fieldset>
 
                 <fieldset class="form-grupo">
-                    <legend class="form-grupo__titulo"><span class="form-grupo__num">2</span> ¿Dónde está?</legend>
+                    <legend class="form-grupo__titulo"><span class="form-grupo__num">2</span> ¿Dónde ocurre?</legend>
 
                     <div class="campo">
-                        <label class="campo__label" asp-for="Ubicacion">Ubicación<span class="campo__requerido" aria-hidden="true">*</span></label>
-                        <input class="form-control" asp-for="Ubicacion" placeholder="Ej. Av. Próceres con Jr. Lima"
-                               autocomplete="street-address" maxlength="250" aria-describedby="Ubicacion-ayuda" />
+                        <label class="campo__label" asp-for="Ubicacion">¿Dónde ocurre el problema?<span class="campo__requerido" aria-hidden="true">*</span></label>
+                        <input class="form-control" asp-for="Ubicacion" placeholder="Ej. Av. Próceres de la Independencia 123, frente al parque"
+                               autocomplete="street-address" maxlength="@CrearIncidenciaViewModel.UbicacionMaximo" aria-describedby="Ubicacion-ayuda"
+                               data-resumen-origen="Ubicacion" />
                         <span asp-validation-for="Ubicacion"></span>
                         <div class="campo__ayuda" id="Ubicacion-ayuda"><span>Dirección, cruce de calles o una referencia cercana.</span></div>
                     </div>
                 </fieldset>
 
                 <fieldset class="form-grupo">
-                    <legend class="form-grupo__titulo"><span class="form-grupo__num">3</span> Fotografía de la incidencia <span class="campo__opcional">(opcional)</span></legend>
+                    <legend class="form-grupo__titulo"><span class="form-grupo__num">3</span> Agrega una fotografía <span class="campo__opcional">(opcional)</span></legend>
 
                     <div class="campo">
                         <label class="foto-drop" id="fotoDrop">
                             <input type="file" asp-for="Foto" accept=".jpg,.jpeg,.png,image/jpeg,image/png" aria-describedby="Foto-ayuda Foto-privacidad" />
                             <span class="foto-drop__icono">@Iconos.Svg("camera", 24)</span>
                             <span class="foto-drop__titulo"><span>Elige una foto</span> o arrástrala aquí</span>
-                            <span class="foto-drop__ayuda" id="Foto-ayuda">JPG o PNG, hasta 5 MB. En el celular puedes tomarla con la cámara.</span>
+                            <span class="foto-drop__ayuda" id="Foto-ayuda">Formatos: JPG o PNG · Tamaño máximo: 5 MB. En el celular puedes tomarla con la cámara.</span>
                         </label>
 
+                        @* Vista previa: la imagen solo existe en el navegador hasta que se envía el formulario. *@
                         <div class="foto-preview" id="fotoPreview" hidden>
-                            <img src="" alt="Vista previa de la foto seleccionada" id="fotoPreviewImg" />
-                            <div class="foto-preview__info">
-                                <span class="foto-preview__nombre" id="fotoPreviewNombre"></span>
-                                <span class="foto-preview__peso" id="fotoPreviewPeso"></span>
+                            <img src="" alt="Vista previa de la fotografía seleccionada" id="fotoPreviewImg" />
+                            <div class="foto-preview__pie">
+                                <div class="foto-preview__info">
+                                    <span class="foto-preview__nombre" id="fotoPreviewNombre"></span>
+                                    <span class="foto-preview__peso" id="fotoPreviewPeso"></span>
+                                </div>
+                                <div class="foto-preview__acciones">
+                                    <button type="button" class="btn btn-av-secondary" id="fotoCambiar">
+                                        @Iconos.Svg("image", 18) Cambiar
+                                    </button>
+                                    <button type="button" class="btn btn-av-ghost" id="fotoQuitar">
+                                        @Iconos.Svg("x", 18) Quitar
+                                    </button>
+                                </div>
                             </div>
-                            <button type="button" class="btn btn-av-ghost" id="fotoQuitar">
-                                @Iconos.Svg("x", 18) Quitar
-                            </button>
                         </div>
                         <span class="field-validation-valid" id="fotoError" role="alert"></span>
                         <span asp-validation-for="Foto"></span>
@@ -102,10 +160,42 @@
                         }
                         <p class="nota-privacidad" id="Foto-privacidad">
                             @Iconos.Svg("shield", 18)
-                            <span>Por privacidad, las fotografías se procesan automáticamente para ocultar los rostros detectados antes de ser almacenadas.</span>
+                            <span>Por privacidad, las fotografías se procesan automáticamente para ocultar los rostros detectados antes de ser almacenadas. La foto original no se guarda.</span>
                         </p>
                     </div>
                 </fieldset>
+
+                @* Resumen visual de lo que se va a enviar. Solo informativo: el servidor vuelve a validar todo.
+                   Se muestra también sin JavaScript (con los valores actuales); con JavaScript se actualiza al escribir. *@
+                <section class="resumen-reporte" aria-labelledby="titulo-resumen">
+                    <h2 class="form-grupo__titulo" id="titulo-resumen"><span class="form-grupo__num">4</span> Revisa tu reporte</h2>
+                    <dl class="resumen-reporte__lista">
+                        <div>
+                            <dt>Título</dt>
+                            <dd data-resumen="Titulo" class="@(Model.Titulo == null ? "is-vacio" : "")">@(Model.Titulo ?? SinCompletar)</dd>
+                        </div>
+                        <div>
+                            <dt>Categoría</dt>
+                            <dd data-resumen="Categoria" class="@(categoriaElegida == null ? "is-vacio" : "")">@(categoriaElegida?.Nombre ?? SinCompletar)</dd>
+                        </div>
+                        <div>
+                            <dt>Ubicación</dt>
+                            <dd data-resumen="Ubicacion" class="@(Model.Ubicacion == null ? "is-vacio" : "")">@(Model.Ubicacion ?? SinCompletar)</dd>
+                        </div>
+                        <div class="resumen-reporte__ancho">
+                            <dt>Descripción</dt>
+                            <dd data-resumen="Descripcion" class="@(Model.Descripcion == null ? "is-vacio" : "")">@(Model.Descripcion == null ? SinCompletar : Resumir(Model.Descripcion))</dd>
+                        </div>
+                        <div class="resumen-reporte__ancho">
+                            <dt>Fotografía</dt>
+                            <dd data-resumen="Foto" class="is-vacio">Sin fotografía</dd>
+                        </div>
+                    </dl>
+                    <p class="resumen-reporte__nota">
+                        @Iconos.Svg("info", 18)
+                        <span>Tu reporte se registrará con estado <strong>Pendiente</strong> y podrás seguir su avance en <strong>Mis incidencias</strong>.</span>
+                    </p>
+                </section>
 
                 <div class="form-acciones">
                     <button type="submit" class="btn btn-av-primary btn-lg-av" id="btnEnviar">
@@ -113,7 +203,7 @@
                         <span class="spinner" aria-hidden="true"></span>
                         <span class="btn-texto">Enviar reporte</span>
                     </button>
-                    <p class="form-acciones__nota">@Iconos.Svg("info", 18) Tu reporte será registrado para su revisión.</p>
+                    <a class="btn btn-av-secondary btn-lg-av" asp-action="Index">Cancelar</a>
                 </div>
             </form>
         </div>

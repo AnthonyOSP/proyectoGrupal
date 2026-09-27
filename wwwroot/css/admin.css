@@ -695,3 +695,11 @@
 #cambiar-estado {
   scroll-margin-top: 1.5rem;
 }
+
+/* Texto escrito por los vecinos: una palabra muy larga se parte en lugar de desbordar la tabla o la cabecera */
+.admin-cabecera__titulo,
+.admin-tabla__titulo,
+.admin-tabla__ubicacion,
+.ultimas__titulo {
+  overflow-wrap: anywhere;
+}
