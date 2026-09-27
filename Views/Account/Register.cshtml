@@ -1,0 +1,57 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Crear cuenta";
+}
+
+<section class="auth-seccion">
+    <div class="container">
+        <div class="auth-card">
+            <div class="auth-card__cabecera">
+                <span class="auth-card__icono">@Iconos.Svg("user", 24)</span>
+                <h1 class="auth-card__titulo">Crear cuenta</h1>
+                <p class="auth-card__sub">Regístrate como vecino para reportar incidencias y ayudar a mejorar tu comunidad.</p>
+            </div>
+
+            @* No hay campo de rol: toda cuenta nueva es Ciudadano y el servidor lo asigna. *@
+            <form asp-action="Register" method="post" novalidate>
+                <div asp-validation-summary="ModelOnly" class="resumen-errores" role="alert"></div>
+
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div class="campo">
+                    <label class="campo__label" asp-for="Email">Correo electrónico</label>
+                    <input class="form-control" asp-for="Email" type="email" autocomplete="email"
+                           placeholder="tucorreo@ejemplo.com" maxlength="256" autofocus />
+                    <span asp-validation-for="Email"></span>
+                </div>
+
+                <div class="campo">
+                    <label class="campo__label" asp-for="Password">Contraseña</label>
+                    <input class="form-control" asp-for="Password" autocomplete="new-password" maxlength="100"
+                           aria-describedby="Password-ayuda" />
+                    <span asp-validation-for="Password"></span>
+                    <div class="campo__ayuda" id="Password-ayuda"><span>Mínimo 6 caracteres, con al menos una letra y un número.</span></div>
+                </div>
+
+                <div class="campo">
+                    <label class="campo__label" asp-for="ConfirmPassword">Confirmar contraseña</label>
+                    <input class="form-control" asp-for="ConfirmPassword" autocomplete="new-password" maxlength="100" />
+                    <span asp-validation-for="ConfirmPassword"></span>
+                </div>
+
+                <button type="submit" class="btn btn-av-primary btn-lg-av auth-card__boton">
+                    @Iconos.Svg("check", 18) Crear cuenta
+                </button>
+            </form>
+
+            <p class="auth-alterna">
+                ¿Ya tienes una cuenta?
+                <a asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl">Inicia sesión</a>
+            </p>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

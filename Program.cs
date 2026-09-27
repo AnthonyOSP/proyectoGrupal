@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using proyectoGrupal.Data;
+using proyectoGrupal.Helpers;
+using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +31,48 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Cuentas de usuario y roles con ASP.NET Core Identity, guardados en la misma base SQLite.
+// Identity guarda solo el hash de cada contraseña (PasswordHasher), nunca el texto plano.
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+    {
+        // Contraseña: mínimo 6 caracteres, con al menos una letra (ContrasenaConLetraValidator) y un número.
+        options.Password.RequiredLength = 6;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredUniqueChars = 1;
+
+        // El correo es también el nombre de usuario, así que no puede repetirse.
+        options.User.RequireUniqueEmail = true;
+
+        // Esta etapa todavía no envía correos de confirmación.
+        options.SignIn.RequireConfirmedAccount = false;
+
+        // Bloqueo temporal tras varios intentos fallidos, contra ataques de fuerza bruta.
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddPasswordValidator<ContrasenaConLetraValidator<ApplicationUser>>()
+    .AddErrorDescriber<MensajesIdentity>();
+
+// Cookie de sesión de Identity: rutas de login, logout y acceso denegado.
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.Cookie.Name = "AlertaVecinal.Auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    // HTTPS en Render; en local también funciona con el perfil http.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    // "Recordarme" mantiene la sesión 14 días; se renueva mientras el usuario la use.
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
+    options.SlidingExpiration = true;
+});
+
 // Protección de fotografías: detección de rostros con Google Cloud Vision + pixelado local.
 // Credenciales: variable de entorno GOOGLE_APPLICATION_CREDENTIALS (ver README.md).
 builder.Services.AddSingleton<IFaceDetectionService, GoogleVisionFaceDetectionService>();
@@ -37,9 +82,11 @@ var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
 // Necesario en Docker/Render, donde no existe "dotnet ef database update".
+// Después crea los roles y el administrador inicial (ADMIN_EMAIL / ADMIN_PASSWORD) si faltan.
 using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
+    await IdentitySeeder.SeedAsync(scope.ServiceProvider);
 }
 
 app.UseForwardedHeaders();
@@ -60,6 +107,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Primero se identifica al usuario (cookie) y después se comprueban sus permisos.
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
