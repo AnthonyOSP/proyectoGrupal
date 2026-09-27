@@ -1,0 +1,131 @@
+@model PerfilPaginaViewModel
+@{
+    ViewData["Title"] = "Mi perfil";
+
+    var mensajePerfil = TempData["MensajePerfil"] as string;
+    var mensajeContrasena = TempData["MensajeContrasena"] as string;
+
+    // Cada formulario muestra solo sus propios errores (claves "Perfil..." y "Contrasena...").
+    bool TieneErrores(string prefijo) => ViewData.ModelState
+        .Where(e => e.Key == prefijo || e.Key.StartsWith(prefijo + "."))
+        .Any(e => e.Value!.Errors.Count > 0);
+    var errorGeneralPerfil = ViewData.ModelState["Perfil"]?.Errors.FirstOrDefault()?.ErrorMessage;
+}
+
+<section class="page-head">
+    <div class="container">
+        <h1 class="page-head__titulo">Mi perfil</h1>
+        <p class="page-head__sub">Consulta y actualiza los datos de tu cuenta.</p>
+    </div>
+</section>
+
+<div class="container perfil-layout">
+    <section class="form-card" aria-labelledby="titulo-cuenta">
+        <h2 class="form-grupo__titulo" id="titulo-cuenta">
+            <span class="form-grupo__num" aria-hidden="true">@Iconos.Svg("user", 14)</span> Información de cuenta
+        </h2>
+
+        @if (mensajePerfil != null)
+        {
+            <div class="alerta-exito alerta-exito--form" role="status">
+                <span class="alerta-exito__icono">@Iconos.Svg("check", 20)</span>
+                <p class="alerta-exito__titulo mb-0">@mensajePerfil</p>
+            </div>
+        }
+        @if (TieneErrores("Perfil"))
+        {
+            <div class="resumen-errores" role="alert">
+                <strong>@(errorGeneralPerfil ?? "Revisa los campos marcados en rojo antes de guardar.")</strong>
+            </div>
+        }
+
+        @* El correo solo se muestra: no es un campo del formulario y no se puede cambiar aquí. *@
+        <div class="campo">
+            <span class="campo__label" id="correo-label">Correo electrónico</span>
+            <p class="perfil-correo" aria-labelledby="correo-label" aria-describedby="correo-ayuda">
+                @Iconos.Svg("lock", 16) <span>@Model.Email</span>
+            </p>
+            <div class="campo__ayuda" id="correo-ayuda">
+                <span>Es tu usuario para iniciar sesión y no se puede cambiar.</span>
+                <span class="perfil-rol">@(Model.EsAdministrador ? RoleNames.Administrador : RoleNames.Ciudadano)</span>
+            </div>
+        </div>
+
+        @* Sin campo de Id: el servidor siempre modifica al usuario de la sesión. *@
+        <form asp-action="Profile" method="post" novalidate>
+            <div class="campo-fila">
+                <div class="campo">
+                    <label class="campo__label" asp-for="Perfil.Nombres">Nombres <span class="campo__opcional">(opcional)</span></label>
+                    <input class="form-control" asp-for="Perfil.Nombres" autocomplete="given-name" maxlength="60" />
+                    <span asp-validation-for="Perfil.Nombres"></span>
+                </div>
+
+                <div class="campo">
+                    <label class="campo__label" asp-for="Perfil.Apellidos">Apellidos <span class="campo__opcional">(opcional)</span></label>
+                    <input class="form-control" asp-for="Perfil.Apellidos" autocomplete="family-name" maxlength="60" />
+                    <span asp-validation-for="Perfil.Apellidos"></span>
+                </div>
+            </div>
+
+            <div class="campo">
+                <label class="campo__label" asp-for="Perfil.Telefono">Teléfono <span class="campo__opcional">(opcional)</span></label>
+                <input class="form-control" asp-for="Perfil.Telefono" type="tel" autocomplete="tel" maxlength="20"
+                       placeholder="Ej. 987 654 321" aria-describedby="telefono-ayuda" />
+                <span asp-validation-for="Perfil.Telefono"></span>
+                <div class="campo__ayuda" id="telefono-ayuda"><span>Solo números, espacios, guiones y un + inicial.</span></div>
+            </div>
+
+            <button type="submit" class="btn btn-av-primary perfil-boton">@Iconos.Svg("check", 18) Guardar cambios</button>
+        </form>
+    </section>
+
+    <section class="form-card" id="seguridad" aria-labelledby="titulo-seguridad">
+        <h2 class="form-grupo__titulo" id="titulo-seguridad">
+            <span class="form-grupo__num" aria-hidden="true">@Iconos.Svg("lock", 14)</span> Seguridad
+        </h2>
+        <h3 class="perfil-subtitulo">Cambiar contraseña</h3>
+
+        @if (mensajeContrasena != null)
+        {
+            <div class="alerta-exito alerta-exito--form" role="status">
+                <span class="alerta-exito__icono">@Iconos.Svg("check", 20)</span>
+                <p class="alerta-exito__titulo mb-0">@mensajeContrasena</p>
+            </div>
+        }
+        @if (TieneErrores("Contrasena"))
+        {
+            <div class="resumen-errores" role="alert">
+                <strong>No se cambió la contraseña. Revisa los campos marcados en rojo.</strong>
+            </div>
+        }
+
+        @* Los campos de contraseña nunca se vuelven a llenar con lo enviado. *@
+        <form asp-action="ChangePassword" method="post" novalidate>
+            <div class="campo">
+                <label class="campo__label" asp-for="Contrasena.ContrasenaActual">Contraseña actual</label>
+                <input class="form-control" asp-for="Contrasena.ContrasenaActual" autocomplete="current-password" maxlength="100" />
+                <span asp-validation-for="Contrasena.ContrasenaActual"></span>
+            </div>
+
+            <div class="campo">
+                <label class="campo__label" asp-for="Contrasena.NuevaContrasena">Nueva contraseña</label>
+                <input class="form-control" asp-for="Contrasena.NuevaContrasena" autocomplete="new-password" maxlength="100"
+                       aria-describedby="nueva-ayuda" />
+                <span asp-validation-for="Contrasena.NuevaContrasena"></span>
+                <div class="campo__ayuda" id="nueva-ayuda"><span>Mínimo 6 caracteres, con al menos una letra y un número.</span></div>
+            </div>
+
+            <div class="campo">
+                <label class="campo__label" asp-for="Contrasena.ConfirmarContrasena">Confirmar nueva contraseña</label>
+                <input class="form-control" asp-for="Contrasena.ConfirmarContrasena" autocomplete="new-password" maxlength="100" />
+                <span asp-validation-for="Contrasena.ConfirmarContrasena"></span>
+            </div>
+
+            <button type="submit" class="btn btn-av-primary perfil-boton">@Iconos.Svg("lock", 18) Cambiar contraseña</button>
+        </form>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

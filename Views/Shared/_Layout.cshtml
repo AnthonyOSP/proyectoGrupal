@@ -71,18 +71,32 @@
                         </a>
                         @if (autenticado)
                         {
-                            @* Con el enlace "Panel administrativo" el menú tiene más opciones: el correo se muestra solo como ícono en escritorio. *@
-                            <div class="nav-usuario @(esAdministrador ? "nav-usuario--compacto" : "")">
-                                <span class="nav-usuario__correo" title="@User.Identity!.Name">
+                            @* Menú de la cuenta: correo, "Mi perfil" y "Cerrar sesión".
+                               Con el enlace "Panel administrativo" el menú tiene más opciones: el correo se muestra solo como ícono en escritorio. *@
+                            <div class="dropdown nav-usuario @(esAdministrador ? "nav-usuario--compacto" : "")">
+                                <button type="button" class="nav-usuario__boton dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static"
+                                        aria-expanded="false" title="@User.Identity!.Name">
                                     @Iconos.Svg("user", 18)
-                                    <span><span class="visually-hidden">Sesión iniciada como </span>@User.Identity!.Name</span>
-                                </span>
-                                @* Cerrar sesión solo por POST: el tag helper <form> agrega el token antiforgery. *@
-                                <form asp-controller="Account" asp-action="Logout" method="post">
-                                    <button type="submit" class="btn btn-av-ghost nav-salir" title="Cerrar sesión">
-                                        @Iconos.Svg("log-out", 18) <span class="nav-salir__texto">Cerrar sesión</span>
-                                    </button>
-                                </form>
+                                    <span class="nav-usuario__correo"><span class="visually-hidden">Menú de la cuenta: </span>@User.Identity!.Name</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end nav-usuario__menu">
+                                    <li class="nav-usuario__cabecera">
+                                        <span>Sesión iniciada como</span>
+                                        <strong>@User.Identity!.Name</strong>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item @Activo("Profile")" aria-current="@Actual("Profile")" asp-controller="Account" asp-action="Profile">
+                                            @Iconos.Svg("user", 18) Mi perfil
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li>
+                                        @* Cerrar sesión solo por POST: el tag helper <form> agrega el token antiforgery. *@
+                                        <form asp-controller="Account" asp-action="Logout" method="post">
+                                            <button type="submit" class="dropdown-item">@Iconos.Svg("log-out", 18) Cerrar sesión</button>
+                                        </form>
+                                    </li>
+                                </ul>
                             </div>
                         }
                         else
