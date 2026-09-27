@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using proyectoGrupal.Data;
@@ -14,13 +15,22 @@ public class HomeController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly FotoIncidenciaService _fotos;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILogger<HomeController> _logger;
 
     // ASP.NET entrega estas dependencias por inyección de dependencias (ver Program.cs).
-    public HomeController(ApplicationDbContext context, FotoIncidenciaService fotos, ILogger<HomeController> logger)
+    public HomeController(
+        ApplicationDbContext context,
+        FotoIncidenciaService fotos,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
+        ILogger<HomeController> logger)
     {
         _context = context;
         _fotos = fotos;
+        _userManager = userManager;
+        _signInManager = signInManager;
         _logger = logger;
     }
 
@@ -73,6 +83,16 @@ public class HomeController : Controller
     [RequestFormLimits(MultipartBodyLengthLimit = 20 * 1024 * 1024)]
     public async Task<IActionResult> Reportar(CrearIncidenciaViewModel modelo)
     {
+        // El dueño del reporte es el usuario de la sesión (cookie de Identity), nunca un dato del formulario.
+        // Si la cuenta ya no existe (por ejemplo, se reinició la base de datos), se cierra la sesión.
+        var usuario = await _userManager.GetUserAsync(User);
+        if (usuario == null)
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction(nameof(AccountController.Login), "Account",
+                new { returnUrl = Url.Action(nameof(Reportar)) });
+        }
+
         // La categoría debe ser una de la lista (no se confía en el HTML del navegador).
         if (!CategoriasIncidencia.Todas.Contains(modelo.Categoria))
         {
@@ -109,7 +129,7 @@ public class HomeController : Controller
             fotoUrl = resultado.Url;
         }
 
-        // Id, Estado y FechaRegistro los decide el servidor, nunca el formulario.
+        // Id, Estado, FechaRegistro y UsuarioId los decide el servidor, nunca el formulario.
         var incidencia = new Incidencia
         {
             Titulo = modelo.Titulo!.Trim(),
@@ -118,7 +138,8 @@ public class HomeController : Controller
             Ubicacion = modelo.Ubicacion!.Trim(),
             FotoUrl = fotoUrl,
             Estado = EstadosIncidencia.Pendiente,
-            FechaRegistro = DateTime.Now
+            FechaRegistro = DateTime.Now,
+            UsuarioId = usuario.Id
         };
 
         try
@@ -168,6 +189,29 @@ public class HomeController : Controller
         };
 
         return View(modelo);
+    }
+
+    // GET: /Home/MisIncidencias
+    // Solo las incidencias del usuario de la sesión. No recibe parámetros: el Id del usuario
+    // sale de la cookie de Identity, así que nadie puede pedir las incidencias de otra persona.
+    [Authorize]
+    public async Task<IActionResult> MisIncidencias()
+    {
+        var usuarioId = _userManager.GetUserId(User);
+
+        // Sin este control, un Id nulo filtraría "UsuarioId IS NULL" y mostraría las incidencias antiguas.
+        if (string.IsNullOrEmpty(usuarioId))
+        {
+            return Challenge();
+        }
+
+        var incidencias = await _context.Incidencias
+            .AsNoTracking()
+            .Where(i => i.UsuarioId == usuarioId)
+            .OrderByDescending(i => i.FechaRegistro)
+            .ToListAsync();
+
+        return View(incidencias.Select(IncidenciaViewModel.DesdeEntidad).ToList());
     }
 
     // GET: /Home/Detalle/5
