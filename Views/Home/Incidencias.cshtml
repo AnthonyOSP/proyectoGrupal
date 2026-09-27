@@ -43,12 +43,20 @@
 <div class="container lista-seccion">
     @* Los filtros usan GET: la búsqueda queda en la URL y se puede compartir. *@
     <form class="filtros" method="get" asp-action="Incidencias" role="search" id="formFiltros">
+        @* Búsqueda de texto: Algolia si está configurado; si no, SQLite. Siempre se combina con los filtros. *@
         <div class="filtros__buscar">
-            <label for="buscar">Buscar</label>
+            <label for="buscar">Buscar incidencias</label>
             <div class="position-relative">
                 @Iconos.Svg("search", 18)
-                <input class="form-control" type="search" id="buscar" name="buscar" value="@Model.Buscar"
-                       placeholder="Buscar incidencia..." autocomplete="off" />
+                <input class="form-control @(Model.Buscar != null ? "con-limpiar" : "")" type="search" id="buscar" name="buscar" value="@Model.Buscar"
+                       placeholder="Busca por título, descripción, categoría o ubicación" autocomplete="off"
+                       maxlength="@proyectoGrupal.Services.BusquedaIncidenciasService.LargoMaximoTexto" enterkeyhint="search" />
+                @if (Model.Buscar != null)
+                {
+                    @* Quita solo el texto y conserva la categoría y el estado elegidos. *@
+                    <a class="filtros__limpiar-busqueda" asp-action="Incidencias" asp-route-categoria="@Model.Categoria" asp-route-estado="@Model.Estado"
+                       aria-label="Limpiar búsqueda" title="Limpiar búsqueda">@Iconos.Svg("x", 18)</a>
+                }
             </div>
         </div>
 
@@ -83,8 +91,23 @@
         </div>
     </form>
 
+    @if (Model.BusquedaAvanzadaNoDisponible)
+    {
+        @* Algolia configurado pero sin respuesta: se muestran resultados de la búsqueda básica (SQLite). *@
+        <p class="aviso-busqueda" role="status">
+            @Iconos.Svg("info", 18)
+            <span>La búsqueda avanzada no está disponible en este momento. Mostramos resultados de la búsqueda básica, que puede encontrar menos coincidencias.</span>
+        </p>
+    }
+
     <div class="resultados-info" role="status">
-        <span>Mostrando <strong>@Model.Incidencias.Count</strong> de @Model.Total incidencias</span>
+        <span>
+            Mostrando <strong>@Model.Incidencias.Count</strong> de @Model.Total incidencias
+            @if (Model.Buscar != null)
+            {
+                <text>para <strong class="resultados-info__busqueda">«@Model.Buscar»</strong></text>
+            }
+        </span>
         <a class="link-flecha" asp-action="Reportar">@Iconos.Svg("plus", 18) Reportar una incidencia</a>
     </div>
 
@@ -111,7 +134,7 @@
     {
         <div class="vacio">
             <span class="vacio__icono">@Iconos.Svg("search", 26)</span>
-            <h2 class="vacio__titulo">No encontramos incidencias</h2>
+            <h2 class="vacio__titulo">@(Model.Buscar != null ? "No encontramos incidencias que coincidan con tu búsqueda." : "No encontramos incidencias con estos filtros.")</h2>
             <p>Prueba con otras palabras o quita algunos filtros. Si el problema aún no fue reportado, puedes hacerlo tú.</p>
             <div class="d-flex flex-wrap justify-content-center gap-2">
                 <a class="btn btn-av-secondary" asp-action="Incidencias">Ver todas</a>

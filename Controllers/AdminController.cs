@@ -6,6 +6,7 @@ using proyectoGrupal.Constants;
 using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
+using proyectoGrupal.Services.Algolia;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
@@ -19,12 +20,18 @@ public class AdminController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAlgoliaIncidenciaService _algolia;
     private readonly ILogger<AdminController> _logger;
 
-    public AdminController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<AdminController> logger)
+    public AdminController(
+        ApplicationDbContext context,
+        UserManager<ApplicationUser> userManager,
+        IAlgoliaIncidenciaService algolia,
+        ILogger<AdminController> logger)
     {
         _context = context;
         _userManager = userManager;
+        _algolia = algolia;
         _logger = logger;
     }
 
@@ -43,10 +50,36 @@ public class AdminController : Controller
             Pendientes = await _context.Incidencias.CountAsync(i => i.Estado == EstadosIncidencia.Pendiente),
             EnRevision = await _context.Incidencias.CountAsync(i => i.Estado == EstadosIncidencia.EnRevision),
             Atendidas = await _context.Incidencias.CountAsync(i => i.Estado == EstadosIncidencia.Atendida),
-            UltimasIncidencias = ultimas.Select(IncidenciaViewModel.DesdeEntidad).ToList()
+            UltimasIncidencias = ultimas.Select(IncidenciaViewModel.DesdeEntidad).ToList(),
+            AlgoliaConfigurado = _algolia.EstaConfigurado,
+            IndiceBusqueda = _algolia.NombreIndice
         };
 
         return View(modelo);
+    }
+
+    // POST: /Admin/SincronizarBusqueda
+    // Sincronización completa SQLite → Algolia (inicial, o después de un fallo de Algolia).
+    // Solo administradores (atributo de la clase) y con token antiforgery. Reemplaza el índice
+    // completo, así que se puede repetir sin crear duplicados.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SincronizarBusqueda()
+    {
+        if (!_algolia.EstaConfigurado)
+        {
+            TempData["MensajeBusqueda"] = "Algolia no está configurado: la búsqueda usa SQLite y no hay nada que sincronizar.";
+            TempData["BusquedaOk"] = false;
+            return RedirectToAction(nameof(Index));
+        }
+
+        var incidencias = await _context.Incidencias.AsNoTracking().ToListAsync();
+        var resultado = await _algolia.SincronizarTodoAsync(incidencias, HttpContext.RequestAborted);
+
+        _logger.LogInformation("Sincronización del índice de búsqueda por {Usuario}: {Resultado}", User.Identity?.Name, resultado.Mensaje);
+        TempData["MensajeBusqueda"] = resultado.Mensaje;
+        TempData["BusquedaOk"] = resultado.Exito;
+        return RedirectToAction(nameof(Index));
     }
 
     // GET: /Admin/Incidencias?buscar=poste&categoria=alumbrado&estado=Pendiente
@@ -168,7 +201,13 @@ public class AdminController : Controller
         }
 
         _logger.LogInformation("Incidencia {Id}: estado cambiado de \"{Anterior}\" a \"{Nuevo}\"", id, estadoAnterior, estado);
-        TempData["MensajeAdmin"] = "Estado actualizado correctamente.";
+
+        // El cambio ya está guardado en SQLite; ahora se actualiza el índice de búsqueda.
+        // Si Algolia falla, el estado NO se deshace: se avisa al administrador para que resincronice.
+        var indexado = await _algolia.IndexarAsync(incidencia);
+        TempData["MensajeAdmin"] = indexado || !_algolia.EstaConfigurado
+            ? "Estado actualizado correctamente."
+            : "Estado actualizado correctamente. El índice de búsqueda no se pudo actualizar: puedes resincronizarlo desde el Dashboard.";
         return RedirectToAction(nameof(Detalle), new { id });
     }
 }
