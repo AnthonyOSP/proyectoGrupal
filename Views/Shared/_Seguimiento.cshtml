@@ -6,7 +6,8 @@
     var ultimo = Model.Historial.Count - 1;
 }
 
-<div class="seguimiento">
+@* data-realtime-region: en /Seguimiento esta zona se refresca sola cuando cambia el estado (tiempo real). *@
+<div class="seguimiento" data-realtime-region data-realtime-destacar>
     @* La fuente oficial del estado es Incidencia.Estado, no el historial. *@
     <section class="bloque seguimiento-actual" aria-labelledby="titulo-estado-actual">
         <h2 class="bloque__titulo" id="titulo-estado-actual">Estado actual</h2>

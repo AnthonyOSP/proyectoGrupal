@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    @* Estilos que solo necesitan algunas páginas (por ejemplo, Leaflet en las que tienen mapa). *@
+    @await RenderSectionAsync("Estilos", required: false)
 </head>
 <body class="admin-body">
     <a class="skip-link" href="#contenido">Saltar al contenido</a>

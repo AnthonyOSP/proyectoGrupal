@@ -2,6 +2,17 @@
 @{
     ViewData["Title"] = "Incidencias";
     var estados = Enum.GetValues<EstadoIncidencia>();
+
+    // Mapa: las mismas incidencias ya filtradas (búsqueda, categoría y estado) que tienen coordenadas.
+    // Solo datos públicos del reporte: nunca usuario, correo ni teléfono.
+    var puntosMapa = Model.Incidencias
+        .Where(i => i.TieneUbicacion)
+        .Select(i => new { id = i.Id, titulo = i.Titulo, categoria = i.Categoria.Nombre, estado = i.Estado.Texto(), lat = i.Latitud, lng = i.Longitud })
+        .ToList();
+    // JavaScriptEncoder.Default escapa <, > y &: un título como "</script>" no puede romper la página.
+    var datosMapa = System.Text.Json.JsonSerializer.Serialize(
+        new { total = Model.Incidencias.Count, puntos = puntosMapa },
+        new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
 <header class="admin-cabecera">
@@ -10,6 +21,10 @@
         <p class="admin-cabecera__sub">Revisa los reportes y actualiza su estado.</p>
     </div>
 </header>
+
+@* Tiempo real: avisa de nuevas incidencias y cambios de estado y refresca la zona marcada. *@
+@{ ViewData["RealtimeAvisoDesactivado"] = true; }
+<partial name="_Realtime" model="CanalesRealtime.Administracion" />
 
 @* Filtros por GET: quedan en la URL y funcionan sin JavaScript. *@
 <form class="filtros filtros--admin" method="get" asp-action="Incidencias" role="search">
@@ -53,6 +68,24 @@
     </div>
 </form>
 
+@* Mapa de las incidencias filtradas (Leaflet + OpenStreetMap). Queda fuera de la zona de tiempo real
+   para no redibujarlo desde cero; sus datos (JSON) sí están dentro y se actualizan con la lista. *@
+<section class="admin-card mapa-admin" aria-labelledby="titulo-mapa-admin">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-mapa-admin">Mapa de incidencias</h2>
+    </div>
+    <p class="mapa-admin__conteo" id="mapaAdminConteo">@puntosMapa.Count de @Model.Incidencias.Count incidencias mostradas tienen ubicación en el mapa.</p>
+    <div class="mapa mapa--admin" id="mapaAdmin" data-mapa="incidencias" data-fuente="datosMapaAdmin"
+         data-detalle="@(Url.Action("Detalle", "Admin"))/" data-vacio="mapaAdminVacio" data-conteo="mapaAdminConteo"
+         role="region" aria-label="Mapa de las incidencias mostradas" hidden="@(puntosMapa.Count == 0)"></div>
+    <p class="mapa-sin-ubicacion" id="mapaAdminVacio" hidden="@(puntosMapa.Count > 0)">
+        @Iconos.Svg("info", 18) <span>Ninguna de las incidencias mostradas tiene ubicación en el mapa.</span>
+    </p>
+</section>
+
+@* Zona que se vuelve a pedir al servidor (con los mismos filtros) cuando llega un evento en tiempo real. *@
+<div data-realtime-region>
+<script type="application/json" id="datosMapaAdmin">@Html.Raw(datosMapa)</script>
 <p class="resultados-info" role="status">
     <span>Mostrando <strong>@Model.Incidencias.Count</strong> de @Model.Total incidencias</span>
 </p>
@@ -76,7 +109,7 @@
             <tbody>
                 @foreach (var incidencia in Model.Incidencias)
                 {
-                    <tr>
+                    <tr data-incidencia-id="@incidencia.Id">
                         <td class="admin-tabla__id" data-label="ID"><span class="admin-id">#@incidencia.Id</span></td>
                         <td class="admin-tabla__principal" data-label="Incidencia">
                             <a class="admin-tabla__titulo" asp-action="Detalle" asp-route-id="@incidencia.Id">@incidencia.Titulo</a>
@@ -122,11 +155,18 @@ else
         }
     </div>
 }
+</div>
 
 @section Scripts {
+    <script src="~/lib/leaflet/dist/leaflet.js"></script>
+    <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
     <script>
         // Al cambiar un filtro se aplica automáticamente (el botón "Filtrar" funciona sin JavaScript).
         document.querySelectorAll("[data-autoenviar]").forEach(select =>
             select.addEventListener("change", () => select.form.submit()));
     </script>
+}
+
+@section Estilos {
+    <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
 }
