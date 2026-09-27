@@ -37,7 +37,8 @@
         const destino = form.querySelector('[data-resumen="' + nombre + '"]');
         if (!destino) return;
         const vacio = !valor;
-        destino.textContent = vacio ? (nombre === "Foto" ? "Sin fotografía" : SIN_COMPLETAR) : valor;
+        const textoVacio = { Foto: "Sin fotografía", Mapa: "Sin punto en el mapa" }[nombre] || SIN_COMPLETAR;
+        destino.textContent = vacio ? textoVacio : valor;
         destino.classList.toggle("is-vacio", vacio);
     }
 
@@ -56,6 +57,10 @@
         ponerResumen("Descripcion", resumir(form.elements["Descripcion"].value));
         const categoria = form.querySelector('input[name="Categoria"]:checked');
         ponerResumen("Categoria", categoria ? categoria.value : "");
+
+        // Punto del mapa (lo llena mapa-incidencias.js en campos ocultos).
+        const lat = parseFloat(form.elements["Latitud"]?.value), lng = parseFloat(form.elements["Longitud"]?.value);
+        ponerResumen("Mapa", Number.isFinite(lat) && Number.isFinite(lng) ? lat.toFixed(6) + ", " + lng.toFixed(6) : "");
     }
 
     form.querySelectorAll("[data-resumen-origen]").forEach(campo => {

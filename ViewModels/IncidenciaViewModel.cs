@@ -31,6 +31,16 @@ public class IncidenciaViewModel
     public string? FotoSegura =>
         FotoUrl != null && FotoUrl.StartsWith(Services.FotoIncidenciaService.CarpetaRelativa) ? FotoUrl : null;
 
+    // Punto del mapa (null en incidencias sin ubicación geográfica, como las anteriores a la Etapa 13).
+    public decimal? Latitud { get; set; }
+
+    public decimal? Longitud { get; set; }
+
+    // Solo se dibuja un mapa si hay las dos coordenadas y están en rango.
+    public bool TieneUbicacion =>
+        Latitud is >= CoordenadasGeograficas.LatitudMinima and <= CoordenadasGeograficas.LatitudMaxima &&
+        Longitud is >= CoordenadasGeograficas.LongitudMinima and <= CoordenadasGeograficas.LongitudMaxima;
+
     // Convierte la entidad de la base de datos en el ViewModel de la vista.
     public static IncidenciaViewModel DesdeEntidad(Incidencia incidencia) => new()
     {
@@ -41,7 +51,9 @@ public class IncidenciaViewModel
         Ubicacion = incidencia.Ubicacion,
         Fecha = incidencia.FechaRegistro,
         Estado = EstadoIncidenciaExtensions.DesdeTexto(incidencia.Estado),
-        FotoUrl = incidencia.FotoUrl
+        FotoUrl = incidencia.FotoUrl,
+        Latitud = incidencia.Latitud,
+        Longitud = incidencia.Longitud
     };
 
     // Ej: "23 de septiembre de 2026"
