@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using proyectoGrupal.Data;
@@ -45,6 +46,8 @@ public class HomeController : Controller
     }
 
     // GET: /Home/Reportar?categoria=alumbrado
+    // Requiere sesión iniciada: un visitante es enviado a /Account/Login y vuelve aquí al entrar.
+    [Authorize]
     public IActionResult Reportar(string? categoria)
     {
         // El parámetro "categoria" (slug de la URL) queda en ModelState y el <select> lo usaría
@@ -64,6 +67,7 @@ public class HomeController : Controller
     // El límite de 20 MB permite responder con un mensaje amigable a fotos de hasta 20 MB;
     // la foto en sí se valida con un máximo de 5 MB.
     [HttpPost]
+    [Authorize]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(20 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 20 * 1024 * 1024)]

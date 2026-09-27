@@ -1,0 +1,15 @@
+@{
+    ViewData["Title"] = "Acceso denegado";
+}
+
+<div class="container seccion">
+    <div class="vacio">
+        <span class="vacio__icono">@Iconos.Svg("lock", 26)</span>
+        <h1 class="vacio__titulo">No tienes permiso para ver esta página</h1>
+        <p>Esta sección está reservada para el equipo administrador de Alerta Vecinal. Si crees que es un error, cierra sesión e ingresa con una cuenta autorizada.</p>
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a class="btn btn-av-secondary" asp-controller="Home" asp-action="Index">Ir al inicio</a>
+            <a class="btn btn-av-primary" asp-controller="Home" asp-action="Incidencias">Ver incidencias</a>
+        </div>
+    </div>
+</div>
