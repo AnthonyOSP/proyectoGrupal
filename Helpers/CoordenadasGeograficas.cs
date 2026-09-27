@@ -14,10 +14,13 @@ public static class CoordenadasGeograficas
     // Largo máximo del texto recibido (un número de 17 dígitos significativos cabe de sobra).
     public const int LargoMaximoTexto = 40;
 
-    // Vista inicial del mapa del formulario (Lima) antes de que el vecino marque un punto.
-    public const string CentroInicialLatitud = "-12.0464";
-    public const string CentroInicialLongitud = "-77.0428";
-    public const int ZoomInicial = 12;
+    // Vista inicial del mapa del formulario antes de que el vecino marque un punto: La Molina
+    // (referencia: openstreetmap.org/relation/1944745). Es solo el punto de partida: el mapa no se
+    // restringe al distrito y el punto puede marcarse en cualquier lugar.
+    // Detalle y Seguimiento se centran en el punto de la incidencia; el panel, en sus marcadores.
+    public const string CentroInicialLatitud = "-12.10248";
+    public const string CentroInicialLongitud = "-76.93030";
+    public const int ZoomInicial = 14;
 
     private const NumberStyles Formato = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint;
 
