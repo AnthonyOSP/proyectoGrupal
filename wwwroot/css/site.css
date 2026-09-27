@@ -325,40 +325,100 @@ h1, h2, h3, h4 {
     padding-top: 0.5rem;
     border-top: 1px solid var(--av-border);
   }
+  .nav-usuario__boton {
+    width: 100%;
+  }
+  /* En el menú móvil las opciones de la cuenta se despliegan debajo, dentro del mismo menú */
+  .nav-usuario .nav-usuario__menu {
+    position: static;
+    width: 100%;
+    margin-top: 0.25rem;
+    box-shadow: none;
+  }
 }
 
-/* Sesión: iniciar sesión, correo del usuario y cerrar sesión */
+/* Sesión: menú de la cuenta (correo, Mi perfil, Cerrar sesión) */
 .nav-usuario {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  position: relative;
   min-width: 0;
 }
 
 .nav-usuario form {
   margin: 0;
-  flex-shrink: 0;
 }
 
-.nav-usuario__correo {
+.nav-usuario__boton {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--av-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--av-radius-sm);
+  transition: color var(--av-transition), background-color var(--av-transition);
 }
 
-.nav-usuario__correo > span {
+.nav-usuario__boton:hover,
+.nav-usuario__boton[aria-expanded="true"] {
+  color: var(--av-ink);
+  background: var(--av-bg);
+}
+
+.nav-usuario__correo {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.nav-salir {
-  padding-inline: 0.75rem;
+.nav-usuario__menu {
+  min-width: 250px;
+  padding: 0.375rem;
+  font-size: 0.9375rem;
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius);
+  box-shadow: var(--av-shadow);
+}
+
+.nav-usuario__cabecera {
+  display: grid;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--av-muted);
+}
+
+.nav-usuario__cabecera strong {
+  font-size: 0.875rem;
+  color: var(--av-ink);
+  overflow-wrap: anywhere;
+}
+
+.nav-usuario__menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font-weight: 700;
+  color: var(--av-text);
+  border-radius: var(--av-radius-sm);
+}
+
+.nav-usuario__menu .dropdown-item:hover,
+.nav-usuario__menu .dropdown-item:focus-visible,
+.nav-usuario__menu .dropdown-item.active {
+  color: var(--av-primary-hover);
+  background: var(--av-primary-soft);
+}
+
+.nav-usuario__menu .dropdown-divider {
+  margin: 0.25rem 0;
+  border-color: var(--av-border);
 }
 
 @media (min-width: 992px) {
@@ -389,11 +449,11 @@ h1, h2, h3, h4 {
   /* Los enlaces y botones del menú nunca se parten en dos líneas */
   .site-header .nav-link,
   .nav-cta,
-  .nav-salir {
+  .nav-usuario__boton {
     white-space: nowrap;
   }
-  /* Administrador: el correo queda solo como ícono (texto para lectores de pantalla y al pasar el mouse) */
-  .nav-usuario--compacto .nav-usuario__correo > span {
+  /* Administrador: el correo queda solo como ícono (texto para lectores de pantalla, al pasar el mouse y dentro del menú) */
+  .nav-usuario--compacto .nav-usuario__correo {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -403,11 +463,10 @@ h1, h2, h3, h4 {
   }
 }
 
-/* Escritorio mediano: el correo y "Cerrar sesión" quedan solo con ícono para que el menú quepa en una línea
-   (el texto sigue disponible para lectores de pantalla y el correo aparece al pasar el mouse) */
+/* Escritorio mediano: el correo queda solo como ícono para que el menú quepa en una línea
+   (el texto sigue disponible para lectores de pantalla, al pasar el mouse y dentro del menú) */
 @media (min-width: 992px) and (max-width: 1199.98px) {
-  .nav-salir__texto,
-  .nav-usuario__correo > span {
+  .nav-usuario__correo {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2222,6 +2281,105 @@ textarea.form-control {
 
 .auth-alterna a {
   font-weight: 700;
+}
+
+/* Mi perfil: dos tarjetas (datos de la cuenta y seguridad) */
+.perfil-layout {
+  display: grid;
+  gap: 1.5rem;
+  padding-block: 1.5rem 3rem;
+}
+
+@media (min-width: 992px) {
+  .perfil-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+    align-items: start;
+    padding-block: 2.5rem 4.5rem;
+  }
+}
+
+/* Nombres y apellidos lado a lado cuando hay espacio */
+.campo-fila {
+  display: grid;
+  gap: 0 1rem;
+}
+
+/* Dentro de la fila ningún campo es el último del formulario: todos conservan su margen */
+.campo-fila > .campo,
+.campo-fila > .campo:last-child {
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 576px) {
+  .campo-fila { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.perfil-correo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  color: var(--av-ink);
+  background: var(--av-bg);
+  border: 1.5px solid var(--av-border);
+  border-radius: var(--av-radius-sm);
+}
+
+.perfil-correo span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.perfil-correo .icono {
+  color: var(--av-muted);
+}
+
+.perfil-rol {
+  flex-shrink: 0;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--av-primary-hover);
+  background: var(--av-primary-soft);
+  border-radius: 999px;
+  align-self: flex-start;
+}
+
+.perfil-subtitulo {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.perfil-boton {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+@media (min-width: 576px) {
+  .perfil-boton { width: auto; }
+}
+
+/* Mensaje de éxito dentro de un formulario (más compacto que el de la página) */
+.alerta-exito--form {
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+}
+
+.alerta-exito--form .alerta-exito__icono {
+  width: 32px;
+  height: 32px;
+}
+
+.alerta-exito--form .alerta-exito__titulo {
+  font-size: 1rem;
+  color: var(--av-success);
 }
 
 /* ---------- 13. Utilidades y accesibilidad ---------- */

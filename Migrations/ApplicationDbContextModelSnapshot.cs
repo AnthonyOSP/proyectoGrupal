@@ -153,6 +153,10 @@ namespace proyectoGrupal.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Apellidos")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
@@ -168,6 +172,10 @@ namespace proyectoGrupal.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nombres")
+                        .HasMaxLength(60)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedEmail")

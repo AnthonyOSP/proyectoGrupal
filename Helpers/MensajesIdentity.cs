@@ -24,6 +24,9 @@ public class MensajesIdentity : IdentityErrorDescriber
     public override IdentityError PasswordTooShort(int length) =>
         new() { Code = nameof(PasswordTooShort), Description = $"La contraseña debe tener al menos {length} caracteres." };
 
+    public override IdentityError PasswordMismatch() =>
+        new() { Code = nameof(PasswordMismatch), Description = "La contraseña actual no es correcta." };
+
     public override IdentityError PasswordRequiresDigit() =>
         new() { Code = nameof(PasswordRequiresDigit), Description = "La contraseña debe incluir al menos un número." };
 
