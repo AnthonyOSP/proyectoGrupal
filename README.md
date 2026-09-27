@@ -611,6 +611,7 @@ Además de la ubicación escrita (`Ubicacion`, por ejemplo "Av. Próceres con Jr
 ### 14.2 Cómo se elige y se guarda el punto
 
 - En `/Home/Reportar`, la sección **Ubicación en el mapa** es **opcional**: se hace clic en el mapa (o se usa **Marcar el centro del mapa**) y se puede **arrastrar el marcador** para ajustarlo. **Quitar punto** lo borra.
+- El mapa empieza centrado en **La Molina** (zoom 14), pero se puede mover libremente: el punto puede marcarse en cualquier lugar.
 - En pantalla se muestran 6 decimales; se guarda el valor completo que da el navegador.
 - En la base de datos: columnas `Latitud` y `Longitud` de tipo `decimal` (SQLite las guarda como texto exacto, sin errores de redondeo) y **nullable**.
 - El servidor vuelve a validar todo (no confía en el navegador): número con punto decimal, latitud entre -90 y 90, longitud entre -180 y 180, y las **dos o ninguna**. Rechaza `NaN`, `Infinity`, notación científica y textos. Si algo no es válido, el reporte no se guarda (ni se indexa en Algolia ni se publica en PieSocket).
