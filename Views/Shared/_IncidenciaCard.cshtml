@@ -25,5 +25,13 @@
 
     <div class="inc-card__footer">
         <span class="inc-card__detalle" aria-hidden="true">Ver detalle @Iconos.Svg("arrow-right", 16)</span>
+        @* Solo en "Mis incidencias": el seguimiento es privado del dueño (el servidor lo vuelve a comprobar). *@
+        @if (ViewData["MostrarSeguimiento"] is true)
+        {
+            <a class="btn btn-av-secondary btn-sm-av inc-card__seguimiento" asp-controller="Home" asp-action="Seguimiento" asp-route-id="@Model.Id"
+               aria-label="Ver seguimiento de: @Model.Titulo">
+                @Iconos.Svg("clock", 16) Ver seguimiento
+            </a>
+        }
     </div>
 </article>

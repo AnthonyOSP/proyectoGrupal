@@ -1,0 +1,31 @@
+@model SeguimientoViewModel
+@{
+    ViewData["Title"] = $"Seguimiento: {Model.Incidencia.Titulo}";
+    var incidencia = Model.Incidencia;
+}
+
+<section class="page-head">
+    <div class="container">
+        <nav class="migas" aria-label="Ruta de navegación">
+            <ol>
+                <li><a asp-action="Index">Inicio</a></li>
+                <li><a asp-action="MisIncidencias">Mis incidencias</a></li>
+                <li aria-current="page">Seguimiento</li>
+            </ol>
+        </nav>
+        <div class="detalle-cabecera__chips">
+            <span class="chip-cat" data-cat="@incidencia.Categoria.Slug">@Iconos.Svg(incidencia.Categoria.Icono, 14) @incidencia.Categoria.Nombre</span>
+        </div>
+        <h1 class="page-head__titulo">@incidencia.Titulo</h1>
+        <p class="page-head__sub">Reporte #@incidencia.Id.ToString("D4") · @incidencia.Ubicacion</p>
+    </div>
+</section>
+
+<div class="container seguimiento-pagina">
+    <partial name="_Seguimiento" model="Model" />
+
+    <div class="seguimiento-acciones">
+        <a class="btn btn-av-secondary" asp-action="MisIncidencias">@Iconos.Svg("arrow-left", 18) Volver a mis incidencias</a>
+        <a class="btn btn-av-secondary" asp-action="Detalle" asp-route-id="@incidencia.Id">@Iconos.Svg("eye", 18) Ver detalle del reporte</a>
+    </div>
+</div>
