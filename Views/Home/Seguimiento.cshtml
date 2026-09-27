@@ -22,10 +22,33 @@
 </section>
 
 <div class="container seguimiento-pagina">
+    @* Tiempo real: el estado se actualiza solo cuando el administrador lo cambia. *@
+    <partial name="_Realtime" model="CanalesRealtime.Incidencia(incidencia.Id)" />
     <partial name="_Seguimiento" model="Model" />
+
+    @* Fuera de la zona de tiempo real: al cambiar el estado, el mapa no se vuelve a dibujar. *@
+    <div class="seguimiento-mapa">
+        <partial name="_MapaIncidencia" model="incidencia" />
+    </div>
 
     <div class="seguimiento-acciones">
         <a class="btn btn-av-secondary" asp-action="MisIncidencias">@Iconos.Svg("arrow-left", 18) Volver a mis incidencias</a>
         <a class="btn btn-av-secondary" asp-action="Detalle" asp-route-id="@incidencia.Id">@Iconos.Svg("eye", 18) Ver detalle del reporte</a>
     </div>
 </div>
+
+@* Leaflet solo si hay un punto que mostrar. *@
+@section Estilos {
+    @if (incidencia.TieneUbicacion)
+    {
+        <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
+    }
+}
+
+@section Scripts {
+    @if (incidencia.TieneUbicacion)
+    {
+        <script src="~/lib/leaflet/dist/leaflet.js"></script>
+        <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
+    }
+}

@@ -13,6 +13,8 @@
         (Campo: nameof(Model.Categoria), Destino: primeraCategoria),
         (Campo: nameof(Model.Descripcion), Destino: "Descripcion"),
         (Campo: nameof(Model.Ubicacion), Destino: "Ubicacion"),
+        (Campo: nameof(Model.Latitud), Destino: "mapaReporte"),
+        (Campo: nameof(Model.Longitud), Destino: "mapaReporte"),
         (Campo: nameof(Model.Foto), Destino: "Foto")
     }
     .Select(c => (c.Destino, Mensaje: ViewData.ModelState[c.Campo]?.Errors.FirstOrDefault()?.ErrorMessage))
@@ -120,6 +122,38 @@
                         <span asp-validation-for="Ubicacion"></span>
                         <div class="campo__ayuda" id="Ubicacion-ayuda"><span>Dirección, cruce de calles o una referencia cercana.</span></div>
                     </div>
+
+                    @* Punto en el mapa (opcional). Es un dato distinto de la ubicación escrita: se guardan los dos.
+                       Los campos ocultos los llena mapa-incidencias.js; el servidor valida formato, rango y que vengan en pareja. *@
+                    <div class="campo mapa-campo">
+                        <span class="campo__label" id="mapa-etiqueta">Ubicación en el mapa <span class="campo__opcional">(opcional)</span></span>
+                        <p class="mapa-campo__ayuda" id="mapa-ayuda">
+                            Selecciona en el mapa dónde ocurrió la incidencia. Puedes mover el marcador para ajustar la ubicación.
+                        </p>
+                        <div class="mapa mapa--selector" id="mapaReporte" tabindex="-1" data-mapa="selector"
+                             data-latitud="Latitud" data-longitud="Longitud" data-panel="mapaPanel"
+                             data-centro-lat="@CoordenadasGeograficas.CentroInicialLatitud" data-centro-lng="@CoordenadasGeograficas.CentroInicialLongitud"
+                             data-zoom="@CoordenadasGeograficas.ZoomInicial"
+                             role="region" aria-labelledby="mapa-etiqueta" aria-describedby="mapa-ayuda"></div>
+                        <div class="mapa-seleccion" id="mapaPanel">
+                            <p class="mapa-seleccion__coordenadas" aria-live="polite">
+                                Latitud: <strong data-mapa-latitud>—</strong> · Longitud: <strong data-mapa-longitud>—</strong>
+                            </p>
+                            <div class="mapa-seleccion__acciones">
+                                <button type="button" class="btn btn-av-secondary mapa-seleccion__boton" data-mapa-centro>
+                                    @Iconos.Svg("map-pin", 16) Marcar el centro del mapa
+                                </button>
+                                <button type="button" class="btn btn-av-ghost mapa-seleccion__boton" data-mapa-quitar hidden>
+                                    @Iconos.Svg("x", 16) Quitar punto
+                                </button>
+                            </div>
+                        </div>
+                        <input type="hidden" asp-for="Latitud" data-resumen-origen="Mapa" />
+                        <input type="hidden" asp-for="Longitud" />
+                        <span asp-validation-for="Latitud"></span>
+                        <span asp-validation-for="Longitud"></span>
+                        <noscript><p class="mapa-campo__ayuda">El mapa necesita JavaScript. Puedes enviar el reporte solo con la ubicación escrita.</p></noscript>
+                    </div>
                 </fieldset>
 
                 <fieldset class="form-grupo">
@@ -182,6 +216,10 @@
                             <dt>Ubicación</dt>
                             <dd data-resumen="Ubicacion" class="@(Model.Ubicacion == null ? "is-vacio" : "")">@(Model.Ubicacion ?? SinCompletar)</dd>
                         </div>
+                        <div>
+                            <dt>Punto en el mapa</dt>
+                            <dd data-resumen="Mapa" class="is-vacio">Sin punto en el mapa</dd>
+                        </div>
                         <div class="resumen-reporte__ancho">
                             <dt>Descripción</dt>
                             <dd data-resumen="Descripcion" class="@(Model.Descripcion == null ? "is-vacio" : "")">@(Model.Descripcion == null ? SinCompletar : Resumir(Model.Descripcion))</dd>
@@ -225,4 +263,10 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/reportar.js" asp-append-version="true"></script>
+    <script src="~/lib/leaflet/dist/leaflet.js"></script>
+    <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
+}
+
+@section Estilos {
+    <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
 }
