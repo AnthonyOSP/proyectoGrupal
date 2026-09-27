@@ -95,3 +95,58 @@
         </div>
     }
 </section>
+
+@* Índice de búsqueda (Algolia). SQLite es la fuente de verdad; aquí solo se ve el estado del índice
+   y se puede reconstruir completo. Nunca se muestran claves. *@
+<section class="admin-card busqueda-admin" aria-labelledby="titulo-busqueda">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-busqueda">Búsqueda de incidencias</h2>
+        @if (Model.AlgoliaConfigurado)
+        {
+            <span class="estado estado--atendida">@Iconos.Svg("check-circle", 14) Algolia configurado</span>
+        }
+        else
+        {
+            <span class="estado estado--pendiente">@Iconos.Svg("info", 14) Búsqueda básica (SQLite)</span>
+        }
+    </div>
+
+    @if (TempData["MensajeBusqueda"] is string mensajeBusqueda)
+    {
+        var ok = TempData["BusquedaOk"] as bool? == true;
+        <p class="@(ok ? "busqueda-admin__ok" : "busqueda-admin__error")" role="status">
+            @Iconos.Svg(ok ? "check" : "info", 16) <span>@mensajeBusqueda</span>
+        </p>
+    }
+
+    @if (Model.AlgoliaConfigurado)
+    {
+        <p class="busqueda-admin__texto">
+            Índice: <strong>@Model.IndiceBusqueda</strong>. Las incidencias nuevas y los cambios de estado se indexan solos.
+            Usa la sincronización completa la primera vez, o si Algolia no estuvo disponible por un tiempo.
+        </p>
+        <form asp-action="SincronizarBusqueda" method="post" id="formSincronizar">
+            <button type="submit" class="btn btn-av-secondary" id="btnSincronizar">
+                @Iconos.Svg("search", 18) <span class="btn-texto">Sincronizar todas las incidencias</span>
+            </button>
+        </form>
+    }
+    else
+    {
+        <p class="busqueda-admin__texto mb-0">
+            Algolia no está configurado. La búsqueda funciona con SQLite (sin tolerancia a errores de tipeo).
+            Para activarlo, configura <code>ALGOLIA_APPLICATION_ID</code> y <code>ALGOLIA_ADMIN_API_KEY</code> (ver README).
+        </p>
+    }
+</section>
+
+@section Scripts {
+    <script>
+        // Evita envíos dobles mientras se sincroniza (puede tardar unos segundos).
+        document.getElementById("formSincronizar")?.addEventListener("submit", () => {
+            const boton = document.getElementById("btnSincronizar");
+            boton.disabled = true;
+            boton.querySelector(".btn-texto").textContent = "Sincronizando...";
+        });
+    </script>
+}

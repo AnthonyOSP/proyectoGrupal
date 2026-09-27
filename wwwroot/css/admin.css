@@ -703,3 +703,41 @@
 .ultimas__titulo {
   overflow-wrap: anywhere;
 }
+
+/* Tarjeta "Búsqueda de incidencias" del dashboard */
+.busqueda-admin .admin-card__cabecera {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.busqueda-admin__texto {
+  margin: 0 0 1rem;
+  color: var(--av-muted);
+  overflow-wrap: anywhere;
+}
+
+.busqueda-admin__ok,
+.busqueda-admin__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.625rem 0.875rem;
+  font-weight: 700;
+  border-radius: var(--av-radius-sm);
+}
+
+.busqueda-admin__ok {
+  color: var(--av-success);
+  background: var(--av-success-bg);
+}
+
+.busqueda-admin__error {
+  color: var(--av-error);
+  background: var(--av-error-bg);
+}
+
+.busqueda-admin__ok .icono,
+.busqueda-admin__error .icono {
+  margin-top: 0.25rem;
+}

@@ -7,6 +7,7 @@ using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
+using proyectoGrupal.Services.Algolia;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
@@ -15,6 +16,8 @@ public class HomeController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly FotoIncidenciaService _fotos;
+    private readonly BusquedaIncidenciasService _busqueda;
+    private readonly IAlgoliaIncidenciaService _algolia;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILogger<HomeController> _logger;
@@ -23,12 +26,16 @@ public class HomeController : Controller
     public HomeController(
         ApplicationDbContext context,
         FotoIncidenciaService fotos,
+        BusquedaIncidenciasService busqueda,
+        IAlgoliaIncidenciaService algolia,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ILogger<HomeController> logger)
     {
         _context = context;
         _fotos = fotos;
+        _busqueda = busqueda;
+        _algolia = algolia;
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
@@ -182,6 +189,11 @@ public class HomeController : Controller
             return View(modelo);
         }
 
+        // La incidencia ya está en SQLite: ahora se agrega al índice de búsqueda.
+        // Si Algolia falla, la incidencia NO se deshace; el servicio registra el problema y un
+        // administrador puede resincronizar el índice desde el panel.
+        await _algolia.IndexarAsync(incidencia);
+
         // TempData sobrevive a la redirección y se muestra una sola vez.
         // Los datos de la confirmación salen de la incidencia guardada, no del formulario.
         TempData["ReporteCreadoId"] = incidencia.Id;
@@ -219,22 +231,24 @@ public class HomeController : Controller
     // GET: /Home/Incidencias?buscar=poste&categoria=alumbrado&estado=EnRevision
     public async Task<IActionResult> Incidencias(string? buscar, string? categoria, EstadoIncidencia? estado)
     {
+        // Parámetros de la URL validados: categoría solo si existe en el catálogo, estado solo si es válido
+        // (el model binding deja null un valor desconocido) y texto limpio con un largo máximo.
         var categoriaElegida = CatalogoCategorias.PorSlug(categoria);
+        buscar = BusquedaIncidenciasService.NormalizarTexto(buscar);
 
-        var incidencias = await _context.Incidencias
-            .AsNoTracking()
-            .Filtrar(buscar, categoriaElegida, estado)
-            .OrderByDescending(i => i.FechaRegistro)
-            .ToListAsync();
+        // Algolia (si está configurado) o SQLite; las incidencias mostradas siempre salen de SQLite.
+        var resultado = await _busqueda.BuscarAsync(buscar, categoriaElegida, estado, HttpContext.RequestAborted);
 
         var modelo = new IncidenciasListadoViewModel
         {
-            Incidencias = incidencias.Select(IncidenciaViewModel.DesdeEntidad).ToList(),
+            Incidencias = resultado.Incidencias.Select(IncidenciaViewModel.DesdeEntidad).ToList(),
             Categorias = CatalogoCategorias.Todas,
             Buscar = buscar,
             Categoria = categoriaElegida?.Slug,
             Estado = estado,
-            Total = await _context.Incidencias.CountAsync()
+            Total = await _context.Incidencias.CountAsync(),
+            Motor = resultado.Motor,
+            BusquedaAvanzadaNoDisponible = resultado.BusquedaAvanzadaNoDisponible
         };
 
         return View(modelo);
