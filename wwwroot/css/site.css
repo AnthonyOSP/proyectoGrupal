@@ -817,11 +817,11 @@ h1, h2, h3, h4 {
 }
 
 @media (min-width: 768px) {
-  .grid-incidencias { grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+  .grid-incidencias { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
 }
 
 @media (min-width: 1200px) {
-  .grid-incidencias { grid-template-columns: repeat(3, 1fr); }
+  .grid-incidencias { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .inc-card {
@@ -1315,11 +1315,9 @@ textarea.form-control {
   color: var(--av-muted);
 }
 
+/* Vista previa: imagen grande y adaptable, con nombre, peso y botones Cambiar / Quitar */
 .foto-preview {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem;
+  overflow: hidden;
   background: var(--av-bg);
   border: 1px solid var(--av-border);
   border-radius: var(--av-radius);
@@ -1330,15 +1328,24 @@ textarea.form-control {
 }
 
 .foto-preview img {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-  border-radius: var(--av-radius-sm);
-  flex-shrink: 0;
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  background: var(--av-ink);
+}
+
+.foto-preview__pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
 }
 
 .foto-preview__info {
-  flex: 1;
+  flex: 1 1 12rem;
   min-width: 0;
 }
 
@@ -1352,6 +1359,12 @@ textarea.form-control {
 .foto-preview__peso {
   font-size: 0.875rem;
   color: var(--av-muted);
+}
+
+.foto-preview__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .form-acciones {
@@ -1385,6 +1398,230 @@ textarea.form-control {
     width: auto;
     min-width: 200px;
   }
+}
+
+/* Contador de caracteres: el aviso también se expresa con texto ("faltan N") */
+.campo__contador {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.campo__contador.is-alerta {
+  font-weight: 700;
+  color: var(--av-pendiente-text);
+}
+
+/* Enlaces del resumen de errores: llevan al campo con el problema */
+.resumen-errores a {
+  color: var(--av-error);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+/* Categorías como tarjetas seleccionables (radios reales, accesibles con teclado) */
+.cat-opciones-grupo {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+/* Bootstrap da a <legend> tamaño de título: aquí se ve igual que las demás etiquetas */
+.cat-opciones-grupo > legend.campo__label {
+  float: none;
+  margin-bottom: 0.375rem;
+  font-family: var(--av-font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.cat-opciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .cat-opciones { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .cat-opciones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.cat-opcion {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 56px;
+  padding: 0.625rem 2rem 0.625rem 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--av-ink);
+  background: var(--av-surface);
+  border: 1.5px solid var(--av-border-strong);
+  border-radius: var(--av-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--av-transition), background-color var(--av-transition), box-shadow var(--av-transition);
+}
+
+.cat-opcion:hover {
+  border-color: var(--av-primary);
+}
+
+/* El radio real queda invisible pero sigue siendo el control que se enfoca y se envía */
+.cat-opcion input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.cat-opcion__icono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  color: var(--cat-fg, var(--av-primary));
+  background: var(--cat-bg, var(--av-primary-soft));
+  border-radius: var(--av-radius-sm);
+}
+
+/* Las palabras no se cortan a la fuerza ("Alumbrad-o"); solo si una sola palabra no cabe */
+.cat-opcion__nombre {
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+
+/* Móvil: el ícono va arriba y el nombre usa todo el ancho de la tarjeta */
+@media (max-width: 575.98px) {
+  .cat-opcion {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 1.75rem 0.75rem 0.75rem;
+  }
+}
+
+.cat-opcion__check {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: #fff;
+  background: var(--av-primary);
+  border-radius: 50%;
+}
+
+/* Elegida: borde, fondo y marca de verificación (no depende solo del color) */
+.cat-opcion:has(input:checked) {
+  border-color: var(--av-primary);
+  background: var(--av-primary-soft);
+  box-shadow: 0 0 0 1px var(--av-primary);
+}
+
+.cat-opcion:has(input:checked) .cat-opcion__check {
+  display: grid;
+}
+
+.cat-opcion:has(input:focus-visible) {
+  outline: 3px solid var(--av-primary);
+  outline-offset: 2px;
+}
+
+.cat-opciones.is-invalido .cat-opcion,
+.cat-opciones:has(input.input-validation-error) .cat-opcion {
+  border-color: var(--av-error);
+}
+
+/* Resumen antes de enviar */
+.resumen-reporte {
+  margin-bottom: 1.75rem;
+}
+
+.resumen-reporte__lista {
+  display: grid;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--av-bg);
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius);
+}
+
+@media (min-width: 576px) {
+  .resumen-reporte__lista { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .resumen-reporte__ancho { grid-column: 1 / -1; }
+}
+
+.resumen-reporte__lista dt {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--av-muted);
+}
+
+.resumen-reporte__lista dd {
+  margin: 0;
+  color: var(--av-ink);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.resumen-reporte__lista dd.is-vacio {
+  font-style: italic;
+  color: var(--av-muted);
+}
+
+.resumen-reporte__nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--av-muted);
+}
+
+.resumen-reporte__nota .icono {
+  margin-top: 0.1875rem;
+}
+
+/* Cancelar + Enviar: en móvil apilados (Enviar arriba), desde 576 px en fila (Enviar a la derecha) */
+.form-acciones .btn-av-secondary {
+  justify-content: center;
+}
+
+/* Confirmación tras registrar una incidencia */
+.alerta-exito__cuerpo {
+  min-width: 0;
+}
+
+.alerta-exito__datos {
+  display: grid;
+  gap: 0.5rem 1.5rem;
+  margin: 0 0 0.875rem;
+}
+
+@media (min-width: 576px) {
+  .alerta-exito__datos { grid-template-columns: repeat(3, auto); justify-content: start; }
+}
+
+.alerta-exito__datos dt {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--av-muted);
+}
+
+.alerta-exito__datos dd {
+  margin: 0;
+  font-weight: 700;
+  color: var(--av-ink);
+  overflow-wrap: anywhere;
 }
 
 /* Estado "enviando" del botón */
@@ -2383,6 +2620,20 @@ textarea.form-control {
 }
 
 /* ---------- 13. Utilidades y accesibilidad ---------- */
+
+/* Texto escrito por los vecinos (título, descripción, ubicación): una palabra muy larga,
+   como un enlace pegado, se parte en lugar de ensanchar la tarjeta o la página. */
+.inc-card,
+.inc-card__titulo,
+.inc-card__desc,
+.inc-card__meta span,
+.page-head__titulo,
+.page-head__sub,
+.bloque__texto,
+.datos dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 /* Foco visible y consistente para teclado */
 :focus-visible {

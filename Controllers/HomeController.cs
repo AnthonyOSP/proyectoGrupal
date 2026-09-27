@@ -93,13 +93,22 @@ public class HomeController : Controller
                 new { returnUrl = Url.Action(nameof(Reportar)) });
         }
 
+        // Normalizar los textos y volver a validar: así "   abcd   " no pasa como título de 5+ caracteres
+        // y los saltos de línea cuentan igual que en el contador del navegador.
+        modelo.Titulo = UnaLinea(modelo.Titulo);
+        modelo.Ubicacion = UnaLinea(modelo.Ubicacion);
+        modelo.Descripcion = TextoLargo(modelo.Descripcion);
+        ModelState.Clear();
+        TryValidateModel(modelo);
+
         // La categoría debe ser una de la lista (no se confía en el HTML del navegador).
-        if (!CategoriasIncidencia.Todas.Contains(modelo.Categoria))
+        if (modelo.Categoria != null && !CategoriasIncidencia.Todas.Contains(modelo.Categoria))
         {
             ModelState.AddModelError(nameof(modelo.Categoria), "Elige una categoría de la lista.");
         }
 
-        // Validación rápida de la foto (tamaño y extensión) junto con los demás campos.
+        // Validación rápida de la foto (tamaño, extensión y tipo MIME) junto con los demás campos.
+        // El contenido real de la imagen se comprueba después, en ProcesarYGuardarAsync.
         if (modelo.Foto != null)
         {
             var errorFoto = FotoIncidenciaService.ValidarArchivo(modelo.Foto);
@@ -133,10 +142,10 @@ public class HomeController : Controller
         var ahora = DateTime.Now;
         var incidencia = new Incidencia
         {
-            Titulo = modelo.Titulo!.Trim(),
-            Descripcion = modelo.Descripcion!.Trim(),
+            Titulo = modelo.Titulo!,
+            Descripcion = modelo.Descripcion!,
             Categoria = modelo.Categoria!,
-            Ubicacion = modelo.Ubicacion!.Trim(),
+            Ubicacion = modelo.Ubicacion!,
             FotoUrl = fotoUrl,
             Estado = EstadosIncidencia.Pendiente,
             FechaRegistro = ahora,
@@ -174,8 +183,37 @@ public class HomeController : Controller
         }
 
         // TempData sobrevive a la redirección y se muestra una sola vez.
+        // Los datos de la confirmación salen de la incidencia guardada, no del formulario.
         TempData["ReporteCreadoId"] = incidencia.Id;
+        TempData["ReporteCreadoTitulo"] = incidencia.Titulo;
+        TempData["ReporteCreadoEstado"] = incidencia.Estado;
+        TempData["ReporteCreadoFecha"] = incidencia.FechaRegistro.ToString("dd/MM/yyyy HH:mm");
         return RedirectToAction(nameof(Incidencias));
+    }
+
+    // Título y ubicación: una sola línea, sin espacios al inicio/final ni repetidos.
+    // No cambia mayúsculas ni el resto del texto. Si solo había espacios, queda null (campo obligatorio).
+    private static string? UnaLinea(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return null;
+        }
+
+        return string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    // Descripción: se respeta lo escrito (incluidos los saltos de línea); solo se quitan los espacios
+    // del inicio y el final, y los saltos "\r\n" del navegador se guardan como "\n" (1 carácter,
+    // igual que en el contador del formulario).
+    private static string? TextoLargo(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return null;
+        }
+
+        return texto.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
     }
 
     // GET: /Home/Incidencias?buscar=poste&categoria=alumbrado&estado=EnRevision

@@ -3,8 +3,11 @@
     ViewData["Title"] = "Incidencias";
     var estados = Enum.GetValues<EstadoIncidencia>();
 
-    // Id del reporte recién creado (viene de TempData después del POST).
+    // Reporte recién creado (viene de TempData después del POST; datos tomados de la incidencia guardada).
     var reporteCreadoId = TempData["ReporteCreadoId"] as int?;
+    var reporteTitulo = TempData["ReporteCreadoTitulo"] as string;
+    var reporteEstado = EstadoIncidenciaExtensions.DesdeTexto(TempData["ReporteCreadoEstado"] as string ?? EstadosIncidencia.Pendiente);
+    var reporteFecha = TempData["ReporteCreadoFecha"] as string;
 }
 
 <section class="page-head page-head--filtros">
@@ -15,10 +18,19 @@
         {
             <div class="alerta-exito" role="status" tabindex="-1" id="alertaExito">
                 <span class="alerta-exito__icono">@Iconos.Svg("check", 22)</span>
-                <div>
-                    <h2 class="alerta-exito__titulo">¡Reporte enviado correctamente!</h2>
-                    <p>Tu incidencia ha sido registrada y será revisada.</p>
+                <div class="alerta-exito__cuerpo">
+                    <h2 class="alerta-exito__titulo">Tu incidencia fue registrada correctamente.</h2>
+                    <p>La municipalidad la revisará. Puedes seguir su estado en cualquier momento.</p>
+                    @if (reporteTitulo != null)
+                    {
+                        <dl class="alerta-exito__datos">
+                            <div><dt>Incidencia</dt><dd>@reporteTitulo</dd></div>
+                            <div><dt>Estado inicial</dt><dd><partial name="_EstadoBadge" model="reporteEstado" /></dd></div>
+                            <div><dt>Fecha de registro</dt><dd>@reporteFecha</dd></div>
+                        </dl>
+                    }
                     <div class="alerta-exito__acciones">
+                        <a class="link-flecha" asp-action="Seguimiento" asp-route-id="@reporteCreadoId">Ver seguimiento @Iconos.Svg("arrow-right", 16)</a>
                         <a class="link-flecha" asp-action="Detalle" asp-route-id="@reporteCreadoId">Ver mi reporte @Iconos.Svg("arrow-right", 16)</a>
                         <a class="link-flecha" asp-action="MisIncidencias">Ver mis incidencias @Iconos.Svg("arrow-right", 16)</a>
                     </div>

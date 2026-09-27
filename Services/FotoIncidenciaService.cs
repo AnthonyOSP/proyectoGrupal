@@ -22,6 +22,10 @@ public class FotoIncidenciaService
     public const string CarpetaRelativa = "/uploads/incidencias/";
 
     private static readonly string[] ExtensionesPermitidas = { ".jpg", ".jpeg", ".png" };
+
+    // Tipos MIME que envían los navegadores para JPG y PNG. Es solo un primer filtro:
+    // el contenido real de la imagen se comprueba igualmente al procesarla.
+    private static readonly string[] TiposPermitidos = { "image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/x-png" };
     private const int LadoMaximo = 2048;               // se reduce si la foto es más grande
     private const long PixelesMaximos = 50_000_000;    // evita imágenes gigantes (ej. 10000 x 5000)
 
@@ -53,6 +57,11 @@ public class FotoIncidenciaService
         if (!ExtensionesPermitidas.Contains(extension))
         {
             return "Solo se permiten fotografías JPG o PNG.";
+        }
+
+        if (!TiposPermitidos.Contains((foto.ContentType ?? "").ToLowerInvariant()))
+        {
+            return "El archivo no es una imagen JPG o PNG válida.";
         }
 
         return null;
