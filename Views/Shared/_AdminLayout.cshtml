@@ -64,6 +64,9 @@
                             <span class="admin-usuario__nombre">@User.Identity?.Name</span>
                         </span>
                     </span>
+                    <a class="admin-nav__link" asp-controller="Account" asp-action="Profile">
+                        @Iconos.Svg("user", 20) Mi perfil
+                    </a>
                     @* Cerrar sesión solo por POST: el tag helper <form> agrega el token antiforgery. *@
                     <form asp-controller="Account" asp-action="Logout" method="post">
                         <button type="submit" class="admin-nav__link admin-usuario__salir">
