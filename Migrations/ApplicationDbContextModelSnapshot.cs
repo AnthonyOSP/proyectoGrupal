@@ -247,7 +247,12 @@ namespace proyectoGrupal.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("UsuarioId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
 
                     b.ToTable("Incidencias");
                 });
@@ -301,6 +306,21 @@ namespace proyectoGrupal.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("proyectoGrupal.Models.Incidencia", b =>
+                {
+                    b.HasOne("proyectoGrupal.Models.ApplicationUser", "Usuario")
+                        .WithMany("Incidencias")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("proyectoGrupal.Models.ApplicationUser", b =>
+                {
+                    b.Navigation("Incidencias");
                 });
 #pragma warning restore 612, 618
         }
