@@ -678,6 +678,77 @@
   margin-bottom: 1rem;
 }
 
+/* Un botón por estado, con el color e icono del estado. El estado actual queda marcado y desactivado. */
+.estado-botones {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.estado-boton {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* Se repite el color en :hover, :active y :disabled porque Bootstrap los cambia en esos casos. */
+.estado-boton.estado--pendiente,
+.estado-boton.estado--pendiente:is(:hover, :active, :disabled) {
+  background: var(--av-pendiente-bg);
+  color: var(--av-pendiente-text);
+  border-color: transparent;
+}
+.estado-boton.estado--revision,
+.estado-boton.estado--revision:is(:hover, :active, :disabled) {
+  background: var(--av-revision-bg);
+  color: var(--av-revision-text);
+  border-color: transparent;
+}
+.estado-boton.estado--atendida,
+.estado-boton.estado--atendida:is(:hover, :active, :disabled) {
+  background: var(--av-atendida-bg);
+  color: var(--av-atendida-text);
+  border-color: transparent;
+}
+
+.estado-boton:not(:disabled):is(:hover, :active) {
+  border-color: currentColor;
+}
+
+/* El actual no se puede pulsar, pero se ve completo (no atenuado) y con borde. */
+.estado-boton[aria-pressed="true"]:disabled {
+  opacity: 1;
+  cursor: default;
+  border-color: currentColor;
+}
+
+.estado-boton__actual {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.eliminar-incidencia {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--av-border);
+}
+
+.btn-av-danger {
+  background: var(--av-surface);
+  border-color: var(--av-error);
+  color: var(--av-error);
+}
+.btn-av-danger:hover,
+.btn-av-danger:active {
+  background: var(--av-error);
+  border-color: var(--av-error);
+  color: #fff;
+}
+
 .cambiar-estado__nota {
   display: flex;
   align-items: flex-start;

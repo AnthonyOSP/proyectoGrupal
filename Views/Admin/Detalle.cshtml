@@ -4,6 +4,7 @@
 
     var mensaje = TempData["MensajeAdmin"] as string;
     var errorEstado = ViewData.ModelState["estado"]?.Errors.FirstOrDefault()?.ErrorMessage;
+    var errorEliminar = ViewData.ModelState["eliminar"]?.Errors.FirstOrDefault()?.ErrorMessage;
 }
 
 <nav class="migas" aria-label="Ruta de navegación">
@@ -89,27 +90,40 @@
             <h2 class="bloque__titulo" id="titulo-cambiar-estado">Cambiar estado</h2>
             <p class="cambiar-estado__actual">Estado actual: <partial name="_EstadoBadge" model="Model.Estado" /></p>
 
-            @* Solo se envían el id (en la URL) y el nuevo estado. Los demás datos no se pueden modificar. *@
+            @* Un botón por estado: cada uno envía el id (en la URL) y su estado. Los demás datos no se pueden modificar. *@
             <form asp-action="CambiarEstado" asp-route-id="@Model.Id" method="post" id="formEstado">
-                <div class="campo">
-                    <label class="campo__label" for="estado">Nuevo estado</label>
-                    <select class="form-select @(errorEstado != null ? "input-validation-error" : "")" id="estado" name="estado"
-                            aria-describedby="@(errorEstado != null ? "estado-error" : null)">
-                        @foreach (var estado in EstadosIncidencia.Todos)
-                        {
-                            <option value="@estado" selected="@(estado == Model.Estado.Texto())">@estado</option>
-                        }
-                    </select>
+                <fieldset class="estado-botones" aria-describedby="@(errorEstado != null ? "estado-error" : null)">
+                    <legend class="campo__label">Nuevo estado</legend>
+                    @foreach (var estado in Enum.GetValues<EstadoIncidencia>())
+                    {
+                        var esActual = estado == Model.Estado;
+                        <button type="submit" name="estado" value="@estado.Texto()"
+                                class="btn estado-boton @estado.ClaseCss()" disabled="@esActual" aria-pressed="@(esActual ? "true" : "false")">
+                            @Iconos.Svg(estado.Icono(), 18) <span class="btn-texto">@estado.Texto()</span>
+                            @if (esActual)
+                            {
+                                <span class="estado-boton__actual">Actual</span>
+                            }
+                        </button>
+                    }
                     @if (errorEstado != null)
                     {
                         <span class="field-validation-error" id="estado-error" role="alert">@errorEstado</span>
                     }
-                </div>
-                <button type="submit" class="btn btn-av-primary w-100" id="btnEstado">
-                    @Iconos.Svg("check", 18) <span class="btn-texto">Actualizar estado</span>
-                </button>
+                </fieldset>
             </form>
             <p class="cambiar-estado__nota">@Iconos.Svg("info", 16) Solo se modifica el estado. Los datos reportados por el vecino no cambian.</p>
+
+            @* Eliminar: formulario aparte, con confirmación antes de enviar. *@
+            <form asp-action="Eliminar" asp-route-id="@Model.Id" method="post" id="formEliminar" class="eliminar-incidencia">
+                <button type="submit" class="btn btn-av-danger w-100" id="btnEliminar">
+                    @Iconos.Svg("trash", 18) <span class="btn-texto">Eliminar incidencia</span>
+                </button>
+                @if (errorEliminar != null)
+                {
+                    <span class="field-validation-error" role="alert">@errorEliminar</span>
+                }
+            </form>
         </section>
     </aside>
 </div>
@@ -124,11 +138,29 @@
         // Anuncia el mensaje de confirmación a los lectores de pantalla.
         document.getElementById("mensajeAdmin")?.focus();
 
-        // Evita envíos dobles mientras se guarda.
-        document.getElementById("formEstado").addEventListener("submit", () => {
-            const boton = document.getElementById("btnEstado");
-            boton.disabled = true;
-            boton.querySelector(".btn-texto").textContent = "Guardando...";
+        // Evita envíos dobles mientras se guarda. Los botones se desactivan después de que el navegador
+        // tomó el valor del botón pulsado (un botón desactivado no envía su valor).
+        document.getElementById("formEstado").addEventListener("submit", evento => {
+            const pulsado = evento.submitter;
+            setTimeout(() => {
+                evento.target.querySelectorAll("button").forEach(b => b.disabled = true);
+                if (pulsado) {
+                    pulsado.querySelector(".btn-texto").textContent = "Guardando...";
+                }
+            });
+        });
+
+        // Eliminar no se puede deshacer: se pide confirmación.
+        document.getElementById("formEliminar").addEventListener("submit", evento => {
+            if (!confirm("¿Eliminar la incidencia #@Model.Id? Se borrarán también su foto y su historial. Esta acción no se puede deshacer.")) {
+                evento.preventDefault();
+                return;
+            }
+            const boton = document.getElementById("btnEliminar");
+            setTimeout(() => {
+                boton.disabled = true;
+                boton.querySelector(".btn-texto").textContent = "Eliminando...";
+            });
         });
     </script>
 }
