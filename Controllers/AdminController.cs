@@ -6,13 +6,14 @@ using proyectoGrupal.Constants;
 using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
+using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
 
-// Panel administrativo: revisar incidencias y cambiar su estado.
+// Panel administrativo: revisar incidencias, cambiar su estado y eliminarlas.
 // Todas las acciones exigen el rol Administrador:
 //   - sin sesión        → /Account/Login
 //   - sesión sin el rol → /Account/AccessDenied
@@ -161,7 +162,7 @@ public class AdminController : Controller
             return View("NoEncontrada");
         }
 
-        // El estado debe ser uno de los permitidos (no se confía en el <select> del HTML).
+        // El estado debe ser uno de los permitidos (no se confía en los botones del HTML).
         if (estado == null || !EstadosIncidencia.Todos.Contains(estado))
         {
             _logger.LogWarning("Estado no permitido \"{Estado}\" para la incidencia {Id}", estado, id);
@@ -219,5 +220,45 @@ public class AdminController : Controller
         await _realtime.NotificarEstadoActualizadoAsync(incidencia, estadoAnterior, fechaCambio);
 
         return RedirectToAction(nameof(Detalle), new { id });
+    }
+
+    // POST: /Admin/Eliminar/5
+    // Borra la incidencia, su historial (en cascada) y su foto. No se puede deshacer.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Eliminar(int id, [FromServices] FotoIncidenciaService fotos)
+    {
+        var incidencia = await _context.Incidencias.FirstOrDefaultAsync(i => i.Id == id);
+
+        if (incidencia == null)
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return View("NoEncontrada");
+        }
+
+        _context.Incidencias.Remove(incidencia);
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Error al eliminar la incidencia {Id}", id);
+            ModelState.AddModelError("eliminar", "No pudimos eliminar la incidencia. Inténtalo nuevamente.");
+            return View(nameof(Detalle), IncidenciaViewModel.DesdeEntidad(incidencia));
+        }
+
+        _logger.LogInformation("Incidencia {Id} eliminada por {Usuario}", id, User.Identity?.Name);
+
+        // La incidencia ya no está en SQLite: ahora se borra la foto del disco y se quita del índice de búsqueda.
+        // Si Algolia falla, no se deshace nada: la búsqueda ignora los Id que ya no existen y se puede resincronizar.
+        if (incidencia.FotoUrl != null)
+        {
+            fotos.Eliminar(incidencia.FotoUrl);
+        }
+        await _algolia.EliminarAsync(id);
+
+        TempData["MensajeAdmin"] = $"La incidencia #{id} se eliminó correctamente.";
+        return RedirectToAction(nameof(Incidencias));
     }
 }
