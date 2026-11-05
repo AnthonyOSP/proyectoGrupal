@@ -1,9 +1,9 @@
-// Inicio de sesión (Views/Account/Login.cshtml).
-// Todo es una mejora: sin JavaScript el formulario funciona igual.
+// Páginas de cuenta a pantalla completa: inicio de sesión y registro (Views/Account/Login.cshtml y Register.cshtml).
+// Todo es una mejora: sin JavaScript los formularios funcionan igual.
 (function () {
     "use strict";
 
-    var raiz = document.querySelector("[data-av-login]");
+    var raiz = document.querySelector("[data-av-auth]");
     if (!raiz) {
         return;
     }
@@ -23,10 +23,13 @@
         }, 3200);
     }
 
-    // 2. Mostrar u ocultar la contraseña.
-    var ojo = raiz.querySelector("[data-av-ojo]");
-    var clave = ojo && document.getElementById(ojo.getAttribute("aria-controls"));
-    if (ojo && clave) {
+    // 2. Mostrar u ocultar cada contraseña (el registro tiene dos campos).
+    raiz.querySelectorAll("[data-av-ojo]").forEach(function (ojo) {
+        var clave = document.getElementById(ojo.getAttribute("aria-controls"));
+        if (!clave) {
+            return;
+        }
+
         ojo.hidden = false;
         ojo.addEventListener("click", function () {
             var mostrar = clave.type === "password";
@@ -36,12 +39,15 @@
             ojo.querySelector("[data-av-ojo-mostrar]").hidden = mostrar;
             ojo.querySelector("[data-av-ojo-ocultar]").hidden = !mostrar;
         });
-    }
+    });
 
-    // 3. Evita envíos dobles y muestra "Ingresando…" (solo si la validación del cliente pasó).
+    // 3. Evita envíos dobles y muestra el estado de carga (solo si la validación del cliente pasó).
     var formulario = raiz.querySelector("[data-av-form]");
     var boton = raiz.querySelector("[data-av-enviar]");
     if (formulario && boton) {
+        var normal = boton.querySelector(".av-boton__normal");
+        var cargando = boton.querySelector(".av-boton__cargando");
+
         formulario.addEventListener("submit", function () {
             var $ = window.jQuery;
             if ($ && $.fn.valid && !$(formulario).valid()) {
@@ -51,16 +57,16 @@
             // Se desactiva después de que el navegador tomó los datos del formulario.
             setTimeout(function () {
                 boton.disabled = true;
-                boton.querySelector(".av-boton__normal").hidden = true;
-                boton.querySelector(".av-boton__cargando").hidden = false;
+                normal.hidden = true;
+                cargando.hidden = false;
             });
         });
 
         // Al volver con el botón "Atrás" del navegador, el botón queda como al inicio.
         window.addEventListener("pageshow", function () {
             boton.disabled = false;
-            boton.querySelector(".av-boton__normal").hidden = false;
-            boton.querySelector(".av-boton__cargando").hidden = true;
+            normal.hidden = false;
+            cargando.hidden = true;
         });
     }
 })();

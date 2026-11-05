@@ -1,0 +1,7 @@
+@model string
+@* Botón "Mostrar / ocultar contraseña" dentro de un campo de clave. Modelo: el id del input.
+   Empieza oculto: solo aparece con JavaScript (auth.js). *@
+<button type="button" class="av-ojo" data-av-ojo aria-controls="@Model" aria-pressed="false" aria-label="Mostrar contraseña" hidden>
+    <span data-av-ojo-mostrar>@Iconos.Svg("eye", 20)</span>
+    <span data-av-ojo-ocultar hidden>@Iconos.Svg("eye-off", 20)</span>
+</button>
