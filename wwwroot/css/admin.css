@@ -853,3 +853,102 @@
   font-size: 0.9375rem;
   color: var(--av-muted);
 }
+
+/* ---------- Bandeja de mensajes de contacto (Views/Admin/Mensajes.cshtml) ---------- */
+@media (min-width: 992px) {
+  .filtros--mensajes {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+.mensajes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mensajes-lista .admin-card + .admin-card {
+  margin-top: 0;
+}
+
+.mensaje__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mensaje__autor {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.mensaje__avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--av-primary);
+  background: var(--av-primary-soft);
+}
+
+.mensaje__nombre {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.mensaje__email {
+  font-size: 0.9375rem;
+}
+
+.mensaje__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--av-muted);
+}
+
+.mensaje__meta time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Respeta los saltos de línea que escribió el visitante */
+.mensaje__texto {
+  margin: 1rem 0 0;
+  padding: 0.875rem 1rem;
+  white-space: pre-line;
+  color: var(--av-text);
+  background: var(--av-bg);
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius-sm);
+}
+
+.mensaje__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.mensaje__acciones form {
+  margin: 0;
+}
+
+/* Texto escrito por los visitantes: una palabra muy larga se parte en lugar de desbordar la tarjeta */
+.mensaje__nombre,
+.mensaje__email,
+.mensaje__texto {
+  overflow-wrap: anywhere;
+}

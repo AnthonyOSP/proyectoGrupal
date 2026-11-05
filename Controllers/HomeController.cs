@@ -384,6 +384,67 @@ public class HomeController : Controller
         return View(IncidenciaViewModel.DesdeEntidad(incidencia));
     }
 
+    // GET: /Home/Contacto
+    // Página pública. Si hay sesión, el nombre y el correo vienen llenos (se pueden cambiar).
+    public async Task<IActionResult> Contacto()
+    {
+        var modelo = new ContactoViewModel();
+
+        var usuario = await _userManager.GetUserAsync(User);
+        if (usuario != null)
+        {
+            modelo.Nombre = UnaLinea($"{usuario.Nombres} {usuario.Apellidos}");
+            modelo.Email = usuario.Email;
+        }
+
+        return View(modelo);
+    }
+
+    // POST: /Home/Contacto
+    // Guarda el mensaje y redirige (patrón PRG): al recargar la página no se envía dos veces.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Contacto(ContactoViewModel modelo)
+    {
+        // Normalizar los textos y volver a validar, igual que en Reportar.
+        modelo.Nombre = UnaLinea(modelo.Nombre);
+        modelo.Email = UnaLinea(modelo.Email);
+        modelo.Mensaje = TextoLargo(modelo.Mensaje);
+        ModelState.Clear();
+        TryValidateModel(modelo);
+
+        if (!ModelState.IsValid)
+        {
+            return View(modelo);
+        }
+
+        // La fecha la pone el servidor; ningún campo del formulario la envía.
+        var mensaje = new MensajeContacto
+        {
+            Nombre = modelo.Nombre!,
+            Email = modelo.Email!,
+            Mensaje = modelo.Mensaje!,
+            FechaRegistro = DateTime.Now
+        };
+
+        try
+        {
+            _context.MensajesContacto.Add(mensaje);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            // El detalle técnico queda en el log; el visitante solo ve un mensaje amigable.
+            _logger.LogError(ex, "Error al guardar el mensaje de contacto de {Email}", mensaje.Email);
+            ModelState.AddModelError(string.Empty, "No pudimos enviar tu mensaje. Inténtalo de nuevo en unos minutos.");
+            return View(modelo);
+        }
+
+        // TempData sobrevive a la redirección y se muestra una sola vez.
+        TempData["ContactoEnviadoNombre"] = mensaje.Nombre;
+        return RedirectToAction(nameof(Contacto));
+    }
+
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
