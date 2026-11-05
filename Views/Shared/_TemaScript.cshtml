@@ -1,0 +1,14 @@
+@* Aplica el tema (claro u oscuro) ANTES de dibujar la página, para evitar un destello blanco.
+   Prioridad: 1) lo que el usuario eligió con el botón, 2) la preferencia del sistema operativo.
+   Se incluye dentro del <head> de los layouts. *@
+<script>
+    (function () {
+        var tema = null;
+        try { tema = localStorage.getItem("tema"); } catch (e) { }
+        if (tema !== "dark" && tema !== "light") {
+            tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", tema);
+        document.documentElement.setAttribute("data-bs-theme", tema);
+    })();
+</script>
