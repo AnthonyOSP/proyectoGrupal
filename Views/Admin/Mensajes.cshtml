@@ -3,14 +3,31 @@
     ViewData["Title"] = "Mensajes";
     var esError = TempData["MensajeAdminError"] as bool? == true;
 
+    var cultura = System.Globalization.CultureInfo.GetCultureInfo("es-PE");
+    var fechaTexto = Model.Fecha.ToString("dddd d 'de' MMMM 'de' yyyy", cultura);
+    var fechaIso = Model.Fecha.ToString("yyyy-MM-dd");
+    var hoy = DateOnly.FromDateTime(DateTime.Now);
+
     // Asunto del correo de respuesta (se abre en el programa de correo del administrador).
     var asuntoRespuesta = Uri.EscapeDataString("Re: Tu mensaje a Alerta Vecinal");
+
+    // Confianza del modelo en lo que decidió: la probabilidad de la clase elegida.
+    static int Confianza(MensajeContacto m) =>
+        m.ProbabilidadPositiva is not float p ? 0
+        : (int)Math.Round((m.Sentimiento == SentimientosMensaje.Positivo ? p : 1 - p) * 100);
+
+    var tarjetas = new[]
+    {
+        (Titulo: "Mensajes del día", Valor: Model.TotalDia, Icono: "inbox", Clase: "stat--total", Filtro: (string?)null),
+        (Titulo: "Positivos", Valor: Model.PositivosDia, Icono: "check-circle", Clase: "stat--positivo", Filtro: (string?)SentimientosMensaje.Positivo),
+        (Titulo: "Negativos", Valor: Model.NegativosDia, Icono: "x", Clase: "stat--negativo", Filtro: (string?)SentimientosMensaje.Negativo)
+    };
 }
 
 <header class="admin-cabecera">
     <div>
         <h1 class="admin-cabecera__titulo">Mensajes</h1>
-        <p class="admin-cabecera__sub">Consultas y sugerencias enviadas desde la página «Contáctanos».</p>
+        <p class="admin-cabecera__sub">Mensajes de «Contáctanos» clasificados como positivos o negativos con un modelo de ML.NET.</p>
     </div>
 </header>
 
@@ -32,10 +49,107 @@
     }
 }
 
-@if (Model.Total > 0)
+@if (!Model.ModeloDisponible)
 {
-    @* Búsqueda por GET: queda en la URL y funciona sin JavaScript. *@
+    <p class="auth-aviso" role="note">
+        @Iconos.Svg("info", 18)
+        <span>El modelo de sentimientos no está cargado: los mensajes nuevos se guardan sin analizar. Entrénalo con
+            <code>dotnet run --project ML/sentimentAnalysisNLP/Entrenamiento</code> y reinicia la aplicación.</span>
+    </p>
+}
+
+@* Elegir el día del reporte (GET: queda en la URL y funciona sin JavaScript). *@
+<form class="reporte-dia" method="get" asp-action="Mensajes">
+    <a class="btn btn-av-secondary btn-sm-av" asp-action="Mensajes" asp-route-fecha="@Model.Fecha.AddDays(-1).ToString("yyyy-MM-dd")"
+       aria-label="Día anterior">@Iconos.Svg("arrow-left", 16)</a>
+    <label class="visually-hidden" for="fecha">Día del reporte</label>
+    <input class="form-control reporte-dia__fecha" type="date" id="fecha" name="fecha" value="@fechaIso"
+           max="@hoy.ToString("yyyy-MM-dd")" data-autoenviar />
+    <a class="btn btn-av-secondary btn-sm-av" asp-action="Mensajes" asp-route-fecha="@Model.Fecha.AddDays(1).ToString("yyyy-MM-dd")"
+       aria-label="Día siguiente" hidden="@(Model.Fecha >= hoy)">@Iconos.Svg("arrow-right", 16)</a>
+    <button type="submit" class="btn btn-av-primary btn-sm-av">Ver día</button>
+    @if (!Model.EsHoy)
+    {
+        <a class="btn btn-av-ghost btn-sm-av" asp-action="Mensajes">Hoy</a>
+    }
+</form>
+
+@* Reporte del día: se cuenta sobre todos los mensajes del día, sin los filtros de la lista. *@
+<section aria-labelledby="titulo-reporte">
+    <h2 class="reporte-dia__titulo" id="titulo-reporte">Reporte del @fechaTexto@(Model.EsHoy ? " (hoy)" : "")</h2>
+    <div class="stats stats--3">
+        @foreach (var tarjeta in tarjetas)
+        {
+            <a class="stat @tarjeta.Clase" asp-action="Mensajes" asp-route-fecha="@fechaIso" asp-route-sentimiento="@tarjeta.Filtro"
+               aria-current="@(Model.Sentimiento == tarjeta.Filtro && Model.Buscar == null ? "true" : null)">
+                <span class="stat__icono">@Iconos.Svg(tarjeta.Icono, 20)</span>
+                <span class="stat__titulo">@tarjeta.Titulo</span>
+                <span class="stat__valor">@tarjeta.Valor</span>
+                <span class="stat__link">Ver @Iconos.Svg("arrow-right", 14)</span>
+            </a>
+        }
+    </div>
+
+    @if (Model.TotalDia > 0)
+    {
+        <div class="admin-card distribucion">
+            <div class="distribucion__cabecera">
+                <h3 class="admin-card__titulo">Sentimiento de los mensajes</h3>
+                <span class="distribucion__resuelto">@Model.Porcentaje(Model.PositivosDia)% positivos</span>
+            </div>
+            <div class="distribucion__barra" role="img"
+                 aria-label="@Model.PositivosDia positivos, @Model.NegativosDia negativos y @Model.SinAnalizarDia sin analizar de @Model.TotalDia mensajes">
+                <span class="seg seg--positivo" style="width: @Model.Porcentaje(Model.PositivosDia)%"></span>
+                <span class="seg seg--negativo" style="width: @Model.Porcentaje(Model.NegativosDia)%"></span>
+                <span class="seg seg--sin-analizar" style="width: @Model.Porcentaje(Model.SinAnalizarDia)%"></span>
+            </div>
+            <ul class="distribucion__leyenda">
+                <li><span class="punto seg--positivo"></span> Positivos <strong>@Model.PositivosDia</strong></li>
+                <li><span class="punto seg--negativo"></span> Negativos <strong>@Model.NegativosDia</strong></li>
+                @if (Model.SinAnalizarDia > 0)
+                {
+                    <li><span class="punto seg--sin-analizar"></span> Sin analizar <strong>@Model.SinAnalizarDia</strong></li>
+                }
+            </ul>
+        </div>
+    }
+</section>
+
+@* Modelo de ML.NET: último entrenamiento y botón para reentrenarlo con las correcciones del administrador. *@
+<section class="admin-card modelo-ml" aria-labelledby="titulo-modelo">
+    <div class="modelo-ml__info">
+        <h2 class="admin-card__titulo" id="titulo-modelo">@Iconos.Svg("dashboard", 18) Modelo de sentimientos</h2>
+        @if (Model.InfoModelo is { } info)
+        {
+            <p class="modelo-ml__datos">
+                Último entrenamiento: <strong>@info.Fecha.ToString("dd/MM/yyyy HH:mm")</strong>
+                <span aria-hidden="true">·</span> @(info.EjemplosCsv + info.Correcciones) ejemplos
+                <span aria-hidden="true">·</span> exactitud <strong>@info.Exactitud.ToString("P1", cultura)</strong>
+            </p>
+        }
+        <p class="modelo-ml__ayuda">
+            @if (Model.Correcciones == 0)
+            {
+                <span>Si el modelo se equivoca, marca el sentimiento correcto en el mensaje y luego reentrena: aprenderá de tus correcciones.</span>
+            }
+            else
+            {
+                <span>Hay <strong>@Model.Correcciones</strong> @(Model.Correcciones == 1 ? "mensaje marcado" : "mensajes marcados") a mano. Al reentrenar se suman a los datos de entrenamiento.</span>
+            }
+        </p>
+    </div>
+    <form asp-action="ReentrenarModelo" asp-route-fecha="@fechaIso" method="post" id="formReentrenar">
+        <button type="submit" class="btn btn-av-primary btn-sm-av" id="btnReentrenar">
+            @Iconos.Svg("dashboard", 16) <span class="btn-texto">Reentrenar modelo</span>
+        </button>
+    </form>
+</section>
+
+@if (Model.TotalDia > 0)
+{
+    @* Filtros de la lista del día (GET). *@
     <form class="filtros filtros--admin filtros--mensajes" method="get" asp-action="Mensajes" role="search">
+        <input type="hidden" name="fecha" value="@fechaIso" />
         <div class="filtros__buscar">
             <label for="buscar">Buscar</label>
             <div class="position-relative">
@@ -44,17 +158,27 @@
                        placeholder="Nombre, correo o texto del mensaje..." autocomplete="off" />
             </div>
         </div>
+        <div>
+            <label for="sentimiento">Sentimiento</label>
+            <select class="form-select" id="sentimiento" name="sentimiento" data-autoenviar>
+                <option value="">Todos</option>
+                @foreach (var opcion in SentimientosMensaje.Todos)
+                {
+                    <option value="@opcion" selected="@(opcion == Model.Sentimiento)">@(opcion)s</option>
+                }
+            </select>
+        </div>
         <div class="filtros__acciones">
-            <button type="submit" class="btn btn-av-primary">@Iconos.Svg("search", 18) Buscar</button>
+            <button type="submit" class="btn btn-av-primary">@Iconos.Svg("filter", 18) Filtrar</button>
             @if (Model.HayFiltros)
             {
-                <a class="btn btn-av-secondary" asp-action="Mensajes">@Iconos.Svg("x", 18) Limpiar</a>
+                <a class="btn btn-av-secondary" asp-action="Mensajes" asp-route-fecha="@fechaIso">@Iconos.Svg("x", 18) Limpiar</a>
             }
         </div>
     </form>
 
     <p class="resultados-info" role="status">
-        <span>Mostrando <strong>@Model.Mensajes.Count</strong> de @Model.Total mensajes</span>
+        <span>Mostrando <strong>@Model.Mensajes.Count</strong> de @Model.TotalDia mensajes del día</span>
     </p>
 }
 
@@ -73,9 +197,23 @@
                         </div>
                     </div>
                     <div class="mensaje__meta">
+                        @if (mensaje.Sentimiento == SentimientosMensaje.Positivo || mensaje.Sentimiento == SentimientosMensaje.Negativo)
+                        {
+                            var positivo = mensaje.Sentimiento == SentimientosMensaje.Positivo;
+                            var detalle = mensaje.SentimientoManual ? "corregido" : $"{Confianza(mensaje)}%";
+                            var ayuda = mensaje.SentimientoManual ? "Marcado a mano por un administrador" : $"Confianza del modelo: {Confianza(mensaje)}%";
+                            <span class="chip-sentimiento chip-sentimiento--@(positivo ? "positivo" : "negativo")" title="@ayuda">
+                                @Iconos.Svg(positivo ? "check-circle" : "x", 14) @mensaje.Sentimiento
+                                <span class="chip-sentimiento__conf">@detalle</span>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="chip-sentimiento">@Iconos.Svg("info", 14) Sin analizar</span>
+                        }
                         <span class="admin-id">#@mensaje.Id</span>
                         <time datetime="@mensaje.FechaRegistro.ToString("yyyy-MM-ddTHH:mm")">
-                            @Iconos.Svg("calendar", 14) @mensaje.FechaRegistro.ToString("dd/MM/yyyy HH:mm")
+                            @Iconos.Svg("clock", 14) @mensaje.FechaRegistro.ToString("HH:mm")
                         </time>
                     </div>
                 </div>
@@ -84,12 +222,30 @@
                 <p class="mensaje__texto">@mensaje.Mensaje</p>
 
                 <div class="mensaje__acciones">
+                    @* Corregir (o confirmar) el sentimiento a mano: queda como ejemplo para reentrenar el modelo. *@
+                    <form class="sentimiento-manual" asp-action="CambiarSentimiento" asp-route-id="@mensaje.Id" asp-route-fecha="@fechaIso"
+                          asp-route-sentimiento="@Model.Sentimiento" asp-route-buscar="@Model.Buscar" method="post">
+                        <span class="sentimiento-manual__etiqueta" id="sentimiento-etiqueta-@mensaje.Id">Es:</span>
+                        <div class="sentimiento-manual__opciones" role="group" aria-labelledby="sentimiento-etiqueta-@mensaje.Id">
+                            @foreach (var opcion in SentimientosMensaje.Todos)
+                            {
+                                var actual = mensaje.Sentimiento == opcion;
+                                <button type="submit" name="nuevo" value="@opcion"
+                                        class="sentimiento-manual__opcion sentimiento-manual__opcion--@opcion.ToLowerInvariant()"
+                                        aria-pressed="@(actual ? "true" : "false")"
+                                        title="@(actual && !mensaje.SentimientoManual ? "Confirmar que es " + opcion.ToLowerInvariant() : "Marcar como " + opcion.ToLowerInvariant())">
+                                    @Iconos.Svg(opcion == SentimientosMensaje.Positivo ? "check-circle" : "x", 14) @opcion
+                                </button>
+                            }
+                        </div>
+                    </form>
                     <a class="btn btn-av-primary btn-sm-av" href="mailto:@mensaje.Email?subject=@asuntoRespuesta"
                        aria-label="Responder a @mensaje.Nombre por correo">
                         @Iconos.Svg("send", 16) Responder
                     </a>
                     @* Eliminar: POST con token antiforgery y confirmación antes de enviar. *@
-                    <form asp-action="EliminarMensaje" asp-route-id="@mensaje.Id" asp-route-buscar="@Model.Buscar" method="post"
+                    <form asp-action="EliminarMensaje" asp-route-id="@mensaje.Id" asp-route-fecha="@fechaIso"
+                          asp-route-sentimiento="@Model.Sentimiento" asp-route-buscar="@Model.Buscar" method="post"
                           data-confirmar="¿Eliminar el mensaje de @mensaje.Nombre? Esta acción no se puede deshacer.">
                         <button type="submit" class="btn btn-av-danger btn-sm-av" aria-label="Eliminar el mensaje de @mensaje.Nombre">
                             @Iconos.Svg("trash", 16) Eliminar
@@ -103,17 +259,17 @@
 else
 {
     <div class="vacio">
-        <span class="vacio__icono">@Iconos.Svg(Model.Total == 0 ? "inbox" : "search", 26)</span>
-        @if (Model.Total == 0)
+        <span class="vacio__icono">@Iconos.Svg(Model.TotalDia == 0 ? "inbox" : "search", 26)</span>
+        @if (Model.TotalDia == 0)
         {
-            <h2 class="vacio__titulo">Aún no hay mensajes</h2>
-            <p>Cuando alguien escriba desde la página «Contáctanos», aparecerá aquí.</p>
+            <h2 class="vacio__titulo">No hay mensajes este día</h2>
+            <p>Cuando alguien escriba desde la página «Contáctanos», aparecerá en el reporte de ese día.</p>
         }
         else
         {
-            <h2 class="vacio__titulo">Ningún mensaje coincide con la búsqueda</h2>
-            <p>Prueba con otras palabras.</p>
-            <a class="btn btn-av-secondary" asp-action="Mensajes">Ver todos</a>
+            <h2 class="vacio__titulo">Ningún mensaje coincide con los filtros</h2>
+            <p>Prueba con otras palabras o quita el filtro de sentimiento.</p>
+            <a class="btn btn-av-secondary" asp-action="Mensajes" asp-route-fecha="@fechaIso">Ver todos los del día</a>
         }
     </div>
 }
@@ -122,6 +278,20 @@ else
     <script>
         // Anuncia el mensaje de confirmación a los lectores de pantalla.
         document.getElementById("mensajeAdmin")?.focus();
+
+        // Al cambiar el día o el sentimiento se aplica automáticamente (los botones funcionan sin JavaScript).
+        document.querySelectorAll("[data-autoenviar]").forEach(control =>
+            control.addEventListener("change", () => control.form.submit()));
+
+        // Reentrenar tarda unos segundos: se muestra que está trabajando y se evita el doble envío.
+        document.getElementById("formReentrenar")?.addEventListener("submit", () => {
+            const boton = document.getElementById("btnReentrenar");
+            setTimeout(() => {
+                boton.disabled = true;
+                boton.setAttribute("aria-busy", "true");
+                boton.querySelector(".btn-texto").textContent = "Reentrenando...";
+            }, 0);
+        });
 
         // Eliminar no se puede deshacer: se pide confirmación y se evita el doble envío.
         document.querySelectorAll("form[data-confirmar]").forEach(form =>

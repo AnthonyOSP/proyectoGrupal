@@ -37,3 +37,7 @@ appsettings.*.local.json
 Dockerfile
 .dockerignore
 README.md
+
+# Programa de consola que entrena el modelo de sentimientos (la app no lo necesita).
+# Los datos de ML/sentimentAnalysisNLP/trainingData SÍ entran: los usa el botón "Reentrenar modelo".
+ML/sentimentAnalysisNLP/Entrenamiento/

@@ -9,6 +9,7 @@ using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
 using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
+using proyectoGrupal.Services.Sentimiento;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -150,6 +151,11 @@ builder.Services.Configure<LimiteReportesOptions>(opciones =>
 });
 builder.Services.AddSingleton<ILimiteReportesService, LimiteReportesService>();
 
+// Análisis de sentimientos de los mensajes de contacto (modelo de ML.NET en MLModels/).
+// Se entrena con ML/sentimentAnalysisNLP/Entrenamiento o con el botón "Reentrenar modelo" del panel.
+// Sin el modelo, los mensajes se guardan igual pero sin sentimiento.
+builder.Services.AddSingleton<ISentimientoService, SentimientoService>();
+
 var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
@@ -160,6 +166,15 @@ using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);
+
+    // Mensajes de contacto guardados sin sentimiento (anteriores al modelo o sin modelo disponible).
+    var analizados = await SentimientoService.AnalizarMensajesAsync(
+        scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
+        scope.ServiceProvider.GetRequiredService<ISentimientoService>());
+    if (analizados > 0)
+    {
+        app.Logger.LogInformation("Sentimiento analizado en {Cantidad} mensajes de contacto pendientes.", analizados);
+    }
 }
 
 // Crea los clientes de Algolia, PieSocket y Redis al iniciar: el log indica enseguida si están configurados.

@@ -11,6 +11,7 @@ using proyectoGrupal.Constants;
 using proyectoGrupal.Services.Algolia;
 using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
+using proyectoGrupal.Services.Sentimiento;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
@@ -23,6 +24,7 @@ public class HomeController : Controller
     private readonly IAlgoliaIncidenciaService _algolia;
     private readonly IPieSocketRealtimeService _realtime;
     private readonly ILimiteReportesService _limiteReportes;
+    private readonly ISentimientoService _sentimiento;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILogger<HomeController> _logger;
@@ -35,6 +37,7 @@ public class HomeController : Controller
         IAlgoliaIncidenciaService algolia,
         IPieSocketRealtimeService realtime,
         ILimiteReportesService limiteReportes,
+        ISentimientoService sentimiento,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ILogger<HomeController> logger)
@@ -45,6 +48,7 @@ public class HomeController : Controller
         _algolia = algolia;
         _realtime = realtime;
         _limiteReportes = limiteReportes;
+        _sentimiento = sentimiento;
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
@@ -418,13 +422,19 @@ public class HomeController : Controller
             return View(modelo);
         }
 
-        // La fecha la pone el servidor; ningún campo del formulario la envía.
+        // Análisis de sentimientos con el modelo de ML.NET (positivo / negativo).
+        // Si el modelo no está disponible devuelve null y el mensaje se guarda igual.
+        var analisis = _sentimiento.Analizar(modelo.Mensaje!);
+
+        // La fecha y el sentimiento los pone el servidor; ningún campo del formulario los envía.
         var mensaje = new MensajeContacto
         {
             Nombre = modelo.Nombre!,
             Email = modelo.Email!,
             Mensaje = modelo.Mensaje!,
-            FechaRegistro = DateTime.Now
+            FechaRegistro = DateTime.Now,
+            Sentimiento = analisis?.Sentimiento,
+            ProbabilidadPositiva = analisis?.ProbabilidadPositiva
         };
 
         try
