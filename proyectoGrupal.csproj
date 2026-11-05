@@ -18,6 +18,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+    <PackageReference Include="Microsoft.ML" Version="5.0.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="StackExchange.Redis" Version="3.4.31" />
   </ItemGroup>
@@ -25,6 +26,22 @@
   <ItemGroup>
     <!-- Fotos subidas por los vecinos: nunca se incluyen al compilar ni al publicar -->
     <Content Remove="wwwroot\uploads\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ML/ tiene el proyecto de entrenamiento (otro programa) y sus datos: no forman parte de la web. -->
+    <Compile Remove="ML\**" />
+    <Content Remove="ML\**" />
+    <None Remove="ML\**" />
+    <EmbeddedResource Remove="ML\**" />
+
+    <!-- Modelo de sentimientos entrenado (y sus datos): se copian junto a la aplicación al compilar y al publicar. -->
+    <None Update="MLModels\SentimientoModel.zip" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="MLModels\SentimientoModel.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+
+    <!-- Datos de entrenamiento: los usa el botón "Reentrenar modelo" del panel también en la app publicada. -->
+    <None Include="ML\sentimentAnalysisNLP\trainingData\comentarios_entrenamiento.csv" Link="MLModels\comentarios_entrenamiento.csv"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
