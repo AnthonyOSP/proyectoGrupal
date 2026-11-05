@@ -21,6 +21,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Tabla "HistorialEstadosIncidencia"
     public DbSet<HistorialEstadoIncidencia> HistorialEstadosIncidencia { get; set; }
 
+    // Tabla "MensajesContacto" (formulario "Contáctanos")
+    public DbSet<MensajeContacto> MensajesContacto { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         // Obligatorio: configura las tablas de Identity.

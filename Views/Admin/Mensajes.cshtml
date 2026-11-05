@@ -1,0 +1,137 @@
+@model MensajesAdminViewModel
+@{
+    ViewData["Title"] = "Mensajes";
+    var esError = TempData["MensajeAdminError"] as bool? == true;
+
+    // Asunto del correo de respuesta (se abre en el programa de correo del administrador).
+    var asuntoRespuesta = Uri.EscapeDataString("Re: Tu mensaje a Alerta Vecinal");
+}
+
+<header class="admin-cabecera">
+    <div>
+        <h1 class="admin-cabecera__titulo">Mensajes</h1>
+        <p class="admin-cabecera__sub">Consultas y sugerencias enviadas desde la página «Contáctanos».</p>
+    </div>
+</header>
+
+@* Confirmación (o error) después de eliminar un mensaje. *@
+@if (TempData["MensajeAdmin"] is string aviso)
+{
+    @if (esError)
+    {
+        <div class="resumen-errores" role="alert" tabindex="-1" id="mensajeAdmin">@aviso</div>
+    }
+    else
+    {
+        <div class="alerta-exito" role="status" tabindex="-1" id="mensajeAdmin">
+            <span class="alerta-exito__icono">@Iconos.Svg("check", 22)</span>
+            <div>
+                <p class="alerta-exito__titulo mb-0">@aviso</p>
+            </div>
+        </div>
+    }
+}
+
+@if (Model.Total > 0)
+{
+    @* Búsqueda por GET: queda en la URL y funciona sin JavaScript. *@
+    <form class="filtros filtros--admin filtros--mensajes" method="get" asp-action="Mensajes" role="search">
+        <div class="filtros__buscar">
+            <label for="buscar">Buscar</label>
+            <div class="position-relative">
+                @Iconos.Svg("search", 18)
+                <input class="form-control" type="search" id="buscar" name="buscar" value="@Model.Buscar"
+                       placeholder="Nombre, correo o texto del mensaje..." autocomplete="off" />
+            </div>
+        </div>
+        <div class="filtros__acciones">
+            <button type="submit" class="btn btn-av-primary">@Iconos.Svg("search", 18) Buscar</button>
+            @if (Model.HayFiltros)
+            {
+                <a class="btn btn-av-secondary" asp-action="Mensajes">@Iconos.Svg("x", 18) Limpiar</a>
+            }
+        </div>
+    </form>
+
+    <p class="resultados-info" role="status">
+        <span>Mostrando <strong>@Model.Mensajes.Count</strong> de @Model.Total mensajes</span>
+    </p>
+}
+
+@if (Model.Mensajes.Any())
+{
+    <ul class="mensajes-lista">
+        @foreach (var mensaje in Model.Mensajes)
+        {
+            <li class="admin-card mensaje" id="mensaje-@mensaje.Id">
+                <div class="mensaje__cabecera">
+                    <div class="mensaje__autor">
+                        <span class="mensaje__avatar" aria-hidden="true">@Iconos.Svg("user", 18)</span>
+                        <div>
+                            <h2 class="mensaje__nombre">@mensaje.Nombre</h2>
+                            <a class="mensaje__email" href="mailto:@mensaje.Email">@mensaje.Email</a>
+                        </div>
+                    </div>
+                    <div class="mensaje__meta">
+                        <span class="admin-id">#@mensaje.Id</span>
+                        <time datetime="@mensaje.FechaRegistro.ToString("yyyy-MM-ddTHH:mm")">
+                            @Iconos.Svg("calendar", 14) @mensaje.FechaRegistro.ToString("dd/MM/yyyy HH:mm")
+                        </time>
+                    </div>
+                </div>
+
+                @* white-space: pre-line respeta los saltos de línea del mensaje; Razor escapa el texto (no se interpreta HTML). *@
+                <p class="mensaje__texto">@mensaje.Mensaje</p>
+
+                <div class="mensaje__acciones">
+                    <a class="btn btn-av-primary btn-sm-av" href="mailto:@mensaje.Email?subject=@asuntoRespuesta"
+                       aria-label="Responder a @mensaje.Nombre por correo">
+                        @Iconos.Svg("send", 16) Responder
+                    </a>
+                    @* Eliminar: POST con token antiforgery y confirmación antes de enviar. *@
+                    <form asp-action="EliminarMensaje" asp-route-id="@mensaje.Id" asp-route-buscar="@Model.Buscar" method="post"
+                          data-confirmar="¿Eliminar el mensaje de @mensaje.Nombre? Esta acción no se puede deshacer.">
+                        <button type="submit" class="btn btn-av-danger btn-sm-av" aria-label="Eliminar el mensaje de @mensaje.Nombre">
+                            @Iconos.Svg("trash", 16) Eliminar
+                        </button>
+                    </form>
+                </div>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <div class="vacio">
+        <span class="vacio__icono">@Iconos.Svg(Model.Total == 0 ? "inbox" : "search", 26)</span>
+        @if (Model.Total == 0)
+        {
+            <h2 class="vacio__titulo">Aún no hay mensajes</h2>
+            <p>Cuando alguien escriba desde la página «Contáctanos», aparecerá aquí.</p>
+        }
+        else
+        {
+            <h2 class="vacio__titulo">Ningún mensaje coincide con la búsqueda</h2>
+            <p>Prueba con otras palabras.</p>
+            <a class="btn btn-av-secondary" asp-action="Mensajes">Ver todos</a>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Anuncia el mensaje de confirmación a los lectores de pantalla.
+        document.getElementById("mensajeAdmin")?.focus();
+
+        // Eliminar no se puede deshacer: se pide confirmación y se evita el doble envío.
+        document.querySelectorAll("form[data-confirmar]").forEach(form =>
+            form.addEventListener("submit", evento => {
+                if (!confirm(form.dataset.confirmar)) {
+                    evento.preventDefault();
+                    return;
+                }
+                const boton = form.querySelector("button");
+                setTimeout(() => { boton.disabled = true; }, 0);
+            }));
+    </script>
+}
