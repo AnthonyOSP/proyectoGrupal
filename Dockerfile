@@ -22,9 +22,10 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
 COPY --from=build /app/publish .
 
 # La app corre con un usuario sin privilegios ($APP_UID, definido por la imagen de .NET),
-# así que necesita permiso de escritura en la carpeta de la base de datos y en la de fotos.
-RUN mkdir -p /app/data /app/wwwroot/uploads/incidencias \
-    && chown -R $APP_UID /app/data /app/wwwroot/uploads
+# así que necesita permiso de escritura en la carpeta de la base de datos, en la de fotos y en
+# la del modelo de sentimientos (el botón "Reentrenar modelo" del panel lo reemplaza).
+RUN mkdir -p /app/data /app/wwwroot/uploads/incidencias /app/MLModels \
+    && chown -R $APP_UID /app/data /app/wwwroot/uploads /app/MLModels
 
 USER $APP_UID
 EXPOSE 8080
