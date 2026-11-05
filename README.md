@@ -27,6 +27,8 @@ Todo lo que el proyecto usa y no fue escrito por nosotros. Las versiones son las
 | `Microsoft.EntityFrameworkCore.Sqlite`              | 10.0.11 | Proveedor de SQLite                                                 | MIT                          |
 | `Microsoft.EntityFrameworkCore.Design`              | 10.0.11 | Crear migraciones (solo desarrollo)                                 | MIT                          |
 | `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | 10.0.11 | Tablas de Identity en SQLite                                        | MIT                          |
+| `Microsoft.AspNetCore.Authentication.Google`        | 10.0.11 | Inicio de sesión con Google (OAuth)                                 | MIT                          |
+| `StackExchange.Redis`                               | 3.4.31  | Cliente de Redis (límite de reportes por usuario)                   | MIT                          |
 | `Google.Cloud.Vision.V1`                            | 3.8.0   | Cliente de Google Cloud Vision (detección de rostros)               | Apache-2.0                   |
 | `SixLabors.ImageSharp`                              | 3.1.12  | Procesar las fotos: orientación, quitar metadatos y pixelar rostros | Six Labors Split License 1.0 |
 | `Algolia.Search`                                    | 7.49.0  | Cliente oficial de Algolia (búsqueda)                               | MIT                          |
@@ -48,12 +50,14 @@ El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site
 | Servicio                                                 | Para qué lo usamos                                                    | ¿Necesita cuenta o clave?             | Sin configurarlo…                         | Detalles                                                       |
 | -------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------- | -------------------------------------------------------------- |
 | [Google Cloud Vision](https://cloud.google.com/vision)   | Detectar rostros en las fotos para pixelarlos antes de guardarlas     | Sí (`GOOGLE_APPLICATION_CREDENTIALS`) | La app funciona, pero no acepta fotos     | Sección 10                                                     |
+| [Google Identity (OAuth)](https://console.cloud.google.com/apis/credentials) | Botón "Continuar con Google" en el inicio de sesión y el registro | Sí (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) | El botón no aparece; se entra con correo y contraseña | Sección 15 |
 | [Algolia](https://www.algolia.com)                       | Búsqueda de incidencias (índice de búsqueda, no guarda datos propios) | Sí (`ALGOLIA_*`)                      | La búsqueda usa SQLite                    | Sección 12                                                     |
 | [PieSocket](https://piehost.com) (PieHost)               | Actualización en tiempo real del panel y del seguimiento              | Sí (`PIESOCKET_*`)                    | Las páginas no se actualizan solas        | Sección 13                                                     |
+| [Redis](https://redis.io) (Upstash o Redis Cloud)        | Límite de reportes por usuario (contra el spam)                       | Sí (`REDIS_CONNECTION`)               | El límite se cuenta en la memoria del servidor | Sección 16                                               |
 | [OpenStreetMap](https://www.openstreetmap.org) (teselas) | Imágenes de los mapas                                                 | No                                    | — (se muestran siempre que haya internet) | Sección 14. Datos © OpenStreetMap contributors (licencia ODbL) |
 | [Google Fonts](https://fonts.google.com)                 | Tipografías Atkinson Hyperlegible y Plus Jakarta Sans                 | No                                    | El navegador usa una fuente del sistema   | SIL Open Font License                                          |
 
-Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, Algolia y PieSocket son opcionales: la aplicación arranca y funciona sin ellas.
+Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, el inicio con Google, Algolia, PieSocket y Redis son opcionales: la aplicación arranca y funciona sin ellas.
 
 ### Herramientas de desarrollo y despliegue
 
@@ -257,7 +261,7 @@ Hay dos roles, que se crean automáticamente al iniciar la aplicación:
 
 | Rol             | Quién lo tiene                                      | Qué puede hacer                                     |
 | --------------- | --------------------------------------------------- | --------------------------------------------------- |
-| `Ciudadano`     | Toda persona que se registra en `/Account/Register` | Reportar incidencias                                |
+| `Ciudadano`     | Toda persona que se registra en `/Account/Register` (y el usuario de prueba `USER_EMAIL`, si está configurado) | Reportar incidencias                                |
 | `Administrador` | La cuenta configurada con `ADMIN_EMAIL`             | Reportar y usar el panel `/Admin` (cambiar estados) |
 
 El formulario de registro no tiene campo de rol: el servidor asigna siempre `Ciudadano`.
@@ -309,6 +313,21 @@ dotnet run
 Luego entra a `/Account/Login` con ese correo y contraseña, y abre `/Admin`.
 
 Cada integrante del grupo configura **su propio** administrador local: la base de datos no se comparte.
+
+**Usuario de prueba (opcional).** De la misma forma se puede crear una cuenta de ciudadano para pruebas, útil en Render, donde la base de datos se borra en cada reinicio:
+
+| Variable        | Ejemplo                                        |
+| --------------- | ---------------------------------------------- |
+| `USER_EMAIL`    | `user@usmp.pe`                                 |
+| `USER_PASSWORD` | una contraseña que elijas tú (mismas reglas)   |
+
+```bash
+dotnet user-secrets set "USER_EMAIL" "user@usmp.pe"
+dotnet user-secrets set "USER_PASSWORD" "<contraseña-de-prueba>"
+```
+
+- Si la cuenta **no existe**, la crea con el rol `Ciudadano`. Si ya existe, no la modifica.
+- Si falta alguno de los dos valores, simplemente no se crea (no es un error).
 
 ### 9.2 Migraciones de esta etapa
 
@@ -441,8 +460,10 @@ En el servicio, ve a **Environment → Environment Variables** y agrega:
 | ---------------- | ------------------------------------- |
 | `ADMIN_EMAIL`    | el correo del administrador           |
 | `ADMIN_PASSWORD` | una contraseña segura, solo en Render |
+| `USER_EMAIL`     | (opcional) correo del ciudadano de prueba |
+| `USER_PASSWORD`  | (opcional) contraseña del ciudadano de prueba |
 
-Render guarda estos valores fuera del repositorio. Al desplegar, el log debe mostrar `Administrador inicial ... creado.`
+Render guarda estos valores fuera del repositorio. Al desplegar, el log debe mostrar `Administrador inicial ... creado.` y, si configuraste el usuario de prueba, `Usuario de prueba ... creado.`
 
 ### 11.4 Credenciales de Google Vision en Render (Secret File)
 
@@ -636,3 +657,96 @@ Las incidencias creadas antes de esta etapa quedan con `Latitud` y `Longitud` va
 - **No hay geocodificación**: la dirección escrita no se convierte en coordenadas; el punto se marca a mano en el mapa.
 - **No hay búsqueda por distancia** ("cerca de mí", por radio o kilómetros) ni agrupación de marcadores (clustering). Las coordenadas no se envían a Algolia.
 - El mapa necesita JavaScript; sin él, el reporte se puede enviar solo con la ubicación escrita.
+
+---
+
+## 15. Iniciar sesión con Google
+
+El inicio de sesión y el registro muestran un botón **"Continuar con Google"**. Es un solo botón para las dos cosas:
+
+| Caso                                                        | Qué pasa                                                                                  |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| La cuenta de Google ya se usó antes                         | Inicia sesión directamente                                                                |
+| Ya existe una cuenta con ese correo (creada con contraseña) | Se vincula a Google e inicia sesión. Desde entonces sirven las dos formas de entrar       |
+| No existe ninguna cuenta con ese correo                     | Se crea una cuenta de **Ciudadano** (sin contraseña), con el nombre y apellido de Google  |
+
+- Solo se aceptan correos que Google marca como verificados.
+- Una cuenta creada con Google no tiene contraseña. En **Mi perfil → Seguridad** aparece **"Crear contraseña"** (en vez de "Cambiar contraseña") por si la persona también quiere entrar con su correo.
+- Sin `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` el botón no aparece y todo lo demás funciona igual.
+
+### 15.1 Crear las credenciales (una sola vez, lo hace una persona del grupo)
+
+Se puede usar el mismo proyecto de Google Cloud de la sección 10.
+
+1. En https://console.cloud.google.com ve a **APIs y servicios → Pantalla de consentimiento de OAuth** (Google Auth Platform). Tipo de usuario **Externo**, nombre de la app `Alerta Vecinal`, tu correo de soporte. No hace falta pedir permisos especiales: basta con `email`, `profile` y `openid`.
+2. Mientras la app esté en modo **Prueba**, solo pueden entrar los correos agregados en **Usuarios de prueba**. Agrega los del grupo (o publica la app para que entre cualquiera).
+3. Ve a **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth**, tipo **Aplicación web**.
+4. En **URI de redireccionamiento autorizados** agrega exactamente:
+
+   | Dónde        | URI                                              |
+   | ------------ | ------------------------------------------------ |
+   | Local (http) | `http://localhost:5131/signin-google`            |
+   | Local (https)| `https://localhost:7297/signin-google`           |
+   | Render       | `https://<tu-servicio>.onrender.com/signin-google` |
+
+5. Copia el **ID de cliente** y el **Secreto del cliente**.
+
+### 15.2 Variables de configuración
+
+| Variable               | Valor                 |
+| ---------------------- | --------------------- |
+| `GOOGLE_CLIENT_ID`     | el ID de cliente      |
+| `GOOGLE_CLIENT_SECRET` | el secreto (secreto)  |
+
+```bash
+dotnet user-secrets set "GOOGLE_CLIENT_ID" "<id-de-cliente>.apps.googleusercontent.com"
+dotnet user-secrets set "GOOGLE_CLIENT_SECRET" "<secreto>"
+```
+
+En Render: **Environment → Environment Variables**, con los mismos nombres. Al iniciar sin ellas, el log dice `Google no está configurado ...`.
+
+### 15.3 Problemas frecuentes
+
+| Síntoma                                            | Causa                                                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Google muestra `Error 400: redirect_uri_mismatch`  | La URI de la tabla 15.1 no está registrada tal cual (revisa `http`/`https`, el puerto y `/signin-google`) |
+| Google muestra "Acceso bloqueado" o "app no verificada" | La app está en modo Prueba y ese correo no está en **Usuarios de prueba**                          |
+| El botón no aparece                                | Faltan `GOOGLE_CLIENT_ID` o `GOOGLE_CLIENT_SECRET`, o no reiniciaste la app después de configurarlas    |
+
+---
+
+## 16. Límite de reportes con Redis
+
+Para evitar el spam (y el abuso de Google Vision, que cobra por imagen después de las 1000 gratuitas), cada vecino puede enviar como máximo **3 reportes cada 10 minutos**. Los administradores no tienen límite.
+
+- El límite se revisa **antes** de procesar el reporte: si ya llegó al máximo, no se procesa la foto ni se llama a Google Vision.
+- Un reporte cuenta **solo si se guardó**. Si falla (por ejemplo, Vision no responde), el vecino no pierde un intento.
+- Al llegar al límite, el formulario muestra: _"Llegaste al límite de 3 reportes cada 10 minutos. Podrás enviar otro reporte en N minutos."_ (respuesta HTTP 429).
+
+### 16.1 Cómo funciona
+
+El conteo se guarda en **Redis** con una clave por usuario (`alertavecinal:limite-reportes:<id>`). El primer reporte crea la clave con valor 1 y una caducidad de 10 minutos; cada reporte siguiente suma 1. Cuando la clave caduca, Redis la borra y el conteo vuelve a cero. La suma y la caducidad se aplican en un solo paso (script Lua), así la clave nunca queda sin caducidad.
+
+- **Sin `REDIS_CONNECTION`**, o si Redis no responde, el conteo se guarda en la **memoria del servidor**: el límite sigue funcionando, pero se reinicia si la app se reinicia.
+- Con Redis, el conteo se conserva aunque Render reinicie la app, y serviría igual si la app corriera en varios servidores.
+
+### 16.2 Crear un Redis gratuito
+
+Cualquiera de estas opciones tiene un plan gratuito suficiente:
+
+- **Upstash** (https://upstash.com): crea una base de datos Redis y copia la URL de conexión, que empieza con `rediss://default:...@...upstash.io:6379`.
+- **Redis Cloud** (https://redis.io/try-free): crea una base de datos y usa su host, puerto y contraseña.
+
+### 16.3 Variables de configuración
+
+| Variable                  | Obligatoria | Ejemplo                                                                  |
+| ------------------------- | ----------- | ------------------------------------------------------------------------ |
+| `REDIS_CONNECTION`        | No          | `rediss://default:<contraseña>@<host>:6379` o `<host>:<puerto>,password=<contraseña>,ssl=True` |
+| `LIMITE_REPORTES`         | No          | `3` (valor por defecto)                                                  |
+| `LIMITE_REPORTES_MINUTOS` | No          | `10` (valor por defecto)                                                 |
+
+```bash
+dotnet user-secrets set "REDIS_CONNECTION" "rediss://default:<contraseña>@<host>:6379"
+```
+
+En Render: **Environment → Environment Variables**, con los mismos nombres. Al iniciar, el log indica `Redis configurado (...)` o `Redis no está configurado ... usará la memoria del servidor`. La contraseña nunca se escribe en el log.

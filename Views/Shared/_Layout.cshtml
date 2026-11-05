@@ -20,6 +20,12 @@
     <meta name="description" content="Alerta Vecinal: reporta, participa y mejora tu comunidad." />
     <meta name="theme-color" content="#1d4ed8" />
     <title>@ViewData["Title"] · Alerta Vecinal</title>
+    <partial name="_TemaScript" />
+
+    @* Icono de la pestaña: el mismo megáfono de .brand__mark. El .ico es para navegadores sin soporte de SVG. *@
+    <link rel="icon" href="~/favicon.ico" sizes="48x48" asp-append-version="true" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" asp-append-version="true" />
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png" asp-append-version="true" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -41,10 +47,13 @@
                     <span class="brand__text">Alerta<span>Vecinal</span></span>
                 </a>
 
-                <button class="navbar-toggler menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal"
-                        aria-controls="menuPrincipal" aria-expanded="false" aria-label="Abrir menú">
-                    @Iconos.Svg("menu", 24)
-                </button>
+                <div class="nav-acciones">
+                    <partial name="_BotonTema" />
+                    <button class="navbar-toggler menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal"
+                            aria-controls="menuPrincipal" aria-expanded="false" aria-label="Abrir menú">
+                        @Iconos.Svg("menu", 24)
+                    </button>
+                </div>
 
                 <div class="collapse navbar-collapse" id="menuPrincipal">
                     <ul class="navbar-nav mx-lg-auto">
@@ -137,8 +146,11 @@
                 </nav>
             </div>
             <div class="site-footer__base">
-                <span>&copy; @DateTime.Now.Year Alerta Vecinal</span>
-                <span class="site-footer__tag">Proyecto académico</span>
+                <span>&copy; @DateTime.Now.Year Alerta Vecinal <span aria-hidden="true">·</span> Proyecto para la USMP - FIA</span>
+                <ul class="site-footer__autores" aria-label="Autores">
+                    <li class="site-footer__tag">Anthony O. Saavedra Paredes</li>
+                    <li class="site-footer__tag">Franz Torres Perez</li>
+                </ul>
             </div>
         </div>
     </footer>

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,6 +77,26 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
+// "Continuar con Google" (OAuth). Claves en variables de entorno o User Secrets (ver README).
+// Sin ellas no se registra Google: el botón no aparece y el inicio de sesión con correo funciona igual.
+var googleClientId = builder.Configuration["GOOGLE_CLIENT_ID"]?.Trim();
+var googleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"]?.Trim();
+if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+{
+    builder.Services.AddAuthentication().AddGoogle(options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+        // Google vuelve a /signin-google con un GET normal: Lax basta, y así la cookie
+        // también funciona en local con http (SameSite=None exige https).
+        options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+        options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        // Si Google verificó el correo (AccountController solo vincula o crea cuentas con correos verificados).
+        options.ClaimActions.MapJsonKey("email_verified", "email_verified");
+        options.ClaimActions.MapJsonKey("verified_email", "verified_email");
+    });
+}
+
 // Protección de fotografías: detección de rostros con Google Cloud Vision + pixelado local.
 // Credenciales: variable de entorno GOOGLE_APPLICATION_CREDENTIALS (ver README.md).
 builder.Services.AddSingleton<IFaceDetectionService, GoogleVisionFaceDetectionService>();
@@ -112,20 +134,42 @@ builder.Services.AddHttpClient(PieSocketRealtimeService.NombreClienteHttp, clien
 });
 builder.Services.AddSingleton<IPieSocketRealtimeService, PieSocketRealtimeService>();
 
+// Límite de reportes por usuario (contra el spam). Conteo en Redis si REDIS_CONNECTION está configurada;
+// si no, en la memoria del servidor. LIMITE_REPORTES y LIMITE_REPORTES_MINUTOS son opcionales (3 cada 10 min).
+builder.Services.Configure<LimiteReportesOptions>(opciones =>
+{
+    opciones.RedisConnection = builder.Configuration["REDIS_CONNECTION"];
+    if (int.TryParse(builder.Configuration["LIMITE_REPORTES"], out var maximo) && maximo > 0)
+    {
+        opciones.MaximoReportes = maximo;
+    }
+    if (int.TryParse(builder.Configuration["LIMITE_REPORTES_MINUTOS"], out var minutos) && minutos > 0)
+    {
+        opciones.VentanaMinutos = minutos;
+    }
+});
+builder.Services.AddSingleton<ILimiteReportesService, LimiteReportesService>();
+
 var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
 // Necesario en Docker/Render, donde no existe "dotnet ef database update".
-// Después crea los roles y el administrador inicial (ADMIN_EMAIL / ADMIN_PASSWORD) si faltan.
+// Después crea los roles, el administrador inicial (ADMIN_EMAIL / ADMIN_PASSWORD) y el usuario
+// de prueba (USER_EMAIL / USER_PASSWORD) si faltan.
 using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);
 }
 
-// Crea los clientes de Algolia y PieSocket al iniciar: el log indica enseguida si están configurados.
+// Crea los clientes de Algolia, PieSocket y Redis al iniciar: el log indica enseguida si están configurados.
 app.Services.GetRequiredService<IAlgoliaIncidenciaService>();
 app.Services.GetRequiredService<IPieSocketRealtimeService>();
+app.Services.GetRequiredService<ILimiteReportesService>();
+if (string.IsNullOrEmpty(googleClientId) || string.IsNullOrEmpty(googleClientSecret))
+{
+    app.Logger.LogInformation("Google no está configurado (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET): no se muestra \"Continuar con Google\".");
+}
 
 app.UseForwardedHeaders();
 

@@ -7,6 +7,7 @@ namespace proyectoGrupal.Data;
 // Datos iniciales de seguridad. Se ejecuta al iniciar la aplicación (ver Program.cs):
 //   1. Crea los roles que falten (Administrador, Ciudadano).
 //   2. Crea el administrador inicial con ADMIN_EMAIL y ADMIN_PASSWORD, si están configurados.
+//   3. Crea el ciudadano de prueba con USER_EMAIL y USER_PASSWORD, si están configurados.
 // Es seguro ejecutarlo en cada inicio: nunca crea duplicados.
 public static class IdentitySeeder
 {
@@ -19,6 +20,7 @@ public static class IdentitySeeder
 
         await CrearRolesAsync(roleManager, logger);
         await CrearAdministradorAsync(userManager, configuration, logger);
+        await CrearUsuarioPruebaAsync(userManager, configuration, logger);
     }
 
     private static async Task CrearRolesAsync(RoleManager<IdentityRole> roleManager, ILogger logger)
@@ -94,6 +96,55 @@ public static class IdentitySeeder
 
             logger.LogInformation("Rol {Rol} asignado a {Email}.", RoleNames.Administrador, email);
         }
+    }
+
+    // Cuenta de ciudadano para pruebas y demostraciones (en Render la base se borra en cada reinicio).
+    // Igual que el registro normal: correo, contraseña y rol Ciudadano. Las credenciales se leen igual que
+    // las del administrador (variables de entorno o User Secrets). Sin ellas no se crea y la app funciona igual.
+    private static async Task CrearUsuarioPruebaAsync(
+        UserManager<ApplicationUser> userManager, IConfiguration configuration, ILogger logger)
+    {
+        var email = configuration["USER_EMAIL"]?.Trim();
+        var password = configuration["USER_PASSWORD"];
+
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        {
+            logger.LogInformation("Usuario de prueba no configurado (USER_EMAIL / USER_PASSWORD): no se crea.");
+            return;
+        }
+
+        // Si ya existe (por ejemplo, de un inicio anterior) no se toca: ni su contraseña ni sus roles.
+        if (await userManager.FindByEmailAsync(email) != null)
+        {
+            return;
+        }
+
+        var usuario = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true
+        };
+
+        var creado = await userManager.CreateAsync(usuario, password);
+        if (!creado.Succeeded)
+        {
+            logger.LogError("No se creó el usuario de prueba {Email}: {Errores}. Revisa USER_EMAIL y USER_PASSWORD.",
+                email, Errores(creado));
+            return;
+        }
+
+        var asignado = await userManager.AddToRoleAsync(usuario, RoleNames.Ciudadano);
+        if (!asignado.Succeeded)
+        {
+            // Sin rol la cuenta quedaría a medias: se elimina y se vuelve a intentar en el próximo inicio.
+            logger.LogError("No se pudo asignar el rol {Rol} a {Email}: {Errores}",
+                RoleNames.Ciudadano, email, Errores(asignado));
+            await userManager.DeleteAsync(usuario);
+            return;
+        }
+
+        logger.LogInformation("Usuario de prueba {Email} creado.", email);
     }
 
     private static string Errores(IdentityResult resultado) =>

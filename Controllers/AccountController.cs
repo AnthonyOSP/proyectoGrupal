@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -95,7 +96,136 @@ public class AccountController : Controller
             return RedirigirLocal(returnUrl);
         }
 
+        // Error al volver de Google (ExternalLoginCallback): se muestra en el resumen del formulario.
+        if (TempData["ErrorExterno"] is string errorExterno)
+        {
+            ModelState.AddModelError(string.Empty, errorExterno);
+        }
+
         return View(new LoginViewModel { ReturnUrl = returnUrl });
+    }
+
+    // POST: /Account/ExternalLogin
+    // "Continuar con Google": envía al usuario a Google. Sirve para iniciar sesión y para registrarse.
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExternalLogin(string? returnUrl)
+    {
+        // Solo Google, y solo si está configurado (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).
+        var proveedores = await _signInManager.GetExternalAuthenticationSchemesAsync();
+        if (!proveedores.Any(p => p.Name == ProveedorGoogle))
+        {
+            TempData["ErrorExterno"] = "El inicio de sesión con Google no está disponible en este momento.";
+            return RedirectToAction(nameof(Login), new { returnUrl });
+        }
+
+        var urlRetorno = Url.Action(nameof(ExternalLoginCallback), new { returnUrl });
+        var propiedades = _signInManager.ConfigureExternalAuthenticationProperties(ProveedorGoogle, urlRetorno);
+        return Challenge(propiedades, ProveedorGoogle);
+    }
+
+    // GET: /Account/ExternalLoginCallback
+    // Google vuelve aquí. Tres casos:
+    //   1. La cuenta de Google ya está vinculada → inicia sesión.
+    //   2. Ya existe una cuenta con ese correo → se vincula a Google e inicia sesión.
+    //   3. No existe → se crea una cuenta de Ciudadano (sin contraseña) e inicia sesión.
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> ExternalLoginCallback(string? returnUrl, string? remoteError)
+    {
+        if (remoteError != null)
+        {
+            // Por ejemplo, la persona canceló en la pantalla de Google.
+            _logger.LogWarning("Google devolvió un error: {Error}", remoteError);
+            return ErrorExterno("No se completó el inicio de sesión con Google. Inténtalo nuevamente.", returnUrl);
+        }
+
+        var info = await _signInManager.GetExternalLoginInfoAsync();
+        if (info == null)
+        {
+            return ErrorExterno("No pudimos leer los datos de Google. Inténtalo nuevamente.", returnUrl);
+        }
+
+        // 1. Ya vinculada.
+        var resultado = await _signInManager.ExternalLoginSignInAsync(
+            info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
+        if (resultado.Succeeded)
+        {
+            return RedirigirLocal(returnUrl);
+        }
+        if (resultado.IsLockedOut)
+        {
+            return ErrorExterno("Tu cuenta está bloqueada temporalmente. Espera unos minutos antes de volver a intentarlo.", returnUrl);
+        }
+
+        var email = info.Principal.FindFirstValue(ClaimTypes.Email)?.Trim();
+        if (string.IsNullOrEmpty(email))
+        {
+            return ErrorExterno("Tu cuenta de Google no compartió un correo electrónico.", returnUrl);
+        }
+
+        // Solo se vincula o crea una cuenta con correos que Google haya verificado.
+        if (CorreoNoVerificado(info.Principal))
+        {
+            _logger.LogWarning("Inicio con Google rechazado: correo no verificado {Email}", email);
+            return ErrorExterno("Tu correo de Google no está verificado.", returnUrl);
+        }
+
+        var usuario = await _userManager.FindByEmailAsync(email);
+        var esNuevo = usuario == null;
+
+        if (usuario == null)
+        {
+            // 3. Cuenta nueva: igual que el registro, pero sin contraseña. El rol lo decide el servidor.
+            usuario = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                Nombres = Recortar(info.Principal.FindFirstValue(ClaimTypes.GivenName)),
+                Apellidos = Recortar(info.Principal.FindFirstValue(ClaimTypes.Surname))
+            };
+
+            var creado = await _userManager.CreateAsync(usuario);
+            if (!creado.Succeeded)
+            {
+                _logger.LogError("No se pudo crear la cuenta con Google para {Email}: {Errores}",
+                    email, string.Join(" ", creado.Errors.Select(e => e.Description)));
+                return ErrorExterno("No pudimos crear tu cuenta. Inténtalo nuevamente.", returnUrl);
+            }
+
+            var rolAsignado = await _userManager.AddToRoleAsync(usuario, RoleNames.Ciudadano);
+            if (!rolAsignado.Succeeded)
+            {
+                _logger.LogError("No se pudo asignar el rol {Rol} a {Email}: {Errores}",
+                    RoleNames.Ciudadano, email, string.Join(" ", rolAsignado.Errors.Select(e => e.Description)));
+                await _userManager.DeleteAsync(usuario);
+                return ErrorExterno("No pudimos crear tu cuenta. Inténtalo nuevamente.", returnUrl);
+            }
+        }
+        else if (await _userManager.IsLockedOutAsync(usuario))
+        {
+            return ErrorExterno("Tu cuenta está bloqueada temporalmente. Espera unos minutos antes de volver a intentarlo.", returnUrl);
+        }
+
+        // 2 y 3. Se vincula la cuenta de Google para que la próxima vez entre directo (caso 1).
+        var vinculado = await _userManager.AddLoginAsync(usuario, info);
+        if (!vinculado.Succeeded)
+        {
+            _logger.LogError("No se pudo vincular Google a {Email}: {Errores}",
+                email, string.Join(" ", vinculado.Errors.Select(e => e.Description)));
+            if (esNuevo)
+            {
+                await _userManager.DeleteAsync(usuario);
+            }
+            return ErrorExterno("No pudimos vincular tu cuenta de Google. Inténtalo nuevamente.", returnUrl);
+        }
+
+        _logger.LogInformation(esNuevo ? "Nueva cuenta de ciudadano con Google: {Email}" : "Cuenta vinculada a Google: {Email}", email);
+
+        await _signInManager.SignInAsync(usuario, isPersistent: false, authenticationMethod: info.LoginProvider);
+        return RedirigirLocal(returnUrl);
     }
 
     // POST: /Account/Login
@@ -227,7 +357,14 @@ public class AccountController : Controller
             return await CerrarSesionYVolverAlLoginAsync();
         }
 
-        if (ModelState.IsValid && modelo.NuevaContrasena == modelo.ContrasenaActual)
+        // Cuenta creada con Google: no tiene contraseña actual, así que se crea una (AddPasswordAsync).
+        var tieneContrasena = usuario.PasswordHash != null;
+        if (!tieneContrasena)
+        {
+            ModelState.Remove("Contrasena.ContrasenaActual");
+        }
+
+        if (tieneContrasena && ModelState.IsValid && modelo.NuevaContrasena == modelo.ContrasenaActual)
         {
             ModelState.AddModelError("Contrasena.NuevaContrasena", "La nueva contraseña debe ser diferente de la actual.");
         }
@@ -237,7 +374,9 @@ public class AccountController : Controller
             return View(nameof(Profile), CrearPagina(usuario));
         }
 
-        var resultado = await _userManager.ChangePasswordAsync(usuario, modelo.ContrasenaActual!, modelo.NuevaContrasena!);
+        var resultado = tieneContrasena
+            ? await _userManager.ChangePasswordAsync(usuario, modelo.ContrasenaActual!, modelo.NuevaContrasena!)
+            : await _userManager.AddPasswordAsync(usuario, modelo.NuevaContrasena!);
         if (!resultado.Succeeded)
         {
             // Contraseña actual incorrecta → en su campo; reglas de la nueva contraseña → en el campo nuevo.
@@ -257,8 +396,10 @@ public class AccountController : Controller
         // Se renueva también la cookie de esta sesión para que el usuario no tenga que volver a entrar.
         await _signInManager.RefreshSignInAsync(usuario);
 
-        _logger.LogInformation("Contraseña cambiada para {Email}", usuario.Email);
-        TempData["MensajeContrasena"] = "Tu contraseña se cambió correctamente.";
+        _logger.LogInformation(tieneContrasena ? "Contraseña cambiada para {Email}" : "Contraseña creada para {Email}", usuario.Email);
+        TempData["MensajeContrasena"] = tieneContrasena
+            ? "Tu contraseña se cambió correctamente."
+            : "Tu contraseña se creó correctamente. Ahora también puedes entrar con tu correo.";
         return RedirectToAction(nameof(Profile), "Account", null, "seguridad");
     }
 
@@ -267,6 +408,7 @@ public class AccountController : Controller
     {
         Email = usuario.Email ?? "",
         EsAdministrador = User.IsInRole(RoleNames.Administrador),
+        TieneContrasena = usuario.PasswordHash != null,
         Perfil = perfil ?? new PerfilViewModel
         {
             Nombres = usuario.Nombres,
@@ -291,6 +433,30 @@ public class AccountController : Controller
     {
         await _signInManager.SignOutAsync();
         return RedirectToAction(nameof(Login), new { returnUrl = Url.Action(nameof(Profile)) });
+    }
+
+    // Nombre del esquema que registra AddGoogle() en Program.cs.
+    private const string ProveedorGoogle = "Google";
+
+    // Vuelve al login mostrando el error en el resumen del formulario.
+    private IActionResult ErrorExterno(string mensaje, string? returnUrl)
+    {
+        TempData["ErrorExterno"] = mensaje;
+        return RedirectToAction(nameof(Login), new { returnUrl });
+    }
+
+    // Google indica si el correo está verificado. Solo se rechaza si lo dice explícitamente.
+    private static bool CorreoNoVerificado(ClaimsPrincipal principal)
+    {
+        var verificado = principal.FindFirstValue("email_verified") ?? principal.FindFirstValue("verified_email");
+        return verificado != null && !string.Equals(verificado, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Nombres y apellidos de Google: se respeta el máximo de 60 caracteres del perfil.
+    private static string? Recortar(string? texto)
+    {
+        var limpio = Normalizar(texto);
+        return limpio is { Length: > 60 } ? limpio[..60] : limpio;
     }
 
     // Solo redirige a direcciones de este mismo sitio (evita open redirect);

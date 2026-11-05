@@ -7,7 +7,9 @@ using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
+using proyectoGrupal.Constants;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.ViewModels;
 
@@ -20,6 +22,7 @@ public class HomeController : Controller
     private readonly BusquedaIncidenciasService _busqueda;
     private readonly IAlgoliaIncidenciaService _algolia;
     private readonly IPieSocketRealtimeService _realtime;
+    private readonly ILimiteReportesService _limiteReportes;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILogger<HomeController> _logger;
@@ -31,6 +34,7 @@ public class HomeController : Controller
         BusquedaIncidenciasService busqueda,
         IAlgoliaIncidenciaService algolia,
         IPieSocketRealtimeService realtime,
+        ILimiteReportesService limiteReportes,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ILogger<HomeController> logger)
@@ -40,6 +44,7 @@ public class HomeController : Controller
         _busqueda = busqueda;
         _algolia = algolia;
         _realtime = realtime;
+        _limiteReportes = limiteReportes;
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
@@ -69,11 +74,18 @@ public class HomeController : Controller
     // GET: /Home/Reportar?categoria=alumbrado
     // Requiere sesión iniciada: un visitante es enviado a /Account/Login y vuelve aquí al entrar.
     [Authorize]
-    public IActionResult Reportar(string? categoria)
+    public async Task<IActionResult> Reportar(string? categoria)
     {
         // El parámetro "categoria" (slug de la URL) queda en ModelState y el <select> lo usaría
         // en lugar del modelo. Se limpia para que se aplique el nombre completo de abajo.
         ModelState.Clear();
+
+        // Si ya llegó al límite de reportes, se avisa antes de que llene el formulario.
+        var limite = await ConsultarLimiteAsync();
+        if (limite is { Permitido: false })
+        {
+            ModelState.AddModelError(string.Empty, limite.Mensaje());
+        }
 
         // Permite llegar desde una tarjeta de categoría con la categoría ya elegida.
         var modelo = new CrearIncidenciaViewModel
@@ -102,6 +114,17 @@ public class HomeController : Controller
             await _signInManager.SignOutAsync();
             return RedirectToAction(nameof(AccountController.Login), "Account",
                 new { returnUrl = Url.Action(nameof(Reportar)) });
+        }
+
+        // Límite de reportes: se revisa ANTES de procesar nada (así no se gasta Google Vision).
+        var limite = await ConsultarLimiteAsync();
+        if (limite is { Permitido: false })
+        {
+            _logger.LogWarning("Límite de reportes alcanzado por {Email} ({Usados}/{Maximo})", usuario.Email, limite.Usados, limite.Maximo);
+            ModelState.Clear();
+            ModelState.AddModelError(string.Empty, limite.Mensaje());
+            Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            return View(modelo);
         }
 
         // Normalizar los textos y volver a validar: así "   abcd   " no pasa como título de 5+ caracteres
@@ -204,6 +227,12 @@ public class HomeController : Controller
             return View(modelo);
         }
 
+        // Se cuenta para el límite solo ahora que la incidencia quedó guardada.
+        if (limite != null)
+        {
+            await _limiteReportes.RegistrarAsync(usuario.Id);
+        }
+
         // La incidencia ya está en SQLite: ahora se agrega al índice de búsqueda.
         // Si Algolia falla, la incidencia NO se deshace; el servicio registra el problema y un
         // administrador puede resincronizar el índice desde el panel.
@@ -220,6 +249,19 @@ public class HomeController : Controller
         TempData["ReporteCreadoEstado"] = incidencia.Estado;
         TempData["ReporteCreadoFecha"] = incidencia.FechaRegistro.ToString("dd/MM/yyyy HH:mm");
         return RedirectToAction(nameof(Incidencias));
+    }
+
+    // Estado del límite de reportes para el usuario de la sesión.
+    // null para los administradores: ellos no tienen límite.
+    private async Task<EstadoLimite?> ConsultarLimiteAsync()
+    {
+        var usuarioId = _userManager.GetUserId(User);
+        if (usuarioId == null || User.IsInRole(RoleNames.Administrador))
+        {
+            return null;
+        }
+
+        return await _limiteReportes.ConsultarAsync(usuarioId, HttpContext.RequestAborted);
     }
 
     // Título y ubicación: una sola línea, sin espacios al inicio/final ni repetidos.
