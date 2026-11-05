@@ -257,7 +257,7 @@ Hay dos roles, que se crean automáticamente al iniciar la aplicación:
 
 | Rol             | Quién lo tiene                                      | Qué puede hacer                                     |
 | --------------- | --------------------------------------------------- | --------------------------------------------------- |
-| `Ciudadano`     | Toda persona que se registra en `/Account/Register` | Reportar incidencias                                |
+| `Ciudadano`     | Toda persona que se registra en `/Account/Register` (y el usuario de prueba `USER_EMAIL`, si está configurado) | Reportar incidencias                                |
 | `Administrador` | La cuenta configurada con `ADMIN_EMAIL`             | Reportar y usar el panel `/Admin` (cambiar estados) |
 
 El formulario de registro no tiene campo de rol: el servidor asigna siempre `Ciudadano`.
@@ -309,6 +309,21 @@ dotnet run
 Luego entra a `/Account/Login` con ese correo y contraseña, y abre `/Admin`.
 
 Cada integrante del grupo configura **su propio** administrador local: la base de datos no se comparte.
+
+**Usuario de prueba (opcional).** De la misma forma se puede crear una cuenta de ciudadano para pruebas, útil en Render, donde la base de datos se borra en cada reinicio:
+
+| Variable        | Ejemplo                                        |
+| --------------- | ---------------------------------------------- |
+| `USER_EMAIL`    | `user@usmp.pe`                                 |
+| `USER_PASSWORD` | una contraseña que elijas tú (mismas reglas)   |
+
+```bash
+dotnet user-secrets set "USER_EMAIL" "user@usmp.pe"
+dotnet user-secrets set "USER_PASSWORD" "<contraseña-de-prueba>"
+```
+
+- Si la cuenta **no existe**, la crea con el rol `Ciudadano`. Si ya existe, no la modifica.
+- Si falta alguno de los dos valores, simplemente no se crea (no es un error).
 
 ### 9.2 Migraciones de esta etapa
 
@@ -441,8 +456,10 @@ En el servicio, ve a **Environment → Environment Variables** y agrega:
 | ---------------- | ------------------------------------- |
 | `ADMIN_EMAIL`    | el correo del administrador           |
 | `ADMIN_PASSWORD` | una contraseña segura, solo en Render |
+| `USER_EMAIL`     | (opcional) correo del ciudadano de prueba |
+| `USER_PASSWORD`  | (opcional) contraseña del ciudadano de prueba |
 
-Render guarda estos valores fuera del repositorio. Al desplegar, el log debe mostrar `Administrador inicial ... creado.`
+Render guarda estos valores fuera del repositorio. Al desplegar, el log debe mostrar `Administrador inicial ... creado.` y, si configuraste el usuario de prueba, `Usuario de prueba ... creado.`
 
 ### 11.4 Credenciales de Google Vision en Render (Secret File)
 
