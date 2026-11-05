@@ -63,6 +63,9 @@
                         <li class="nav-item">
                             <a class="nav-link @Activo("Incidencias", "Detalle")" aria-current="@Actual("Incidencias")" asp-controller="Home" asp-action="Incidencias">Incidencias</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link @Activo("Contacto")" aria-current="@Actual("Contacto")" asp-controller="Home" asp-action="Contacto">Contacto</a>
+                        </li>
                         @if (autenticado)
                         {
                             <li class="nav-item">
@@ -142,6 +145,7 @@
                         <li><a asp-controller="Home" asp-action="Index">Inicio</a></li>
                         <li><a asp-controller="Home" asp-action="Reportar">Reportar incidencia</a></li>
                         <li><a asp-controller="Home" asp-action="Incidencias">Incidencias</a></li>
+                        <li><a asp-controller="Home" asp-action="Contacto">Contáctanos</a></li>
                     </ul>
                 </nav>
             </div>

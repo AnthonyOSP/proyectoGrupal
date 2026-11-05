@@ -1,0 +1,122 @@
+@model ContactoViewModel
+@{
+    ViewData["Title"] = "Contáctanos";
+
+    // Mensaje de éxito después de enviar (llega por TempData tras la redirección).
+    var enviadoNombre = TempData["ContactoEnviadoNombre"] as string;
+
+    // Error general (no de un campo), por ejemplo si falla el guardado en la base de datos.
+    var errorGeneral = ViewData.ModelState[string.Empty]?.Errors.FirstOrDefault()?.ErrorMessage;
+
+    // Errores por campo, en el orden del formulario, con el id del control al que enlazan.
+    var errores = new[] { nameof(Model.Nombre), nameof(Model.Email), nameof(Model.Mensaje) }
+        .Select(campo => (Destino: campo, Mensaje: ViewData.ModelState[campo]?.Errors.FirstOrDefault()?.ErrorMessage))
+        .Where(c => c.Mensaje != null)
+        .ToList();
+}
+
+<section class="page-head">
+    <div class="container">
+        <h1 class="page-head__titulo">Contáctanos</h1>
+        <p class="page-head__sub">
+            ¿Tienes una consulta, una sugerencia o encontraste un problema en la plataforma? Escríbenos.
+            Los campos marcados con <span class="campo__requerido" aria-hidden="true">*</span><span class="visually-hidden">asterisco</span> son obligatorios.
+        </p>
+        @if (enviadoNombre != null)
+        {
+            <div class="alerta-exito" role="status" tabindex="-1" id="alertaExito">
+                <span class="alerta-exito__icono">@Iconos.Svg("check", 22)</span>
+                <div class="alerta-exito__cuerpo">
+                    <h2 class="alerta-exito__titulo">¡Gracias, @enviadoNombre! Recibimos tu mensaje.</h2>
+                    <p>Lo revisaremos y te responderemos al correo que nos indicaste.</p>
+                    <div class="alerta-exito__acciones">
+                        <a class="link-flecha" asp-action="Index">Volver al inicio @Iconos.Svg("arrow-right", 16)</a>
+                        <a class="link-flecha" asp-action="Incidencias">Ver incidencias @Iconos.Svg("arrow-right", 16)</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<div class="container">
+    <div class="form-layout">
+        <div>
+            @* POST normal (sin AJAX). El tag helper <form> agrega el token antiforgery.
+               No hay campos de Id ni FechaRegistro: los decide el servidor. *@
+            <form class="form-card" asp-action="Contacto" method="post" novalidate id="formContacto">
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="resumen-errores" role="alert" tabindex="-1" id="resumenErrores">
+                        <strong>@(errorGeneral ?? "Revisa estos campos antes de enviar:")</strong>
+                        @if (errores.Count > 0)
+                        {
+                            <ul>
+                                @foreach (var error in errores)
+                                {
+                                    <li><a href="#@error.Destino">@error.Mensaje</a></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+
+                <fieldset class="form-grupo">
+                    <legend class="form-grupo__titulo"><span class="form-grupo__num">@Iconos.Svg("mail", 16)</span> Tu mensaje</legend>
+
+                    <div class="campo">
+                        <label class="campo__label" asp-for="Nombre">Nombre<span class="campo__requerido" aria-hidden="true">*</span></label>
+                        <input class="form-control" asp-for="Nombre" placeholder="Ej. María Torres"
+                               autocomplete="name" maxlength="@ContactoViewModel.NombreMaximo" />
+                        <span asp-validation-for="Nombre"></span>
+                    </div>
+
+                    <div class="campo">
+                        <label class="campo__label" asp-for="Email">Correo electrónico<span class="campo__requerido" aria-hidden="true">*</span></label>
+                        <input class="form-control" asp-for="Email" type="email" placeholder="tucorreo@ejemplo.com"
+                               autocomplete="email" maxlength="@ContactoViewModel.EmailMaximo" aria-describedby="Email-ayuda" />
+                        <span asp-validation-for="Email"></span>
+                        <div class="campo__ayuda" id="Email-ayuda"><span>Te responderemos a este correo.</span></div>
+                    </div>
+
+                    <div class="campo">
+                        <label class="campo__label" asp-for="Mensaje">Mensaje<span class="campo__requerido" aria-hidden="true">*</span></label>
+                        <textarea class="form-control" asp-for="Mensaje" rows="6" maxlength="@ContactoViewModel.MensajeMaximo"
+                                  placeholder="Cuéntanos en qué podemos ayudarte..."
+                                  aria-describedby="Mensaje-ayuda Mensaje-contador" data-contador="Mensaje-contador"></textarea>
+                        <span asp-validation-for="Mensaje"></span>
+                        <div class="campo__ayuda" id="Mensaje-ayuda">
+                            <span>Mínimo @ContactoViewModel.MensajeMinimo caracteres.</span>
+                            <span class="campo__contador" id="Mensaje-contador" aria-live="polite" data-minimo="@ContactoViewModel.MensajeMinimo">@(Model.Mensaje?.Length ?? 0) / @ContactoViewModel.MensajeMaximo caracteres</span>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="form-acciones">
+                    <button type="submit" class="btn btn-av-primary btn-lg-av" id="btnEnviar">
+                        @Iconos.Svg("send", 18)
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span class="btn-texto">Enviar mensaje</span>
+                    </button>
+                    <a class="btn btn-av-secondary btn-lg-av" asp-action="Index">Cancelar</a>
+                </div>
+            </form>
+        </div>
+
+        <aside class="form-aside" aria-labelledby="titulo-contacto">
+            <div class="aside-card">
+                <h2 class="aside-card__titulo" id="titulo-contacto">@Iconos.Svg("info", 20) Antes de escribirnos</h2>
+                <ul class="lista-check">
+                    <li>@Iconos.Svg("check", 18) <span>Si quieres avisar de un problema en tu calle (un bache, un poste sin luz), usa <a asp-action="Reportar">Reportar incidencia</a>: así llega al equipo del distrito y puedes seguir su estado.</span></li>
+                    <li>@Iconos.Svg("check", 18) <span>Para consultas, sugerencias o problemas con tu cuenta, este formulario es el lugar indicado.</span></li>
+                    <li>@Iconos.Svg("check", 18) <span>No incluyas contraseñas ni datos personales de otras personas.</span></li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/contacto.js" asp-append-version="true"></script>
+}

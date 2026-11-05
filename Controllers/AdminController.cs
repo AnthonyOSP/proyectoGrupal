@@ -261,4 +261,73 @@ public class AdminController : Controller
         TempData["MensajeAdmin"] = $"La incidencia #{id} se eliminó correctamente.";
         return RedirectToAction(nameof(Incidencias));
     }
+
+    // GET: /Admin/Mensajes?buscar=cuenta
+    // Mensajes del formulario "Contáctanos", del más reciente al más antiguo.
+    public async Task<IActionResult> Mensajes(string? buscar)
+    {
+        buscar = BusquedaIncidenciasService.NormalizarTexto(buscar);
+
+        var mensajes = await _context.MensajesContacto
+            .AsNoTracking()
+            .OrderByDescending(m => m.FechaRegistro)
+            .ToListAsync();
+
+        var total = mensajes.Count;
+
+        // La búsqueda se hace en memoria para ignorar mayúsculas Y tildes ("maria" encuentra "María"),
+        // algo que SQLite no hace por sí solo. Es suficiente para el volumen de una bandeja de contacto.
+        if (buscar != null)
+        {
+            var comparador = System.Globalization.CultureInfo.InvariantCulture.CompareInfo;
+            const System.Globalization.CompareOptions opciones =
+                System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace;
+            bool Contiene(string texto) => comparador.IndexOf(texto, buscar, opciones) >= 0;
+
+            mensajes = mensajes
+                .Where(m => Contiene(m.Nombre) || Contiene(m.Email) || Contiene(m.Mensaje))
+                .ToList();
+        }
+
+        return View(new MensajesAdminViewModel
+        {
+            Buscar = buscar,
+            Total = total,
+            Mensajes = mensajes
+        });
+    }
+
+    // POST: /Admin/EliminarMensaje/5
+    // Borra un mensaje de contacto. No se puede deshacer.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EliminarMensaje(int id, string? buscar)
+    {
+        var mensaje = await _context.MensajesContacto.FirstOrDefaultAsync(m => m.Id == id);
+
+        if (mensaje == null)
+        {
+            // Pudo haberlo borrado otro administrador: se vuelve a la bandeja con un aviso.
+            TempData["MensajeAdmin"] = $"El mensaje #{id} ya no existe.";
+            TempData["MensajeAdminError"] = true;
+            return RedirectToAction(nameof(Mensajes), new { buscar });
+        }
+
+        _context.MensajesContacto.Remove(mensaje);
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Error al eliminar el mensaje de contacto {Id}", id);
+            TempData["MensajeAdmin"] = "No pudimos eliminar el mensaje. Inténtalo nuevamente.";
+            TempData["MensajeAdminError"] = true;
+            return RedirectToAction(nameof(Mensajes), new { buscar });
+        }
+
+        _logger.LogInformation("Mensaje de contacto {Id} eliminado por {Usuario}", id, User.Identity?.Name);
+        TempData["MensajeAdmin"] = $"El mensaje de {mensaje.Nombre} se eliminó correctamente.";
+        return RedirectToAction(nameof(Mensajes), new { buscar });
+    }
 }
