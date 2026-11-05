@@ -28,6 +28,7 @@ Todo lo que el proyecto usa y no fue escrito por nosotros. Las versiones son las
 | `Microsoft.EntityFrameworkCore.Design`              | 10.0.11 | Crear migraciones (solo desarrollo)                                 | MIT                          |
 | `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | 10.0.11 | Tablas de Identity en SQLite                                        | MIT                          |
 | `Microsoft.AspNetCore.Authentication.Google`        | 10.0.11 | Inicio de sesión con Google (OAuth)                                 | MIT                          |
+| `StackExchange.Redis`                               | 3.4.31  | Cliente de Redis (límite de reportes por usuario)                   | MIT                          |
 | `Google.Cloud.Vision.V1`                            | 3.8.0   | Cliente de Google Cloud Vision (detección de rostros)               | Apache-2.0                   |
 | `SixLabors.ImageSharp`                              | 3.1.12  | Procesar las fotos: orientación, quitar metadatos y pixelar rostros | Six Labors Split License 1.0 |
 | `Algolia.Search`                                    | 7.49.0  | Cliente oficial de Algolia (búsqueda)                               | MIT                          |
@@ -52,10 +53,11 @@ El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site
 | [Google Identity (OAuth)](https://console.cloud.google.com/apis/credentials) | Botón "Continuar con Google" en el inicio de sesión y el registro | Sí (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) | El botón no aparece; se entra con correo y contraseña | Sección 15 |
 | [Algolia](https://www.algolia.com)                       | Búsqueda de incidencias (índice de búsqueda, no guarda datos propios) | Sí (`ALGOLIA_*`)                      | La búsqueda usa SQLite                    | Sección 12                                                     |
 | [PieSocket](https://piehost.com) (PieHost)               | Actualización en tiempo real del panel y del seguimiento              | Sí (`PIESOCKET_*`)                    | Las páginas no se actualizan solas        | Sección 13                                                     |
+| [Redis](https://redis.io) (Upstash o Redis Cloud)        | Límite de reportes por usuario (contra el spam)                       | Sí (`REDIS_CONNECTION`)               | El límite se cuenta en la memoria del servidor | Sección 16                                               |
 | [OpenStreetMap](https://www.openstreetmap.org) (teselas) | Imágenes de los mapas                                                 | No                                    | — (se muestran siempre que haya internet) | Sección 14. Datos © OpenStreetMap contributors (licencia ODbL) |
 | [Google Fonts](https://fonts.google.com)                 | Tipografías Atkinson Hyperlegible y Plus Jakarta Sans                 | No                                    | El navegador usa una fuente del sistema   | SIL Open Font License                                          |
 
-Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, el inicio con Google, Algolia y PieSocket son opcionales: la aplicación arranca y funciona sin ellas.
+Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, el inicio con Google, Algolia, PieSocket y Redis son opcionales: la aplicación arranca y funciona sin ellas.
 
 ### Herramientas de desarrollo y despliegue
 
@@ -710,3 +712,41 @@ En Render: **Environment → Environment Variables**, con los mismos nombres. Al
 | Google muestra `Error 400: redirect_uri_mismatch`  | La URI de la tabla 15.1 no está registrada tal cual (revisa `http`/`https`, el puerto y `/signin-google`) |
 | Google muestra "Acceso bloqueado" o "app no verificada" | La app está en modo Prueba y ese correo no está en **Usuarios de prueba**                          |
 | El botón no aparece                                | Faltan `GOOGLE_CLIENT_ID` o `GOOGLE_CLIENT_SECRET`, o no reiniciaste la app después de configurarlas    |
+
+---
+
+## 16. Límite de reportes con Redis
+
+Para evitar el spam (y el abuso de Google Vision, que cobra por imagen después de las 1000 gratuitas), cada vecino puede enviar como máximo **3 reportes cada 10 minutos**. Los administradores no tienen límite.
+
+- El límite se revisa **antes** de procesar el reporte: si ya llegó al máximo, no se procesa la foto ni se llama a Google Vision.
+- Un reporte cuenta **solo si se guardó**. Si falla (por ejemplo, Vision no responde), el vecino no pierde un intento.
+- Al llegar al límite, el formulario muestra: _"Llegaste al límite de 3 reportes cada 10 minutos. Podrás enviar otro reporte en N minutos."_ (respuesta HTTP 429).
+
+### 16.1 Cómo funciona
+
+El conteo se guarda en **Redis** con una clave por usuario (`alertavecinal:limite-reportes:<id>`). El primer reporte crea la clave con valor 1 y una caducidad de 10 minutos; cada reporte siguiente suma 1. Cuando la clave caduca, Redis la borra y el conteo vuelve a cero. La suma y la caducidad se aplican en un solo paso (script Lua), así la clave nunca queda sin caducidad.
+
+- **Sin `REDIS_CONNECTION`**, o si Redis no responde, el conteo se guarda en la **memoria del servidor**: el límite sigue funcionando, pero se reinicia si la app se reinicia.
+- Con Redis, el conteo se conserva aunque Render reinicie la app, y serviría igual si la app corriera en varios servidores.
+
+### 16.2 Crear un Redis gratuito
+
+Cualquiera de estas opciones tiene un plan gratuito suficiente:
+
+- **Upstash** (https://upstash.com): crea una base de datos Redis y copia la URL de conexión, que empieza con `rediss://default:...@...upstash.io:6379`.
+- **Redis Cloud** (https://redis.io/try-free): crea una base de datos y usa su host, puerto y contraseña.
+
+### 16.3 Variables de configuración
+
+| Variable                  | Obligatoria | Ejemplo                                                                  |
+| ------------------------- | ----------- | ------------------------------------------------------------------------ |
+| `REDIS_CONNECTION`        | No          | `rediss://default:<contraseña>@<host>:6379` o `<host>:<puerto>,password=<contraseña>,ssl=True` |
+| `LIMITE_REPORTES`         | No          | `3` (valor por defecto)                                                  |
+| `LIMITE_REPORTES_MINUTOS` | No          | `10` (valor por defecto)                                                 |
+
+```bash
+dotnet user-secrets set "REDIS_CONNECTION" "rediss://default:<contraseña>@<host>:6379"
+```
+
+En Render: **Environment → Environment Variables**, con los mismos nombres. Al iniciar, el log indica `Redis configurado (...)` o `Redis no está configurado ... usará la memoria del servidor`. La contraseña nunca se escribe en el log.
