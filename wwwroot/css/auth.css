@@ -204,7 +204,7 @@
   padding: 8px 12px;
   border-radius: 10px;
   background: #fff;
-  color: var(--av-ink);
+  color: #0f172a; /* el mapa es oscuro en ambos temas: la etiqueta siempre es blanca con texto oscuro */
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
@@ -353,6 +353,7 @@
   right: 32px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
 }
 
@@ -454,7 +455,7 @@
 .av-input-caja > .icono {
   position: absolute;
   left: 16px;
-  color: #64748b;
+  color: var(--av-placeholder);
   pointer-events: none;
   transition: color 0.25s ease;
 }
@@ -468,22 +469,22 @@
   padding: 0 16px 0 48px;
   border-radius: 14px;
   border: 1.5px solid var(--av-border-strong);
-  background: #fff;
+  background: var(--av-surface);
   font: inherit;
   font-size: 16px;
   color: var(--av-ink);
   transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
 }
 .av-input::placeholder {
-  color: #64748b;
+  color: var(--av-placeholder);
 }
 .av-input:hover {
-  border-color: #94a3b8;
+  border-color: var(--av-border-hover);
 }
 .av-input:focus {
   outline: none;
   border-color: var(--av-primary);
-  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.16);
+  box-shadow: 0 0 0 4px var(--av-focus-ring);
 }
 .av-input--clave {
   padding-right: 56px;
@@ -550,7 +551,7 @@
   border: 0;
   border-radius: 14px;
   background: var(--av-primary);
-  color: #fff;
+  color: var(--av-on-color);
   font-family: var(--av-font-heading);
   font-size: 17px;
   font-weight: 700;
@@ -648,7 +649,7 @@
   height: 52px;
   border-radius: 14px;
   border: 1.5px solid var(--av-border-strong);
-  background: #fff;
+  background: var(--av-surface);
   color: var(--av-ink);
   font-size: 16px;
   font-weight: 700;
@@ -687,6 +688,33 @@
 }
 .av-marca:focus-visible {
   outline-color: #93c5fd;
+}
+
+/* ---------- Modo oscuro ----------
+   El mapa de la izquierda ya es oscuro en ambos temas; aquí solo se ajusta el panel del formulario.
+   La mayoría de colores cambian solos con las variables de site.css (:root[data-theme="dark"]). */
+[data-theme="dark"] .av-panel {
+  border-left: 1px solid #1b2a4d;
+}
+[data-theme="dark"] .av-marca__icono {
+  background: #3b82f6;
+}
+[data-theme="dark"] .av-check {
+  color: var(--av-text);
+}
+[data-theme="dark"] .av-separador,
+[data-theme="dark"] .av-form-caja .separador-o {
+  color: var(--av-muted);
+}
+[data-theme="dark"] .av-boton {
+  box-shadow: 0 10px 24px rgba(96, 165, 250, 0.22);
+}
+[data-theme="dark"] .av-boton:hover {
+  box-shadow: 0 14px 30px rgba(96, 165, 250, 0.3);
+}
+[data-theme="dark"] .av-giro {
+  border-color: rgba(11, 17, 32, 0.3);
+  border-top-color: var(--av-on-color);
 }
 
 /* Entrada escalonada (el retraso de cada elemento va en su atributo style) */
@@ -780,6 +808,11 @@
     justify-content: flex-start;
     border-radius: 28px 28px 0 0;
     box-shadow: 0 -18px 40px rgba(2, 6, 23, 0.35);
+  }
+  [data-theme="dark"] .av-panel {
+    border-left: 0;
+    border-top: 1px solid #1b2a4d;
+    box-shadow: 0 -18px 40px rgba(2, 6, 23, 0.55);
   }
   .av-panel__arriba {
     position: static;
