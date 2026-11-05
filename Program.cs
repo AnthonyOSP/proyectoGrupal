@@ -7,6 +7,7 @@ using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -133,6 +134,22 @@ builder.Services.AddHttpClient(PieSocketRealtimeService.NombreClienteHttp, clien
 });
 builder.Services.AddSingleton<IPieSocketRealtimeService, PieSocketRealtimeService>();
 
+// Límite de reportes por usuario (contra el spam). Conteo en Redis si REDIS_CONNECTION está configurada;
+// si no, en la memoria del servidor. LIMITE_REPORTES y LIMITE_REPORTES_MINUTOS son opcionales (3 cada 10 min).
+builder.Services.Configure<LimiteReportesOptions>(opciones =>
+{
+    opciones.RedisConnection = builder.Configuration["REDIS_CONNECTION"];
+    if (int.TryParse(builder.Configuration["LIMITE_REPORTES"], out var maximo) && maximo > 0)
+    {
+        opciones.MaximoReportes = maximo;
+    }
+    if (int.TryParse(builder.Configuration["LIMITE_REPORTES_MINUTOS"], out var minutos) && minutos > 0)
+    {
+        opciones.VentanaMinutos = minutos;
+    }
+});
+builder.Services.AddSingleton<ILimiteReportesService, LimiteReportesService>();
+
 var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
@@ -145,9 +162,10 @@ using (var scope = app.Services.CreateScope())
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);
 }
 
-// Crea los clientes de Algolia y PieSocket al iniciar: el log indica enseguida si están configurados.
+// Crea los clientes de Algolia, PieSocket y Redis al iniciar: el log indica enseguida si están configurados.
 app.Services.GetRequiredService<IAlgoliaIncidenciaService>();
 app.Services.GetRequiredService<IPieSocketRealtimeService>();
+app.Services.GetRequiredService<ILimiteReportesService>();
 if (string.IsNullOrEmpty(googleClientId) || string.IsNullOrEmpty(googleClientSecret))
 {
     app.Logger.LogInformation("Google no está configurado (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET): no se muestra \"Continuar con Google\".");
