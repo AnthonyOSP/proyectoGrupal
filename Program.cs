@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +76,26 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
+// "Continuar con Google" (OAuth). Claves en variables de entorno o User Secrets (ver README).
+// Sin ellas no se registra Google: el botón no aparece y el inicio de sesión con correo funciona igual.
+var googleClientId = builder.Configuration["GOOGLE_CLIENT_ID"]?.Trim();
+var googleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"]?.Trim();
+if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+{
+    builder.Services.AddAuthentication().AddGoogle(options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+        // Google vuelve a /signin-google con un GET normal: Lax basta, y así la cookie
+        // también funciona en local con http (SameSite=None exige https).
+        options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+        options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        // Si Google verificó el correo (AccountController solo vincula o crea cuentas con correos verificados).
+        options.ClaimActions.MapJsonKey("email_verified", "email_verified");
+        options.ClaimActions.MapJsonKey("verified_email", "verified_email");
+    });
+}
+
 // Protección de fotografías: detección de rostros con Google Cloud Vision + pixelado local.
 // Credenciales: variable de entorno GOOGLE_APPLICATION_CREDENTIALS (ver README.md).
 builder.Services.AddSingleton<IFaceDetectionService, GoogleVisionFaceDetectionService>();
@@ -127,6 +148,10 @@ using (var scope = app.Services.CreateScope())
 // Crea los clientes de Algolia y PieSocket al iniciar: el log indica enseguida si están configurados.
 app.Services.GetRequiredService<IAlgoliaIncidenciaService>();
 app.Services.GetRequiredService<IPieSocketRealtimeService>();
+if (string.IsNullOrEmpty(googleClientId) || string.IsNullOrEmpty(googleClientSecret))
+{
+    app.Logger.LogInformation("Google no está configurado (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET): no se muestra \"Continuar con Google\".");
+}
 
 app.UseForwardedHeaders();
 

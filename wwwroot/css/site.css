@@ -2649,6 +2649,62 @@ textarea.form-control {
   font-weight: 700;
 }
 
+.perfil-nota {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.9375rem;
+  color: var(--av-muted);
+}
+
+/* Botón "Continuar con Google" (Views/Shared/_BotonGoogle.cshtml): blanco con el logotipo de Google */
+.boton-google__form {
+  margin: 0;
+}
+
+.boton-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 1rem;
+  border: 1.5px solid var(--av-border-strong);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--av-ink);
+  font-family: var(--av-font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--av-transition), background-color var(--av-transition), box-shadow var(--av-transition);
+}
+.boton-google:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+.boton-google:focus-visible {
+  outline: 3px solid var(--av-primary);
+  outline-offset: 2px;
+}
+
+/* Separador "o" entre el formulario y el botón de Google */
+.separador-o {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 1.25rem 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+.separador-o::before,
+.separador-o::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--av-border);
+}
+
 .perfil-boton {
   width: 100%;
   margin-top: 0.25rem;
