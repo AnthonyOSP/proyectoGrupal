@@ -16,11 +16,25 @@
   --adm-sidebar-texto: #cbd5e1;
   --adm-sidebar-hover: #1e293b;
   --adm-sidebar-ancho: 256px;
+  --adm-bg: #f1f5f9;
+  --adm-aviso-bg: #fef9c3;
+  --adm-aviso-borde: #fde68a;
+  --adm-aviso-texto: #854d0e;
+}
+
+/* Modo oscuro del panel (el resto de colores viene de site.css) */
+:root[data-theme="dark"] {
+  --adm-sidebar: #060a14;
+  --adm-sidebar-hover: #131c2f;
+  --adm-bg: #0b1120;
+  --adm-aviso-bg: rgba(245, 158, 11, 0.12);
+  --adm-aviso-borde: rgba(245, 158, 11, 0.3);
+  --adm-aviso-texto: #fcd34d;
 }
 
 /* ---------- 1. Estructura ---------- */
 .admin-body {
-  background: #f1f5f9;
+  background: var(--adm-bg);
 }
 
 .admin-shell {
@@ -105,7 +119,7 @@
 }
 
 .admin-nav__link.active {
-  color: #fff;
+  color: var(--av-on-color);
   background: var(--av-primary);
 }
 
@@ -114,6 +128,22 @@
   border-top: 1px solid #1e293b;
   border-radius: 0;
   padding-top: 0.75rem;
+}
+
+/* Botón de tema dentro de la barra lateral (siempre oscura) */
+.admin-sidebar .boton-tema {
+  color: #fff;
+  border-color: #334155;
+}
+
+.admin-sidebar .boton-tema:hover {
+  background: var(--adm-sidebar-hover);
+}
+
+.admin-sidebar__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .admin-sidebar :focus-visible {
@@ -518,7 +548,7 @@
 }
 
 .admin-tabla tbody tr:hover {
-  background: #f8fafc;
+  background: var(--av-bg);
 }
 
 .admin-tabla__titulo {

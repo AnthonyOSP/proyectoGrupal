@@ -12,6 +12,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#0f172a" />
     <title>@ViewData["Title"] · Admin · Alerta Vecinal</title>
+    <partial name="_TemaScript" />
 
     @* Icono de la pestaña: el mismo megáfono de .brand__mark. El .ico es para navegadores sin soporte de SVG. *@
     <link rel="icon" href="~/favicon.ico" sizes="48x48" asp-append-version="true" />
@@ -41,10 +42,13 @@
                         <span class="admin-sidebar__tag">Panel administrativo</span>
                     </span>
                 </a>
-                <button class="admin-menu-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuAdmin"
-                        aria-controls="menuAdmin" aria-expanded="false" aria-label="Abrir menú">
-                    @Iconos.Svg("menu", 24)
-                </button>
+                <div class="admin-sidebar__acciones">
+                    <partial name="_BotonTema" />
+                    <button class="admin-menu-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuAdmin"
+                            aria-controls="menuAdmin" aria-expanded="false" aria-label="Abrir menú">
+                        @Iconos.Svg("menu", 24)
+                    </button>
+                </div>
             </div>
 
             <nav class="collapse d-lg-flex admin-nav" id="menuAdmin" aria-label="Navegación del panel">
@@ -93,6 +97,7 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
