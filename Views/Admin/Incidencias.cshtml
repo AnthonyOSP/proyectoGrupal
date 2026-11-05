@@ -22,6 +22,17 @@
     </div>
 </header>
 
+@* Confirmación después de eliminar una incidencia. *@
+@if (TempData["MensajeAdmin"] is string mensaje)
+{
+    <div class="alerta-exito" role="status" tabindex="-1" id="mensajeAdmin">
+        <span class="alerta-exito__icono">@Iconos.Svg("check", 22)</span>
+        <div>
+            <p class="alerta-exito__titulo mb-0">@mensaje</p>
+        </div>
+    </div>
+}
+
 @* Tiempo real: avisa de nuevas incidencias y cambios de estado y refresca la zona marcada. *@
 @{ ViewData["RealtimeAvisoDesactivado"] = true; }
 <partial name="_Realtime" model="CanalesRealtime.Administracion" />
@@ -161,6 +172,9 @@ else
     <script src="~/lib/leaflet/dist/leaflet.js"></script>
     <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
     <script>
+        // Anuncia el mensaje de confirmación a los lectores de pantalla.
+        document.getElementById("mensajeAdmin")?.focus();
+
         // Al cambiar un filtro se aplica automáticamente (el botón "Filtrar" funciona sin JavaScript).
         document.querySelectorAll("[data-autoenviar]").forEach(select =>
             select.addEventListener("change", () => select.form.submit()));

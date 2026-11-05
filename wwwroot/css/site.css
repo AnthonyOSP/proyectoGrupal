@@ -80,12 +80,97 @@
   --il-chip-verde: #dcfce7;
   --il-chip-verde-texto: #166534;
 
+  /* Texto sobre fondos de color (botón primario, íconos de estado) */
+  --av-on-color: #ffffff;
+
+  /* Otros colores de la interfaz */
+  --av-cta-bg: var(--av-primary);
+  --av-cta-text: #ffffff;
+  --av-cta-sub: #dbeafe;
+  --av-error-border: #fecaca;
+  --av-success-border: #bbf7d0;
+  --av-placeholder: #64748b;
+  --av-border-hover: #94a3b8;
+  --av-focus-ring: rgba(29, 78, 216, 0.18);
+  --av-footer-bg: #0f172a;
+  --il-card: #ffffff;
+
+  color-scheme: light;
+
   /* Integración con Bootstrap */
   --bs-body-font-family: var(--av-font-body);
   --bs-body-color: var(--av-text);
   --bs-body-bg: var(--av-bg);
   --bs-link-color-rgb: 29, 78, 216;
   --bs-link-hover-color-rgb: 30, 64, 175;
+}
+
+/* ---------- 1b. Modo oscuro ----------
+   Se activa con <html data-theme="dark">. El script de Views/Shared/_TemaScript.cshtml
+   elige el tema según la preferencia guardada o la del sistema operativo. */
+:root[data-theme="dark"] {
+  --av-primary: #60a5fa;
+  --av-primary-hover: #93c5fd;
+  --av-primary-soft: rgba(96, 165, 250, 0.12);
+  --av-primary-100: rgba(96, 165, 250, 0.28);
+  --av-accent: #fb923c;
+  --av-on-color: #0b1120;
+
+  --av-ink: #f1f5f9;
+  --av-text: #e2e8f0;
+  --av-muted: #9aa8bd;
+  --av-border: #25324a;
+  --av-border-strong: #364664;
+  --av-bg: #0b1120;
+  --av-surface: #131c2f;
+
+  --av-pendiente-bg: rgba(245, 158, 11, 0.16);
+  --av-pendiente-text: #fcd34d;
+  --av-revision-bg: rgba(59, 130, 246, 0.2);
+  --av-revision-text: #93c5fd;
+  --av-atendida-bg: rgba(34, 197, 94, 0.16);
+  --av-atendida-text: #86efac;
+  --av-error: #f87171;
+  --av-error-bg: rgba(248, 113, 113, 0.1);
+  --av-success: #4ade80;
+  --av-success-bg: rgba(34, 197, 94, 0.1);
+
+  --av-cta-bg: #1e3a8a;
+  --av-cta-text: #ffffff;
+  --av-cta-sub: #bfdbfe;
+  --av-error-border: rgba(248, 113, 113, 0.35);
+  --av-success-border: rgba(74, 222, 128, 0.35);
+  --av-placeholder: #7c8aa0;
+  --av-border-hover: #4b5d80;
+  --av-focus-ring: rgba(96, 165, 250, 0.3);
+  --av-footer-bg: #060a14;
+  --av-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  /* Ilustración de noche: ventanas encendidas */
+  --il-cielo: #172554;
+  --il-edificio: #1d4ed8;
+  --il-edificio-2: #1e40af;
+  --il-ventana: #fde68a;
+  --il-arbol: #16a34a;
+  --il-poste: #94a3b8;
+  --il-vereda: #334155;
+  --il-pista: #1e293b;
+  --il-linea: #cbd5e1;
+  --il-borde: #334155;
+  --il-texto: #cbd5e1;
+  --il-texto-suave: #475569;
+  --il-card: #131c2f;
+  --il-chip-amarillo: rgba(245, 158, 11, 0.2);
+  --il-chip-amarillo-texto: #fcd34d;
+  --il-chip-verde: rgba(34, 197, 94, 0.2);
+  --il-chip-verde-texto: #86efac;
+
+  color-scheme: dark;
+
+  --bs-body-color: var(--av-text);
+  --bs-body-bg: var(--av-bg);
+  --bs-link-color-rgb: 96, 165, 250;
+  --bs-link-hover-color-rgb: 147, 197, 253;
 }
 
 /* ---------- 2. Base ---------- */
@@ -159,13 +244,13 @@ h1, h2, h3, h4 {
 .btn-av-primary {
   background: var(--av-primary);
   border-color: var(--av-primary);
-  color: #fff;
+  color: var(--av-on-color);
 }
 .btn-av-primary:hover,
 .btn-av-primary:active {
   background: var(--av-primary-hover);
   border-color: var(--av-primary-hover);
-  color: #fff;
+  color: var(--av-on-color);
 }
 
 .btn-av-secondary {
@@ -181,15 +266,15 @@ h1, h2, h3, h4 {
 }
 
 .btn-av-light {
-  background: #fff;
-  border-color: #fff;
-  color: var(--av-primary-hover);
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #1e40af;
 }
 .btn-av-light:hover,
 .btn-av-light:active {
-  background: var(--av-primary-soft);
-  border-color: var(--av-primary-soft);
-  color: var(--av-primary-hover);
+  background: #eff6ff;
+  border-color: #eff6ff;
+  color: #1e40af;
 }
 
 .btn-av-ghost {
@@ -251,7 +336,7 @@ h1, h2, h3, h4 {
   height: 36px;
   border-radius: 10px;
   background: var(--av-primary);
-  color: #fff;
+  color: var(--av-on-color);
 }
 
 .brand__text {
@@ -299,6 +384,45 @@ h1, h2, h3, h4 {
 .site-header .nav-link.active {
   color: var(--av-primary);
   background: var(--av-primary-soft);
+}
+
+/* Botón para cambiar entre modo claro y oscuro */
+.boton-tema {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--av-ink);
+  background: transparent;
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--av-transition), border-color var(--av-transition);
+}
+
+.boton-tema:hover {
+  background: var(--av-bg);
+  border-color: var(--av-border-strong);
+}
+
+/* Se muestra la luna en modo claro y el sol en modo oscuro */
+.boton-tema .icono-sol { display: none; }
+[data-theme="dark"] .boton-tema .icono-sol { display: block; }
+[data-theme="dark"] .boton-tema .icono-luna { display: none; }
+
+.nav-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* En escritorio el botón de tema va al final, después de "Reportar ahora" */
+@media (min-width: 992px) {
+  .nav-acciones {
+    order: 3;
+    margin-left: 0.75rem;
+  }
 }
 
 /* Menú móvil: enlaces grandes y botón a todo el ancho */
@@ -809,6 +933,15 @@ h1, h2, h3, h4 {
 [data-cat="seguridad"] { --cat-bg: #e0e7ff; --cat-fg: #3730a3; }
 [data-cat="otros"]     { --cat-bg: #f3e8ff; --cat-fg: #6b21a8; }
 
+[data-theme="dark"] [data-cat="pistas"]    { --cat-bg: rgba(148, 163, 184, 0.16); --cat-fg: #cbd5e1; }
+[data-theme="dark"] [data-cat="alumbrado"] { --cat-bg: rgba(250, 204, 21, 0.14);  --cat-fg: #fde047; }
+[data-theme="dark"] [data-cat="parques"]   { --cat-bg: rgba(34, 197, 94, 0.14);   --cat-fg: #86efac; }
+[data-theme="dark"] [data-cat="limpieza"]  { --cat-bg: rgba(20, 184, 166, 0.14);  --cat-fg: #5eead4; }
+[data-theme="dark"] [data-cat="agua"]      { --cat-bg: rgba(14, 165, 233, 0.16);  --cat-fg: #7dd3fc; }
+[data-theme="dark"] [data-cat="transito"]  { --cat-bg: rgba(249, 115, 22, 0.16);  --cat-fg: #fdba74; }
+[data-theme="dark"] [data-cat="seguridad"] { --cat-bg: rgba(99, 102, 241, 0.2);   --cat-fg: #a5b4fc; }
+[data-theme="dark"] [data-cat="otros"]     { --cat-bg: rgba(168, 85, 247, 0.18);  --cat-fg: #d8b4fe; }
+
 /* Tarjetas de incidencia */
 .grid-incidencias {
   display: grid;
@@ -976,13 +1109,13 @@ h1, h2, h3, h4 {
   flex-direction: column;
   gap: 1.25rem;
   padding: 2rem 1.5rem;
-  background: var(--av-primary);
+  background: var(--av-cta-bg);
   border-radius: var(--av-radius-lg);
-  color: #fff;
+  color: var(--av-cta-text);
 }
 
 .cta-banda__titulo {
-  color: #fff;
+  color: var(--av-cta-text);
   font-size: clamp(1.375rem, 4vw, 1.75rem);
   font-weight: 800;
   margin-bottom: 0.25rem;
@@ -990,7 +1123,7 @@ h1, h2, h3, h4 {
 
 .cta-banda__texto {
   margin: 0;
-  color: #dbeafe;
+  color: var(--av-cta-sub);
 }
 
 @media (min-width: 768px) {
@@ -1168,18 +1301,18 @@ h1, h2, h3, h4 {
 }
 
 .form-control::placeholder {
-  color: #64748b;
+  color: var(--av-placeholder);
 }
 
 .form-control:hover,
 .form-select:hover {
-  border-color: #94a3b8;
+  border-color: var(--av-border-hover);
 }
 
 .form-control:focus,
 .form-select:focus {
   border-color: var(--av-primary);
-  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.18);
+  box-shadow: 0 0 0 4px var(--av-focus-ring);
 }
 
 textarea.form-control {
@@ -1216,7 +1349,7 @@ textarea.form-control {
   width: 18px;
   height: 18px;
   font-size: 0.75rem;
-  color: #fff;
+  color: var(--av-on-color);
   background: var(--av-error);
   border-radius: 50%;
 }
@@ -1230,7 +1363,7 @@ textarea.form-control {
   padding: 1rem 1.25rem;
   color: var(--av-error);
   background: var(--av-error-bg);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--av-error-border);
   border-radius: var(--av-radius);
 }
 
@@ -1629,8 +1762,8 @@ textarea.form-control {
   display: none;
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
   border-radius: 50%;
   animation: girar 700ms linear infinite;
 }
@@ -1698,7 +1831,7 @@ textarea.form-control {
   margin-bottom: 1.5rem;
   padding: 1.25rem;
   background: var(--av-success-bg);
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--av-success-border);
   border-radius: var(--av-radius);
   color: var(--av-success);
 }
@@ -1718,7 +1851,7 @@ textarea.form-control {
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  color: #fff;
+  color: var(--av-on-color);
   background: var(--av-success);
   border-radius: 50%;
 }
@@ -2160,7 +2293,7 @@ textarea.form-control {
 .progreso__paso.is-hecho .progreso__marca {
   background: var(--av-primary);
   border-color: var(--av-primary);
-  color: #fff;
+  color: var(--av-on-color);
 }
 
 .progreso__paso.is-actual .progreso__marca {
@@ -2447,6 +2580,15 @@ textarea.form-control {
   color: #cbd5e1;
 }
 
+.site-footer__autores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .site-footer__tag {
   padding: 0.2rem 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.2);
@@ -2647,6 +2789,62 @@ textarea.form-control {
   margin: 0 0 1rem;
   font-size: 1rem;
   font-weight: 700;
+}
+
+.perfil-nota {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.9375rem;
+  color: var(--av-muted);
+}
+
+/* Botón "Continuar con Google" (Views/Shared/_BotonGoogle.cshtml): blanco con el logotipo de Google */
+.boton-google__form {
+  margin: 0;
+}
+
+.boton-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 1rem;
+  border: 1.5px solid var(--av-border-strong);
+  border-radius: 14px;
+  background: var(--av-surface);
+  color: var(--av-ink);
+  font-family: var(--av-font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--av-transition), background-color var(--av-transition), box-shadow var(--av-transition);
+}
+.boton-google:hover {
+  border-color: var(--av-border-hover);
+  background: var(--av-bg);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+.boton-google:focus-visible {
+  outline: 3px solid var(--av-primary);
+  outline-offset: 2px;
+}
+
+/* Separador "o" entre el formulario y el botón de Google */
+.separador-o {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 1.25rem 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+.separador-o::before,
+.separador-o::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--av-border);
 }
 
 .perfil-boton {
@@ -2947,14 +3145,14 @@ textarea.form-control {
   z-index: 1000;
   padding: 0.75rem 1rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--av-on-color);
   background: var(--av-primary);
   border-radius: var(--av-radius-sm);
 }
 
 .skip-link:focus {
   top: 0.75rem;
-  color: #fff;
+  color: var(--av-on-color);
 }
 
 /* Evita que el navbar fijo tape el elemento enfocado */

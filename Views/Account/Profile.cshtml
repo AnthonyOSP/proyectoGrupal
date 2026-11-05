@@ -83,7 +83,11 @@
         <h2 class="form-grupo__titulo" id="titulo-seguridad">
             <span class="form-grupo__num" aria-hidden="true">@Iconos.Svg("lock", 14)</span> Seguridad
         </h2>
-        <h3 class="perfil-subtitulo">Cambiar contraseña</h3>
+        <h3 class="perfil-subtitulo">@(Model.TieneContrasena ? "Cambiar contraseña" : "Crear contraseña")</h3>
+        @if (!Model.TieneContrasena)
+        {
+            <p class="perfil-nota">Entraste con Google, así que tu cuenta no tiene contraseña. Si creas una, también podrás entrar con tu correo.</p>
+        }
 
         @if (mensajeContrasena != null)
         {
@@ -101,11 +105,14 @@
 
         @* Los campos de contraseña nunca se vuelven a llenar con lo enviado. *@
         <form asp-action="ChangePassword" method="post" novalidate>
-            <div class="campo">
-                <label class="campo__label" asp-for="Contrasena.ContrasenaActual">Contraseña actual</label>
-                <input class="form-control" asp-for="Contrasena.ContrasenaActual" autocomplete="current-password" maxlength="100" />
-                <span asp-validation-for="Contrasena.ContrasenaActual"></span>
-            </div>
+            @if (Model.TieneContrasena)
+            {
+                <div class="campo">
+                    <label class="campo__label" asp-for="Contrasena.ContrasenaActual">Contraseña actual</label>
+                    <input class="form-control" asp-for="Contrasena.ContrasenaActual" autocomplete="current-password" maxlength="100" />
+                    <span asp-validation-for="Contrasena.ContrasenaActual"></span>
+                </div>
+            }
 
             <div class="campo">
                 <label class="campo__label" asp-for="Contrasena.NuevaContrasena">Nueva contraseña</label>
@@ -121,7 +128,7 @@
                 <span asp-validation-for="Contrasena.ConfirmarContrasena"></span>
             </div>
 
-            <button type="submit" class="btn btn-av-primary perfil-boton">@Iconos.Svg("lock", 18) Cambiar contraseña</button>
+            <button type="submit" class="btn btn-av-primary perfil-boton">@Iconos.Svg("lock", 18) @(Model.TieneContrasena ? "Cambiar contraseña" : "Crear contraseña")</button>
         </form>
     </section>
 </div>
