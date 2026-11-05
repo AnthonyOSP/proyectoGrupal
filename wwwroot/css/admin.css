@@ -717,6 +717,14 @@
   border: 0;
 }
 
+/* Bootstrap agranda los <legend>: aquí se ve como la etiqueta de un campo normal */
+.estado-botones > legend {
+  float: none;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
 .estado-boton {
   justify-content: flex-start;
   width: 100%;
