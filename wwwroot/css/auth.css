@@ -1,0 +1,812 @@
+/* =========================================================
+   Páginas de cuenta a pantalla completa (Views/Account/Login.cshtml y Register.cshtml)
+   Izquierda: mapa del distrito animado. Derecha: formulario.
+   En tablet y celular el mapa queda arriba y el formulario sube como una hoja.
+   ========================================================= */
+
+.auth-pantalla {
+  background: #0b1220;
+}
+
+.av-login {
+  --av-noche: #0b1220;
+  --av-pin: #fb923c;
+
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  background: var(--av-noche);
+  color: var(--av-ink);
+}
+
+/* ---------- Escena (mapa del distrito) ---------- */
+.av-escena {
+  position: relative;
+  overflow: hidden;
+  min-height: 100dvh;
+  background: var(--av-noche);
+  color: #e2e8f0;
+}
+
+.av-mapa {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  animation: av-deriva 38s ease-in-out infinite alternate;
+}
+
+.av-ruta {
+  stroke-dasharray: 10 14;
+  animation: av-ruta 2.8s linear infinite;
+}
+
+/* Oscurece el lado del texto para que se lea sobre el mapa */
+.av-escena__velo {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(11, 18, 32, 0.92) 0%, rgba(11, 18, 32, 0.55) 48%, rgba(11, 18, 32, 0) 78%);
+  pointer-events: none;
+}
+
+.av-escena__contenido {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 44px 56px 48px;
+}
+
+.av-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-start;
+  min-height: 44px;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 12px;
+}
+.av-marca:hover {
+  color: #fff;
+}
+.av-marca__icono {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--av-primary);
+  box-shadow: 0 8px 24px rgba(29, 78, 216, 0.45);
+}
+.av-marca__texto {
+  font-family: var(--av-font-heading);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.av-marca__texto span {
+  color: #93c5fd;
+}
+
+.av-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2e8f0;
+  backdrop-filter: blur(6px);
+}
+
+.av-punto-vivo {
+  position: relative;
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--av-pin);
+}
+.av-punto-vivo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--av-pin);
+  animation: av-latido 1.8s ease-out infinite;
+}
+
+.av-titular {
+  margin: 22px 0 0;
+  max-width: 560px;
+  font-size: 56px;
+  line-height: 1.04;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+.av-titular span {
+  display: block;
+  color: #93c5fd;
+}
+
+.av-sub {
+  margin: 20px 0 0;
+  max-width: 470px;
+  font-size: 18px;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
+/* ---------- Pines ---------- */
+.av-pin {
+  position: absolute;
+  z-index: 1;
+  width: 0;
+  height: 0;
+}
+
+.av-pin__onda {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--av-pin);
+  opacity: 0;
+  animation: av-onda 2.6s ease-out infinite;
+}
+.av-pin__onda--2 {
+  animation-delay: 1.3s;
+}
+
+.av-pin__punto {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--av-pin);
+  border: 3px solid var(--av-noche);
+  box-shadow: 0 0 0 2px var(--av-pin);
+  transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+.av-pin--chico .av-pin__punto {
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-width: 2px;
+  background: #60a5fa;
+  box-shadow: 0 0 0 2px #60a5fa;
+}
+.av-pin--chico .av-pin__onda {
+  border-color: rgba(96, 165, 250, 0.6);
+  animation-duration: 3.4s;
+}
+
+.av-pin__etiqueta {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--av-ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
+  opacity: 0;
+  transform: translate(-50%, 8px) scale(0.9);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+  pointer-events: none;
+}
+.av-pin__etiqueta::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.av-pin.es-activo .av-pin__punto {
+  transform: scale(1.45);
+}
+.av-pin.es-activo .av-pin__etiqueta {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+/* ---------- Panel "Así funciona un reporte" ---------- */
+.av-feed {
+  width: 100%;
+  max-width: 440px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.av-feed__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 4px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.av-feed__vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fdba74;
+  letter-spacing: 0.04em;
+}
+
+.av-feed__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.av-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  transition: background 0.45s ease, border-color 0.45s ease, transform 0.45s ease;
+}
+.av-fila.es-activo {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(147, 197, 253, 0.35);
+  transform: translateX(6px);
+}
+
+.av-fila__icono {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.14);
+  color: #e2e8f0;
+}
+
+.av-fila__texto {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+}
+.av-fila__titulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.av-fila__lugar {
+  font-size: 13px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.av-estado {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------- Panel del formulario ---------- */
+.av-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 84px 32px 40px;
+  background: var(--av-bg);
+}
+
+.av-panel__arriba {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.av-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--av-muted);
+  text-decoration: none;
+  border-radius: 10px;
+}
+.av-volver:hover {
+  color: var(--av-ink);
+}
+.av-volver .icono {
+  transition: transform 0.3s ease;
+}
+.av-volver:hover .icono {
+  transform: translateX(-4px);
+}
+
+.av-form-caja {
+  width: 100%;
+  max-width: 420px;
+}
+
+.av-saludo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--av-primary-soft);
+  color: var(--av-primary-hover);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.av-form-titulo {
+  margin: 16px 0 0;
+  font-size: 38px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.av-form-sub {
+  margin: 10px 0 0;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--av-muted);
+}
+
+.av-aviso {
+  margin: 24px 0 0;
+}
+
+.av-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 28px;
+}
+.av-form .resumen-errores {
+  margin-bottom: 0;
+}
+
+.av-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.av-campo .field-validation-error {
+  margin-top: 0;
+}
+
+.av-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--av-ink);
+}
+
+/* Texto de ayuda bajo un campo (reglas de la contraseña en el registro) */
+.av-ayuda {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--av-muted);
+}
+
+.av-input-caja {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.av-input-caja > .icono {
+  position: absolute;
+  left: 16px;
+  color: #64748b;
+  pointer-events: none;
+  transition: color 0.25s ease;
+}
+.av-input-caja:focus-within > .icono {
+  color: var(--av-primary);
+}
+
+.av-input {
+  width: 100%;
+  height: 54px;
+  padding: 0 16px 0 48px;
+  border-radius: 14px;
+  border: 1.5px solid var(--av-border-strong);
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  color: var(--av-ink);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+}
+.av-input::placeholder {
+  color: #64748b;
+}
+.av-input:hover {
+  border-color: #94a3b8;
+}
+.av-input:focus {
+  outline: none;
+  border-color: var(--av-primary);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.16);
+}
+.av-input--clave {
+  padding-right: 56px;
+}
+
+/* Error de validación (jQuery Validate o el servidor agregan esta clase) */
+.av-input.input-validation-error,
+.av-input.input-validation-error:hover {
+  border-color: var(--av-error);
+  background-color: var(--av-error-bg);
+}
+.av-input.input-validation-error:focus {
+  box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.15);
+}
+
+.av-ojo {
+  position: absolute;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--av-muted);
+  cursor: pointer;
+}
+.av-ojo[hidden],
+.av-ojo [hidden] {
+  display: none;
+}
+.av-ojo:hover {
+  background: var(--av-primary-soft);
+  color: var(--av-primary);
+}
+
+.av-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  min-height: 44px;
+  font-size: 15px;
+  color: #334155;
+  cursor: pointer;
+}
+.av-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--av-primary);
+  cursor: pointer;
+}
+
+.av-boton {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--av-primary);
+  color: #fff;
+  font-family: var(--av-font-heading);
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.28);
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+}
+.av-boton:hover {
+  background: var(--av-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(29, 78, 216, 0.34);
+}
+.av-boton:active {
+  transform: translateY(0);
+}
+.av-boton:disabled {
+  cursor: progress;
+  transform: none;
+}
+
+/* Brillo que recorre el botón */
+.av-boton::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 30%;
+  background: rgba(255, 255, 255, 0.18);
+  transform: skewX(-20deg);
+  animation: av-brillo 4.5s ease-in-out infinite;
+}
+
+.av-boton__normal,
+.av-boton__cargando {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.av-boton__cargando[hidden],
+.av-boton__normal[hidden] {
+  display: none;
+}
+
+.av-flecha {
+  transition: transform 0.3s ease;
+}
+.av-boton:hover .av-flecha {
+  transform: translateX(5px);
+}
+
+.av-giro {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: av-gira 0.8s linear infinite;
+}
+
+.av-registro {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+/* Separador "o" antes de "Continuar con Google" (site.css), un poco más compacto aquí */
+.av-form-caja .separador-o {
+  margin: 18px 0;
+}
+
+.av-separador {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+  color: #64748b;
+}
+.av-separador::before,
+.av-separador::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--av-border);
+}
+
+.av-boton-sec {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  border: 1.5px solid var(--av-border-strong);
+  background: #fff;
+  color: var(--av-ink);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.25s ease, background 0.25s ease, color 0.25s ease;
+}
+.av-boton-sec:hover {
+  border-color: var(--av-primary);
+  background: var(--av-primary-soft);
+  color: var(--av-primary-hover);
+}
+
+.av-privacidad {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 22px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--av-muted);
+}
+.av-privacidad .icono {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--av-success);
+}
+
+.av-ojo:focus-visible,
+.av-boton:focus-visible,
+.av-boton-sec:focus-visible,
+.av-volver:focus-visible,
+.av-marca:focus-visible,
+.av-check input:focus-visible {
+  outline: 3px solid var(--av-primary);
+  outline-offset: 2px;
+}
+.av-marca:focus-visible {
+  outline-color: #93c5fd;
+}
+
+/* Entrada escalonada (el retraso de cada elemento va en su atributo style) */
+.av-entra {
+  opacity: 0;
+  animation: av-entra 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* ---------- Animaciones ---------- */
+@keyframes av-onda {
+  0% { transform: scale(0.35); opacity: 0.85; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes av-latido {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(3); opacity: 0; }
+}
+@keyframes av-ruta {
+  to { stroke-dashoffset: -48; }
+}
+@keyframes av-deriva {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-2.5%, -2%) scale(1.04); }
+}
+@keyframes av-entra {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes av-brillo {
+  0%, 62% { left: -40%; }
+  100% { left: 130%; }
+}
+@keyframes av-gira {
+  to { transform: rotate(360deg); }
+}
+
+/* Sin movimiento si la persona lo pidió en su sistema */
+@media (prefers-reduced-motion: reduce) {
+  .av-login *,
+  .av-login *::before,
+  .av-login *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .av-login .av-entra {
+    opacity: 1;
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1180px) {
+  .av-escena__contenido {
+    padding: 36px 40px 40px;
+  }
+  .av-titular {
+    font-size: 46px;
+  }
+}
+
+/* Tablet y celular: mapa arriba, formulario como hoja */
+@media (max-width: 960px) {
+  .av-login {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .av-escena,
+  .av-escena__contenido {
+    min-height: 0;
+  }
+  .av-escena__contenido {
+    padding: 28px 28px 76px;
+    gap: 24px;
+  }
+  .av-escena__velo {
+    background: linear-gradient(180deg, rgba(11, 18, 32, 0.88) 0%, rgba(11, 18, 32, 0.45) 70%, rgba(11, 18, 32, 0.2) 100%);
+  }
+  .av-titular {
+    font-size: 40px;
+    max-width: 520px;
+  }
+  .av-sub {
+    font-size: 17px;
+  }
+  .av-feed {
+    display: none;
+  }
+  .av-panel {
+    z-index: 3;
+    min-height: 0;
+    margin-top: -44px;
+    padding: 32px 24px 56px;
+    justify-content: flex-start;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 40px rgba(2, 6, 23, 0.35);
+  }
+  .av-panel__arriba {
+    position: static;
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .av-escena__contenido {
+    padding: 22px 20px 70px;
+  }
+  .av-titular {
+    font-size: 32px;
+  }
+  .av-sub {
+    display: none;
+  }
+  /* En pantallas angostas las etiquetas de los pines tapaban el titular */
+  .av-pin__etiqueta {
+    display: none;
+  }
+  .av-panel {
+    padding: 28px 20px 48px;
+  }
+  .av-form-titulo {
+    font-size: 32px;
+  }
+}
