@@ -116,7 +116,8 @@ var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
 // Necesario en Docker/Render, donde no existe "dotnet ef database update".
-// Después crea los roles y el administrador inicial (ADMIN_EMAIL / ADMIN_PASSWORD) si faltan.
+// Después crea los roles, el administrador inicial (ADMIN_EMAIL / ADMIN_PASSWORD) y el usuario
+// de prueba (USER_EMAIL / USER_PASSWORD) si faltan.
 using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
