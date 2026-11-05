@@ -328,6 +328,16 @@ namespace proyectoGrupal.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<float?>("ProbabilidadPositiva")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("Sentimiento")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SentimientoManual")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("MensajesContacto");

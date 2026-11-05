@@ -960,3 +960,190 @@
 .mensaje__texto {
   overflow-wrap: anywhere;
 }
+
+/* ---------- Reporte de sentimientos del día (Views/Admin/Mensajes.cshtml) ---------- */
+.reporte-dia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.reporte-dia__fecha {
+  width: auto;
+  min-height: 40px;
+}
+
+.reporte-dia__titulo {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.reporte-dia__titulo::first-letter {
+  text-transform: uppercase;
+}
+
+@media (min-width: 576px) {
+  .stats--3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .stats--3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Positivo en verde y negativo en rojo, siempre con ícono y texto (no solo color) */
+.stat--positivo { --stat-color: #22c55e; --stat-bg: var(--av-atendida-bg); --stat-fg: var(--av-atendida-text); }
+.stat--negativo { --stat-color: #ef4444; --stat-bg: var(--av-error-bg);    --stat-fg: var(--av-error); }
+
+/* Tarjeta del filtro activo */
+.stat[aria-current="true"] {
+  border-color: var(--stat-color);
+  box-shadow: 0 0 0 1px var(--stat-color);
+}
+
+.seg--positivo     { background: #22c55e; }
+.seg--negativo     { background: #ef4444; }
+.seg--sin-analizar { background: #94a3b8; }
+
+.stats--3 + .admin-card {
+  margin-top: 1.25rem;
+}
+
+section[aria-labelledby="titulo-reporte"] + .filtros--mensajes,
+section[aria-labelledby="titulo-reporte"] + .vacio {
+  margin-top: 1.5rem;
+}
+
+/* Etiqueta de sentimiento de cada mensaje */
+.chip-sentimiento {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--av-muted);
+  background: var(--av-bg);
+  border: 1px solid var(--av-border);
+}
+
+.chip-sentimiento--positivo {
+  color: var(--av-atendida-text);
+  background: var(--av-atendida-bg);
+  border-color: transparent;
+}
+
+.chip-sentimiento--negativo {
+  color: var(--av-error);
+  background: var(--av-error-bg);
+  border-color: transparent;
+}
+
+.chip-sentimiento__conf {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+/* Tarjeta "Modelo de sentimientos" con el botón Reentrenar */
+.modelo-ml {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.modelo-ml .admin-card__titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modelo-ml__info {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.modelo-ml__datos,
+.modelo-ml__ayuda {
+  margin: 0.375rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--av-muted);
+}
+
+.modelo-ml form {
+  margin: 0;
+}
+
+.modelo-ml + .filtros--mensajes,
+.modelo-ml + .vacio {
+  margin-top: 1.5rem;
+}
+
+/* Corregir el sentimiento a mano: dos botones tipo interruptor */
+.sentimiento-manual {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto 0 0;
+}
+
+.sentimiento-manual__etiqueta {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--av-muted);
+}
+
+.sentimiento-manual__opciones {
+  display: inline-flex;
+  border: 1px solid var(--av-border-strong);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sentimiento-manual__opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 40px;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--av-muted);
+  background: var(--av-surface);
+  border: 0;
+  cursor: pointer;
+  transition: background-color var(--av-transition), color var(--av-transition);
+}
+
+.sentimiento-manual__opcion + .sentimiento-manual__opcion {
+  border-left: 1px solid var(--av-border-strong);
+}
+
+.sentimiento-manual__opcion:hover {
+  color: var(--av-ink);
+  background: var(--av-bg);
+}
+
+.sentimiento-manual__opcion:focus-visible {
+  outline: 3px solid var(--av-primary);
+  outline-offset: -3px;
+}
+
+.sentimiento-manual__opcion--positivo[aria-pressed="true"] {
+  color: var(--av-atendida-text);
+  background: var(--av-atendida-bg);
+}
+
+.sentimiento-manual__opcion--negativo[aria-pressed="true"] {
+  color: var(--av-error);
+  background: var(--av-error-bg);
+}
