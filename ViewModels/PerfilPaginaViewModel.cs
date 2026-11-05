@@ -9,6 +9,9 @@ public class PerfilPaginaViewModel
 
     public bool EsAdministrador { get; set; }
 
+    // Las cuentas creadas con Google no tienen contraseña: en vez de "Cambiar" se muestra "Crear contraseña".
+    public bool TieneContrasena { get; set; } = true;
+
     public PerfilViewModel Perfil { get; set; } = new();
 
     public CambiarContrasenaViewModel Contrasena { get; set; } = new();

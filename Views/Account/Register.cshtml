@@ -1,57 +1,108 @@
 @model RegisterViewModel
 @{
     ViewData["Title"] = "Crear cuenta";
+    Layout = "_AuthLayout";
+
+    // Aviso cuando el visitante llegó aquí al intentar reportar una incidencia.
+    var vieneDeReportar = Model.ReturnUrl?.StartsWith("/Home/Reportar", StringComparison.OrdinalIgnoreCase) == true;
+
+    var escena = new EscenaAuthViewModel(
+        "Tu barrio mejora",
+        "cuando todos participan.",
+        "Crea tu cuenta y reporta en minutos: con foto, ubicación en el mapa y el seguimiento de cada estado.");
 }
 
-<section class="auth-seccion">
-    <div class="container">
-        <div class="auth-card">
-            <div class="auth-card__cabecera">
-                <span class="auth-card__icono">@Iconos.Svg("user", 24)</span>
-                <h1 class="auth-card__titulo">Crear cuenta</h1>
-                <p class="auth-card__sub">Regístrate como vecino para reportar incidencias y ayudar a mejorar tu comunidad.</p>
+<div class="av-login" data-av-auth>
+
+    <partial name="_EscenaDistrito" model="escena" />
+
+    @* ===== Formulario ===== *@
+    <main class="av-panel" id="contenido" tabindex="-1">
+        <div class="av-panel__arriba">
+            <a class="av-volver" asp-controller="Home" asp-action="Index">@Iconos.Svg("arrow-left", 18) Volver al inicio</a>
+        </div>
+
+        <div class="av-form-caja">
+            <div class="av-entra" style="animation-delay: .15s">
+                <span class="av-saludo">@Iconos.Svg("users", 16) Únete a tu comunidad</span>
+                <h1 class="av-form-titulo">Crea tu cuenta</h1>
+                <p class="av-form-sub">Regístrate como vecino para reportar incidencias y ayudar a mejorar tu comunidad.</p>
             </div>
 
+            @if (vieneDeReportar)
+            {
+                <p class="auth-aviso av-aviso av-entra" role="note" style="animation-delay: .2s">
+                    @Iconos.Svg("info", 18)
+                    <span>Para reportar una incidencia necesitas una cuenta. Te llevaremos al formulario al terminar.</span>
+                </p>
+            }
+
             @* No hay campo de rol: toda cuenta nueva es Ciudadano y el servidor lo asigna. *@
-            <form asp-action="Register" method="post" novalidate>
+            <form asp-action="Register" method="post" novalidate class="av-form" data-av-form>
                 <div asp-validation-summary="ModelOnly" class="resumen-errores" role="alert"></div>
 
                 <input type="hidden" asp-for="ReturnUrl" />
 
-                <div class="campo">
-                    <label class="campo__label" asp-for="Email">Correo electrónico</label>
-                    <input class="form-control" asp-for="Email" type="email" autocomplete="email"
-                           placeholder="tucorreo@ejemplo.com" maxlength="256" autofocus />
+                <div class="av-campo av-entra" style="animation-delay: .25s">
+                    <label class="av-label" asp-for="Email">Correo electrónico</label>
+                    <div class="av-input-caja">
+                        @Iconos.Svg("mail", 20)
+                        <input class="av-input" asp-for="Email" type="email" autocomplete="email"
+                               placeholder="tucorreo@ejemplo.com" maxlength="256" autofocus />
+                    </div>
                     <span asp-validation-for="Email"></span>
                 </div>
 
-                <div class="campo">
-                    <label class="campo__label" asp-for="Password">Contraseña</label>
-                    <input class="form-control" asp-for="Password" autocomplete="new-password" maxlength="100"
-                           aria-describedby="Password-ayuda" />
+                <div class="av-campo av-entra" style="animation-delay: .31s">
+                    <label class="av-label" asp-for="Password">Contraseña</label>
+                    <div class="av-input-caja">
+                        @Iconos.Svg("lock", 20)
+                        <input class="av-input av-input--clave" asp-for="Password" autocomplete="new-password"
+                               placeholder="Crea una contraseña" maxlength="100" aria-describedby="Password-ayuda" />
+                        <partial name="_BotonVerClave" model="@("Password")" />
+                    </div>
+                    <span class="av-ayuda" id="Password-ayuda">Mínimo 6 caracteres, con al menos una letra y un número.</span>
                     <span asp-validation-for="Password"></span>
-                    <div class="campo__ayuda" id="Password-ayuda"><span>Mínimo 6 caracteres, con al menos una letra y un número.</span></div>
                 </div>
 
-                <div class="campo">
-                    <label class="campo__label" asp-for="ConfirmPassword">Confirmar contraseña</label>
-                    <input class="form-control" asp-for="ConfirmPassword" autocomplete="new-password" maxlength="100" />
+                <div class="av-campo av-entra" style="animation-delay: .37s">
+                    <label class="av-label" asp-for="ConfirmPassword">Confirmar contraseña</label>
+                    <div class="av-input-caja">
+                        @Iconos.Svg("lock", 20)
+                        <input class="av-input av-input--clave" asp-for="ConfirmPassword" autocomplete="new-password"
+                               placeholder="Repite la contraseña" maxlength="100" />
+                        <partial name="_BotonVerClave" model="@("ConfirmPassword")" />
+                    </div>
                     <span asp-validation-for="ConfirmPassword"></span>
                 </div>
 
-                <button type="submit" class="btn btn-av-primary btn-lg-av auth-card__boton">
-                    @Iconos.Svg("check", 18) Crear cuenta
-                </button>
+                <div class="av-entra" style="animation-delay: .44s">
+                    <button type="submit" class="av-boton" data-av-enviar>
+                        <span class="av-boton__normal">Crear cuenta @Iconos.Svg("arrow-right", 20, "av-flecha")</span>
+                        <span class="av-boton__cargando" hidden><span class="av-giro" aria-hidden="true"></span> Creando tu cuenta…</span>
+                    </button>
+                </div>
             </form>
 
-            <p class="auth-alterna">
-                ¿Ya tienes una cuenta?
-                <a asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl">Inicia sesión</a>
+            @* "Continuar con Google": también crea la cuenta. Solo aparece si Google está configurado. *@
+            <div class="av-entra" style="animation-delay: .5s">
+                <partial name="_BotonGoogle" for="ReturnUrl" />
+            </div>
+
+            <div class="av-registro av-entra" style="animation-delay: .56s">
+                <div class="av-separador">¿Ya tienes una cuenta?</div>
+                <a class="av-boton-sec" asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl">@Iconos.Svg("log-in", 20) Iniciar sesión</a>
+            </div>
+
+            <p class="av-privacidad av-entra" style="animation-delay: .64s">
+                @Iconos.Svg("shield", 18)
+                Tu privacidad importa: pixelamos los rostros de las fotos antes de guardarlas.
             </p>
         </div>
-    </div>
-</section>
+    </main>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/auth.js" asp-append-version="true"></script>
 }
