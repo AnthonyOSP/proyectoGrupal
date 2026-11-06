@@ -3,6 +3,7 @@
 //   "selector"     → formulario Reportar: el vecino marca o arrastra el punto (campos ocultos Latitud/Longitud).
 //   "punto"        → Detalle y Seguimiento: un marcador fijo.
 //   "incidencias"  → panel admin: marcadores de las incidencias filtradas (datos JSON en la página).
+//   "zonas"        → panel admin: zonas críticas agrupadas con K-Means (datos JSON en la página).
 // Los textos se muestran con textContent (nunca como HTML) y solo se cargan las teselas visibles.
 (function () {
     if (!window.L) return;
@@ -173,10 +174,80 @@
         document.addEventListener("realtime:actualizado", dibujar);
     }
 
+    // --- Panel admin: zonas críticas (clustering K-Means calculado en el servidor) ---
+    // Cada zona es un círculo con su número; cada incidencia, un punto del color de su zona.
+    function iniciarZonas(contenedor) {
+        let datos = {};
+        try { datos = JSON.parse(document.getElementById(contenedor.dataset.fuente)?.textContent || "{}"); }
+        catch { return; }
+
+        const zonas = (Array.isArray(datos.zonas) ? datos.zonas : []).filter(z => esCoordenada(Number(z.lat), Number(z.lng)));
+        const puntos = (Array.isArray(datos.puntos) ? datos.puntos : []).filter(p => esCoordenada(Number(p.lat), Number(p.lng)));
+        if (zonas.length === 0) return;
+
+        const mapa = crearMapa(contenedor, [Number(zonas[0].lat), Number(zonas[0].lng)], 14);
+        const circulos = {};
+        const limites = [];
+
+        for (const z of zonas) {
+            const centro = [Number(z.lat), Number(z.lng)];
+            const color = String(z.color || "#2563eb");
+            const nombre = "Zona " + Number(z.numero);
+
+            const caja = document.createElement("div");
+            caja.className = "mapa-popup";
+            caja.append(
+                texto("strong", nombre, "mapa-popup__titulo"),
+                texto("span", Number(z.total) + " incidencias · " + Number(z.abiertas) + " abiertas", "mapa-popup__dato"),
+                texto("span", "Principal: " + String(z.categoria || ""), "mapa-popup__dato"));
+
+            circulos[z.numero] = L.circle(centro, { radius: Number(z.radio) || 60, color: color, weight: 2, fillColor: color, fillOpacity: 0.12 })
+                .bindPopup(caja)
+                .addTo(mapa);
+
+            // Número de la zona en su centro (se crea con textContent, nunca como HTML).
+            const etiqueta = texto("span", String(Number(z.numero)), "zona-marca");
+            etiqueta.style.background = color;
+            L.marker(centro, { icon: L.divIcon({ html: etiqueta, className: "zona-marca__icono", iconSize: [28, 28] }), title: nombre, alt: nombre, keyboard: true })
+                .bindPopup(caja)
+                .addTo(mapa);
+
+            limites.push(circulos[z.numero].getBounds());
+        }
+
+        for (const p of puntos) {
+            L.circleMarker([Number(p.lat), Number(p.lng)], { radius: 6, color: "#ffffff", weight: 2, fillColor: String(p.color || "#2563eb"), fillOpacity: 1 })
+                .bindPopup(() => {
+                    const caja = document.createElement("div");
+                    caja.className = "mapa-popup";
+                    const titulo = document.createElement("a");
+                    titulo.className = "mapa-popup__titulo";
+                    titulo.href = contenedor.dataset.detalle + encodeURIComponent(String(p.id));
+                    titulo.textContent = String(p.titulo || "");
+                    caja.append(titulo, texto("span", String(p.categoria || ""), "mapa-popup__dato"),
+                        texto("span", "Estado: " + String(p.estado || "") + " · Zona " + Number(p.zona), "mapa-popup__dato"));
+                    return caja;
+                })
+                .addTo(mapa);
+        }
+
+        mapa.fitBounds(limites.reduce((a, b) => a.extend(b)), { padding: [30, 30], maxZoom: 16 });
+
+        // "Ver en el mapa" de cada zona de la lista: centra el mapa en esa zona y abre su resumen.
+        document.querySelectorAll("[data-zona]").forEach(boton => boton.addEventListener("click", () => {
+            const circulo = circulos[boton.dataset.zona];
+            if (!circulo) return;
+            contenedor.scrollIntoView({ behavior: "smooth", block: "center" });
+            mapa.fitBounds(circulo.getBounds(), { padding: [40, 40], maxZoom: 17 });
+            circulo.openPopup();
+        }));
+    }
+
     document.querySelectorAll("[data-mapa]").forEach(contenedor => {
         const modo = contenedor.dataset.mapa;
         if (modo === "selector") iniciarSelector(contenedor);
         else if (modo === "punto") iniciarPunto(contenedor);
         else if (modo === "incidencias") iniciarIncidencias(contenedor);
+        else if (modo === "zonas") iniciarZonas(contenedor);
     });
 })();
