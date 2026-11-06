@@ -8,9 +8,10 @@
 
     const url = raiz.dataset.url;          // wss://CLUSTER_ID.piesocket.com/v4
     const apiKey = raiz.dataset.apiKey;     // pública por diseño
-    const canal = raiz.dataset.canal;       // private-...
-    const urlAutorizar = raiz.dataset.autorizar;
-    const token = raiz.dataset.token;       // antiforgery
+    const canal = raiz.dataset.canal;       // private-... o el canal público del listado
+    const esPrivado = canal.startsWith("private-");
+    const urlAutorizar = raiz.dataset.autorizar; // solo en canales privados
+    const token = raiz.dataset.token;       // antiforgery (solo en canales privados)
 
     const estadoEl = raiz.querySelector(".realtime__estado");
     const textoEl = raiz.querySelector(".realtime__texto");
@@ -57,26 +58,30 @@
     }
 
     // 2. Conexión V4: wss://CLUSTER_ID.piesocket.com/v4/CANAL?api_key=...&jwt=...  (be=1 pide "system::boot").
+    //    El canal público no lleva JWT: solo transporta datos que ya se ven en el listado.
     async function conectar() {
         clearTimeout(temporizador);
         ponerEstado(conectadoAlgunaVez || intentos > 0 ? "reconectando" : "conectando");
 
-        let jwt;
-        try {
-            jwt = await pedirJwt();
-        } catch (e) {
-            if (e.permanente) {
-                ponerEstado("desconectado", TEXTOS.sinPermiso);
-                reintentarEl.hidden = true;
+        let jwt = null;
+        if (esPrivado) {
+            try {
+                jwt = await pedirJwt();
+            } catch (e) {
+                if (e.permanente) {
+                    ponerEstado("desconectado", TEXTOS.sinPermiso);
+                    reintentarEl.hidden = true;
+                    return;
+                }
+                programarReintento();
                 return;
             }
-            programarReintento();
-            return;
         }
 
         const direccion = url + "/" + encodeURIComponent(canal)
             + "?api_key=" + encodeURIComponent(apiKey)
-            + "&notify_self=0&be=1&jwt=" + encodeURIComponent(jwt);
+            + "&notify_self=0&be=1"
+            + (jwt ? "&jwt=" + encodeURIComponent(jwt) : "");
 
         let socket;
         try {

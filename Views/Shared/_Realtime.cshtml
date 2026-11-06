@@ -3,14 +3,15 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @* Actualización en tiempo real (PieSocket) para la página actual. El modelo es el canal a escuchar.
    Solo datos públicos: URL del WebSocket, API key (pública por diseño) y el canal.
-   El API secret nunca llega al navegador: el JWT de acceso lo entrega /Realtime/Autorizar
-   después de comprobar permisos en el servidor. *@
+   El API secret nunca llega al navegador: en los canales "private-" el JWT de acceso lo entrega
+   /Realtime/Autorizar después de comprobar permisos en el servidor. El canal público no usa JWT. *@
 @if (Realtime.EstaConfigurado)
 {
+    var esPrivado = CanalesRealtime.EsPrivado(Model);
     <div class="realtime" id="realtime"
          data-url="@Realtime.UrlWebSocket" data-api-key="@Realtime.ApiKeyPublica" data-canal="@Model"
-         data-autorizar="@Url.Action("Autorizar", "Realtime")"
-         data-token="@Antiforgery.GetAndStoreTokens(Context).RequestToken">
+         data-autorizar="@(esPrivado ? Url.Action("Autorizar", "Realtime") : null)"
+         data-token="@(esPrivado ? Antiforgery.GetAndStoreTokens(Context).RequestToken : null)">
         <span class="realtime__estado" data-estado="conectando" role="status" aria-live="polite">
             <span class="realtime__punto" aria-hidden="true"></span>
             <span class="realtime__texto">Tiempo real: conectando…</span>

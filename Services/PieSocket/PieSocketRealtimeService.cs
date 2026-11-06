@@ -92,12 +92,17 @@ public partial class PieSocketRealtimeService : IPieSocketRealtimeService
         return $"{sinFirma}.{Base64Url(firma)}";
     }
 
-    public Task<bool> NotificarIncidenciaCreadaAsync(Incidencia incidencia, CancellationToken cancellationToken = default)
+    public async Task<bool> NotificarIncidenciaCreadaAsync(Incidencia incidencia, CancellationToken cancellationToken = default)
     {
         var evento = new IncidenciaCreadaEvento(
             incidencia.Id, incidencia.Titulo, incidencia.Categoria, incidencia.Estado, FormatoFecha(incidencia.FechaRegistro));
 
-        return PublicarAsync(CanalesRealtime.Administracion, EventosRealtime.IncidenciaCreada, evento, incidencia.Id, cancellationToken);
+        // Al panel (administradores) y al listado público de incidencias (todos los visitantes).
+        var alPanel = await PublicarAsync(
+            CanalesRealtime.Administracion, EventosRealtime.IncidenciaCreada, evento, incidencia.Id, cancellationToken);
+        var alListado = await PublicarAsync(
+            CanalesRealtime.Publico, EventosRealtime.IncidenciaCreada, evento, incidencia.Id, cancellationToken);
+        return alPanel && alListado;
     }
 
     public async Task<bool> NotificarEstadoActualizadoAsync(
@@ -105,12 +110,15 @@ public partial class PieSocketRealtimeService : IPieSocketRealtimeService
     {
         var evento = new EstadoActualizadoEvento(incidencia.Id, estadoAnterior, incidencia.Estado, FormatoFecha(fecha));
 
-        // Al canal de la incidencia (seguimiento del ciudadano y del administrador) y al de administración (listados).
+        // Al canal de la incidencia (seguimiento del ciudadano y del administrador), al de administración
+        // (listados del panel) y al público (el listado de incidencias muestra el estado de cada una).
         var alSeguimiento = await PublicarAsync(
             CanalesRealtime.Incidencia(incidencia.Id), EventosRealtime.EstadoActualizado, evento, incidencia.Id, cancellationToken);
         var alPanel = await PublicarAsync(
             CanalesRealtime.Administracion, EventosRealtime.EstadoActualizado, evento, incidencia.Id, cancellationToken);
-        return alSeguimiento && alPanel;
+        var alListado = await PublicarAsync(
+            CanalesRealtime.Publico, EventosRealtime.EstadoActualizado, evento, incidencia.Id, cancellationToken);
+        return alSeguimiento && alPanel && alListado;
     }
 
     private async Task<bool> PublicarAsync(string canal, string nombreEvento, object datos, int incidenciaId, CancellationToken cancellationToken)
