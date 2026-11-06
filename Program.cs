@@ -10,6 +10,8 @@ using proyectoGrupal.Services.Algolia;
 using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.Services.Sentimiento;
+using proyectoGrupal.Services.Categorias;
+using proyectoGrupal.Services.Zonas;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -155,6 +157,12 @@ builder.Services.AddSingleton<ILimiteReportesService, LimiteReportesService>();
 // Se entrena con ML/sentimentAnalysisNLP/Entrenamiento o con el botón "Reentrenar modelo" del panel.
 // Sin el modelo, los mensajes se guardan igual pero sin sentimiento.
 builder.Services.AddSingleton<ISentimientoService, SentimientoService>();
+
+// Machine learning sobre incidencias (ML.NET):
+//   - Clasificación multiclase: sugiere la categoría al reportar (modelo en MLModels/CategoriaModel.zip).
+//   - Clustering K-Means: agrupa las incidencias por ubicación en "zonas críticas" (se calcula al momento).
+builder.Services.AddSingleton<ICategoriaSugeridaService, CategoriaSugeridaService>();
+builder.Services.AddSingleton<IZonasCriticasService, ZonasCriticasService>();
 
 var app = builder.Build();
 

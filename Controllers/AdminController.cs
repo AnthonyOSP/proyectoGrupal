@@ -10,6 +10,8 @@ using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.Services.Sentimiento;
+using proyectoGrupal.Services.Categorias;
+using proyectoGrupal.Services.Zonas;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Controllers;
@@ -42,7 +44,7 @@ public class AdminController : Controller
     }
 
     // GET: /Admin
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index([FromServices] ICategoriaSugeridaService clasificador)
     {
         var ultimas = await _context.Incidencias
             .AsNoTracking()
@@ -58,7 +60,9 @@ public class AdminController : Controller
             Atendidas = await _context.Incidencias.CountAsync(i => i.Estado == EstadosIncidencia.Atendida),
             UltimasIncidencias = ultimas.Select(IncidenciaViewModel.DesdeEntidad).ToList(),
             AlgoliaConfigurado = _algolia.EstaConfigurado,
-            IndiceBusqueda = _algolia.NombreIndice
+            IndiceBusqueda = _algolia.NombreIndice,
+            ClasificadorDisponible = clasificador.EstaDisponible,
+            ClasificadorInfo = clasificador.Info
         };
 
         return View(modelo);
@@ -432,5 +436,79 @@ public class AdminController : Controller
         _logger.LogInformation("Mensaje de contacto {Id} eliminado por {Usuario}", id, User.Identity?.Name);
         TempData["MensajeAdmin"] = $"El mensaje de {mensaje.Nombre} se eliminó correctamente.";
         return RedirectToAction(nameof(Mensajes), volver);
+    }
+
+    // GET: /Admin/Zonas?estado=abiertas&categoria=limpieza&zonas=4
+    // Clustering K-Means: agrupa las incidencias por ubicación para ver dónde se concentran los problemas.
+    public async Task<IActionResult> Zonas(string? estado, string? categoria, int? zonas,
+        [FromServices] IZonasCriticasService clustering)
+    {
+        // Filtros validados: valores desconocidos se ignoran.
+        estado = estado == ZonasAdminViewModel.EstadoTodas ? ZonasAdminViewModel.EstadoTodas : ZonasAdminViewModel.EstadoAbiertas;
+        var categoriaElegida = CatalogoCategorias.PorSlug(categoria);
+        int? numeroPedido = zonas is >= 2 and <= IZonasCriticasService.MaximoZonas ? zonas : null;
+
+        var consulta = _context.Incidencias.AsNoTracking();
+        if (estado == ZonasAdminViewModel.EstadoAbiertas)
+        {
+            consulta = consulta.Where(i => i.Estado != EstadosIncidencia.Atendida);
+        }
+        if (categoriaElegida != null)
+        {
+            consulta = consulta.Where(i => i.Categoria == categoriaElegida.Nombre);
+        }
+
+        var sinUbicacion = await consulta.CountAsync(i => i.Latitud == null || i.Longitud == null);
+        var puntos = (await consulta
+                .Where(i => i.Latitud != null && i.Longitud != null)
+                .Select(i => new { i.Id, i.Titulo, i.Categoria, i.Estado, i.Latitud, i.Longitud })
+                .ToListAsync())
+            .Select(i => new PuntoZona(i.Id, i.Titulo, i.Categoria, i.Estado, (double)i.Latitud!.Value, (double)i.Longitud!.Value))
+            .ToList();
+
+        return View(new ZonasAdminViewModel
+        {
+            Estado = estado,
+            Categoria = categoriaElegida?.Slug,
+            NumeroPedido = numeroPedido,
+            Categorias = CatalogoCategorias.Todas,
+            ConUbicacion = puntos.Count,
+            SinUbicacion = sinUbicacion,
+            Resultado = clustering.Calcular(puntos, numeroPedido)
+        });
+    }
+
+    // POST: /Admin/ReentrenarCategorias
+    // Reentrena el clasificador de categorías (multiclase) con el CSV + las incidencias ya registradas
+    // (su título y descripción con la categoría que eligió el vecino) y lo empieza a usar enseguida.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReentrenarCategorias([FromServices] ICategoriaSugeridaService clasificador)
+    {
+        var incidencias = (await _context.Incidencias
+                .AsNoTracking()
+                .Select(i => new { i.Titulo, i.Descripcion, i.Categoria })
+                .ToListAsync())
+            .Where(i => CategoriasIncidencia.Todas.Contains(i.Categoria))
+            .Select(i => new EntradaCategoria { Texto = $"{i.Titulo}. {i.Descripcion}", Categoria = i.Categoria })
+            .ToList();
+
+        try
+        {
+            var info = await clasificador.ReentrenarAsync(incidencias);
+            _logger.LogInformation("Clasificador de categorías reentrenado por {Usuario}", User.Identity?.Name);
+            TempData["MensajeCategorias"] =
+                $"Clasificador reentrenado con {info.EjemplosCsv + info.EjemplosIncidencias} ejemplos " +
+                $"({info.EjemplosIncidencias} de incidencias reales). Exactitud: {info.ExactitudMicro:P1}.";
+            TempData["CategoriasOk"] = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al reentrenar el clasificador de categorías");
+            TempData["MensajeCategorias"] = "No se pudo reentrenar el clasificador. Se sigue usando el anterior. Revisa el log del servidor.";
+            TempData["CategoriasOk"] = false;
+        }
+
+        return RedirectToAction(nameof(Index), null, "sugerencia-categorias");
     }
 }

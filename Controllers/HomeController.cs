@@ -388,6 +388,49 @@ public class HomeController : Controller
         return View(IncidenciaViewModel.DesdeEntidad(incidencia));
     }
 
+    // POST: /Home/SugerirCategoria  (lo llama reportar.js mientras el vecino escribe)
+    // Clasificación multiclase con ML.NET: propone una categoría a partir del título y la descripción.
+    // Es solo una sugerencia: el vecino elige la categoría y el servidor la valida al enviar el reporte.
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public IActionResult SugerirCategoria(string? titulo, string? descripcion,
+        [FromServices] Services.Categorias.ICategoriaSugeridaService clasificador)
+    {
+        // Mismos límites que el formulario: no se analizan textos más largos de lo que se puede guardar.
+        var texto = $"{Recortar(UnaLinea(titulo), CrearIncidenciaViewModel.TituloMaximo)}. " +
+                    $"{Recortar(TextoLargo(descripcion), CrearIncidenciaViewModel.DescripcionMaximo)}";
+
+        // Muy poco texto para adivinar, o el modelo no está cargado.
+        if (texto.Trim(' ', '.').Length < LargoMinimoParaSugerir || clasificador.Sugerir(texto) is not { } sugerencia)
+        {
+            return Json(new { sugerencia = (object?)null });
+        }
+
+        // Solo se sugiere si el modelo está razonablemente seguro.
+        if (sugerencia.Confianza < ConfianzaMinimaSugerencia || !CategoriasIncidencia.Todas.Contains(sugerencia.Categoria))
+        {
+            return Json(new { sugerencia = (object?)null });
+        }
+
+        var categoria = CatalogoCategorias.PorNombre(sugerencia.Categoria);
+        return Json(new
+        {
+            sugerencia = new
+            {
+                nombre = categoria.Nombre,
+                slug = categoria.Slug,
+                confianza = (int)Math.Round(sugerencia.Confianza * 100)
+            }
+        });
+    }
+
+    private const int LargoMinimoParaSugerir = 8;
+    private const float ConfianzaMinimaSugerencia = 0.40f;
+
+    private static string Recortar(string? texto, int maximo) =>
+        texto == null ? string.Empty : texto.Length <= maximo ? texto : texto[..maximo];
+
     // GET: /Home/Contacto
     // Página pública. Si hay sesión, el nombre y el correo vienen llenos (se pueden cambiar).
     public async Task<IActionResult> Contacto()

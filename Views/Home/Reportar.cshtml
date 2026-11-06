@@ -82,6 +82,19 @@
                        El valor enviado es el nombre guardado en la base; el servidor comprueba que sea de la lista. *@
                     <fieldset class="campo cat-opciones-grupo" aria-describedby="Categoria-error-contenedor">
                         <legend class="campo__label">Categoría<span class="campo__requerido" aria-hidden="true">*</span></legend>
+
+                        @* Sugerencia del modelo de ML.NET (clasificación multiclase) según el título y la descripción.
+                           La llena reportar.js; sin JavaScript o sin modelo simplemente no aparece. *@
+                        <div class="sugerencia-cat" id="sugerenciaCategoria" data-url="@Url.Action("SugerirCategoria")" role="status" hidden>
+                            <span class="sugerencia-cat__icono" aria-hidden="true">@Iconos.Svg("info", 18)</span>
+                            <span class="sugerencia-cat__texto">
+                                Según lo que escribiste, parece <strong data-sugerencia-nombre></strong>
+                                <span class="sugerencia-cat__confianza" data-sugerencia-confianza></span>
+                            </span>
+                            <button type="button" class="sugerencia-cat__boton" data-sugerencia-usar>Elegir esta categoría</button>
+                            <span class="sugerencia-cat__ok" data-sugerencia-ok hidden>@Iconos.Svg("check", 16) Coincide con tu elección</span>
+                        </div>
+
                         <div class="cat-opciones @(errorCategoria ? "is-invalido" : "")">
                             @foreach (var categoria in CatalogoCategorias.Todas)
                             {

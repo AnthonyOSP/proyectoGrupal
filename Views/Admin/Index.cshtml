@@ -147,13 +147,54 @@
     }
 </section>
 
+@* Clasificador de categorías (ML.NET, clasificación multiclase): sugiere la categoría en "Reportar". *@
+<section class="admin-card busqueda-admin" id="sugerencia-categorias" aria-labelledby="titulo-categorias">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-categorias">Sugerencia de categorías</h2>
+        @if (Model.ClasificadorDisponible)
+        {
+            <span class="estado estado--atendida">@Iconos.Svg("check-circle", 14) Modelo activo</span>
+        }
+        else
+        {
+            <span class="estado estado--pendiente">@Iconos.Svg("info", 14) Sin modelo</span>
+        }
+    </div>
+
+    @if (TempData["MensajeCategorias"] is string mensajeCategorias)
+    {
+        var ok = TempData["CategoriasOk"] as bool? == true;
+        <p class="@(ok ? "busqueda-admin__ok" : "busqueda-admin__error")" role="status">
+            @Iconos.Svg(ok ? "check" : "info", 16) <span>@mensajeCategorias</span>
+        </p>
+    }
+
+    <p class="busqueda-admin__texto">
+        Mientras el vecino escribe su reporte, un modelo de ML.NET (clasificación multiclase) le sugiere la categoría.
+        @if (Model.ClasificadorInfo is { } info)
+        {
+            <span>Último entrenamiento: <strong>@info.Fecha.ToString("dd/MM/yyyy HH:mm")</strong> con
+                @(info.EjemplosCsv + info.EjemplosIncidencias) ejemplos · exactitud <strong>@info.ExactitudMicro.ToString("P1", System.Globalization.CultureInfo.GetCultureInfo("es-PE"))</strong>.</span>
+        }
+        Al reentrenar se suman las incidencias ya registradas, así el modelo aprende cómo escriben los vecinos.
+    </p>
+    <form asp-action="ReentrenarCategorias" method="post" id="formCategorias">
+        <button type="submit" class="btn btn-av-secondary" id="btnCategorias">
+            @Iconos.Svg("dashboard", 18) <span class="btn-texto">Reentrenar con las incidencias</span>
+        </button>
+    </form>
+</section>
+
 @section Scripts {
     <script>
-        // Evita envíos dobles mientras se sincroniza (puede tardar unos segundos).
-        document.getElementById("formSincronizar")?.addEventListener("submit", () => {
-            const boton = document.getElementById("btnSincronizar");
-            boton.disabled = true;
-            boton.querySelector(".btn-texto").textContent = "Sincronizando...";
-        });
+        // Evita envíos dobles mientras se sincroniza o se reentrena (puede tardar unos segundos).
+        [["formSincronizar", "btnSincronizar", "Sincronizando..."], ["formCategorias", "btnCategorias", "Reentrenando..."]]
+            .forEach(([idForm, idBoton, texto]) => document.getElementById(idForm)?.addEventListener("submit", () => {
+                const boton = document.getElementById(idBoton);
+                setTimeout(() => {
+                    boton.disabled = true;
+                    boton.querySelector(".btn-texto").textContent = texto;
+                }, 0);
+            }));
     </script>
 }
