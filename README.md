@@ -314,6 +314,20 @@ Luego entra a `/Account/Login` con ese correo y contraseña, y abre `/Admin`.
 
 Cada integrante del grupo configura **su propio** administrador local: la base de datos no se comparte.
 
+**Segundo administrador (opcional).** Sirve para hacer pruebas con dos administradores (por ejemplo, ver en tiempo real los cambios de estado que hace el otro). Funciona igual que el administrador inicial:
+
+| Variable          | Ejemplo                                        |
+| ----------------- | ---------------------------------------------- |
+| `ADMIN2_EMAIL`    | `admin2@usmp.pe`                               |
+| `ADMIN2_PASSWORD` | una contraseña que elijas tú (mismas reglas)   |
+
+```bash
+dotnet user-secrets set "ADMIN2_EMAIL" "admin2@usmp.pe"
+dotnet user-secrets set "ADMIN2_PASSWORD" "<contraseña-del-segundo-admin>"
+```
+
+Si falta alguno de los dos valores, simplemente no se crea (no es un error).
+
 **Usuario de prueba (opcional).** De la misma forma se puede crear una cuenta de ciudadano para pruebas, útil en Render, donde la base de datos se borra en cada reinicio:
 
 | Variable        | Ejemplo                                        |
@@ -460,10 +474,12 @@ En el servicio, ve a **Environment → Environment Variables** y agrega:
 | ---------------- | ------------------------------------- |
 | `ADMIN_EMAIL`    | el correo del administrador           |
 | `ADMIN_PASSWORD` | una contraseña segura, solo en Render |
+| `ADMIN2_EMAIL`   | (opcional) correo del segundo administrador |
+| `ADMIN2_PASSWORD`| (opcional) contraseña del segundo administrador |
 | `USER_EMAIL`     | (opcional) correo del ciudadano de prueba |
 | `USER_PASSWORD`  | (opcional) contraseña del ciudadano de prueba |
 
-Render guarda estos valores fuera del repositorio. Al desplegar, el log debe mostrar `Administrador inicial ... creado.` y, si configuraste el usuario de prueba, `Usuario de prueba ... creado.`
+Render guarda estos valores fuera del repositorio. Al desplegar, el log debe mostrar `Administrador ... creado.` (una vez por cada administrador) y, si configuraste el usuario de prueba, `Usuario de prueba ... creado.`
 
 ### 11.4 Credenciales de Google Vision en Render (Secret File)
 
