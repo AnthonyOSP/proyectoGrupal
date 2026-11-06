@@ -19,9 +19,9 @@ public interface IPieSocketRealtimeService
     // Quien llama debe haber comprobado antes que el usuario puede escuchar el canal.
     string CrearJwt(string canal);
 
-    // Aviso de nueva incidencia al canal de administración.
+    // Aviso de nueva incidencia al canal de administración y al público (listado de incidencias).
     Task<bool> NotificarIncidenciaCreadaAsync(Incidencia incidencia, CancellationToken cancellationToken = default);
 
-    // Aviso de cambio de estado al canal de la incidencia y al de administración.
+    // Aviso de cambio de estado al canal de la incidencia, al de administración y al público.
     Task<bool> NotificarEstadoActualizadoAsync(Incidencia incidencia, string estadoAnterior, DateTime fecha, CancellationToken cancellationToken = default);
 }

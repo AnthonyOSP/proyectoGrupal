@@ -91,6 +91,11 @@
         </div>
     </form>
 
+    @* Tiempo real: cuando un vecino reporta una incidencia o cambia un estado, se refresca solo la zona
+       de resultados (con los mismos filtros de la URL). Los filtros y lo escrito en el buscador no se tocan. *@
+    <partial name="_Realtime" model="CanalesRealtime.Publico" />
+
+    <div data-realtime-region>
     @if (Model.BusquedaAvanzadaNoDisponible)
     {
         @* Algolia configurado pero sin respuesta: se muestran resultados de la búsqueda básica (SQLite). *@
@@ -142,6 +147,7 @@
             </div>
         </div>
     }
+    </div>
 </div>
 
 @section Scripts {
