@@ -1,0 +1,161 @@
+@model ZonasAdminViewModel
+@using proyectoGrupal.Services.Zonas
+@{
+    ViewData["Title"] = "Zonas críticas";
+    var cultura = System.Globalization.CultureInfo.GetCultureInfo("es-PE");
+
+    // Un color por zona (el mismo en el mapa y en la lista). La zona también se identifica por su número,
+    // así no depende solo del color.
+    string[] colores = { "#2563eb", "#ea580c", "#16a34a", "#9333ea", "#dc2626", "#0891b2", "#ca8a04", "#db2777" };
+    string Color(int numero) => colores[(numero - 1) % colores.Length];
+
+    // Datos para el mapa (mapa-incidencias.js, modo "zonas"). Solo datos públicos de cada reporte.
+    // JavaScriptEncoder.Default escapa <, > y &: un título como "</script>" no puede romper la página.
+    var datosMapa = System.Text.Json.JsonSerializer.Serialize(
+        new
+        {
+            zonas = Model.Resultado.Zonas.Select(z => new { numero = z.Numero, lat = z.Lat, lng = z.Lng, radio = z.RadioMetros, color = Color(z.Numero), total = z.Total, abiertas = z.Abiertas, categoria = z.CategoriaPrincipal }),
+            puntos = Model.Resultado.Zonas.SelectMany(z => z.Incidencias.Select(p => new { id = p.Id, titulo = p.Titulo, categoria = p.Categoria, estado = p.Estado, lat = p.Lat, lng = p.Lng, zona = z.Numero, color = Color(z.Numero) }))
+        },
+        new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
+}
+
+<header class="admin-cabecera">
+    <div>
+        <h1 class="admin-cabecera__titulo">Zonas críticas</h1>
+        <p class="admin-cabecera__sub">Las incidencias cercanas se agrupan automáticamente con K-Means (clustering de ML.NET) para ver dónde se concentran los problemas.</p>
+    </div>
+</header>
+
+@* Filtros por GET: quedan en la URL y funcionan sin JavaScript. *@
+<form class="filtros filtros--admin" method="get" asp-action="Zonas">
+    <div>
+        <label for="estado">Incidencias</label>
+        <select class="form-select" id="estado" name="estado" data-autoenviar>
+            <option value="@ZonasAdminViewModel.EstadoAbiertas" selected="@(Model.Estado == ZonasAdminViewModel.EstadoAbiertas)">Abiertas (pendientes y en revisión)</option>
+            <option value="@ZonasAdminViewModel.EstadoTodas" selected="@(Model.Estado == ZonasAdminViewModel.EstadoTodas)">Todas</option>
+        </select>
+    </div>
+    <div>
+        <label for="categoria">Categoría</label>
+        <select class="form-select" id="categoria" name="categoria" data-autoenviar>
+            <option value="">Todas</option>
+            @foreach (var categoria in Model.Categorias)
+            {
+                <option value="@categoria.Slug" selected="@(categoria.Slug == Model.Categoria)">@categoria.Nombre</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="zonas">Número de zonas</label>
+        <select class="form-select" id="zonas" name="zonas" data-autoenviar>
+            <option value="">Automático</option>
+            @for (var n = 2; n <= IZonasCriticasService.MaximoZonas; n++)
+            {
+                <option value="@n" selected="@(n == Model.NumeroPedido)">@n zonas</option>
+            }
+        </select>
+    </div>
+    <div class="filtros__acciones">
+        <button type="submit" class="btn btn-av-primary">@Iconos.Svg("filter", 18) Agrupar</button>
+    </div>
+</form>
+
+@if (!Model.HayZonas)
+{
+    <div class="vacio">
+        <span class="vacio__icono">@Iconos.Svg("map-pin", 26)</span>
+        <h2 class="vacio__titulo">Aún no hay suficientes incidencias para agrupar</h2>
+        <p>
+            Se necesitan al menos @IZonasCriticasService.MinimoPuntos incidencias con ubicación en el mapa; con estos filtros hay @Model.ConUbicacion.
+            @if (Model.SinUbicacion > 0)
+            {
+                <span>Otras @Model.SinUbicacion no tienen punto en el mapa.</span>
+            }
+        </p>
+    </div>
+}
+else
+{
+    var r = Model.Resultado;
+    <p class="resultados-info" role="status">
+        <span>
+            <strong>@Model.ConUbicacion</strong> incidencias agrupadas en <strong>@r.NumeroDeZonas @(r.NumeroDeZonas == 1 ? "zona" : "zonas")</strong>
+            @if (r.Automatico && r.NumeroDeZonas == 1)
+            {
+                <span>(están todas cerca: forman una sola zona)</span>
+            }
+            else if (r.Automatico)
+            {
+                <span>(elegidas automáticamente@(r.DaviesBouldin is double db ? $" · índice Davies-Bouldin {db.ToString("0.00", cultura)}" : ""))</span>
+            }
+            @if (Model.SinUbicacion > 0)
+            {
+                <span aria-hidden="true">·</span> <span>@Model.SinUbicacion sin ubicación no se incluyen</span>
+            }
+        </span>
+    </p>
+
+    <section class="admin-card mapa-admin" aria-labelledby="titulo-mapa-zonas">
+        <div class="admin-card__cabecera">
+            <h2 class="admin-card__titulo" id="titulo-mapa-zonas">Mapa de zonas</h2>
+        </div>
+        <script type="application/json" id="datosZonas">@Html.Raw(datosMapa)</script>
+        <div class="mapa mapa--admin" id="mapaZonas" data-mapa="zonas" data-fuente="datosZonas"
+             data-detalle="@(Url.Action("Detalle", "Admin"))/" role="region" aria-label="Mapa de las zonas críticas"></div>
+    </section>
+
+    <h2 class="zonas__titulo">Zonas ordenadas por incidencias abiertas</h2>
+    <ul class="zonas-lista">
+        @foreach (var zona in r.Zonas)
+        {
+            <li class="admin-card zona" style="--zona-color: @Color(zona.Numero)">
+                <div class="zona__cabecera">
+                    <span class="zona__numero" aria-hidden="true">@zona.Numero</span>
+                    <div>
+                        <h3 class="zona__nombre">Zona @zona.Numero</h3>
+                        <p class="zona__datos">
+                            @zona.Total @(zona.Total == 1 ? "incidencia" : "incidencias")
+                            <span aria-hidden="true">·</span> @zona.Abiertas @(zona.Abiertas == 1 ? "abierta" : "abiertas")
+                            <span aria-hidden="true">·</span> radio de ~@zona.RadioMetros m
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-av-secondary btn-sm-av zona__ver" data-zona="@zona.Numero">
+                        @Iconos.Svg("map-pin", 16) Ver en el mapa
+                    </button>
+                </div>
+                <p class="zona__principal">
+                    @Iconos.Svg(CatalogoCategorias.PorNombre(zona.CategoriaPrincipal).Icono, 16)
+                    Problema principal: <strong>@zona.CategoriaPrincipal</strong> (@zona.CantidadCategoriaPrincipal de @zona.Total)
+                </p>
+                <ul class="zona__incidencias">
+                    @foreach (var incidencia in zona.Incidencias.Take(5))
+                    {
+                        <li>
+                            <a asp-action="Detalle" asp-route-id="@incidencia.Id">@incidencia.Titulo</a>
+                            <span class="zona__estado">@incidencia.Estado</span>
+                        </li>
+                    }
+                </ul>
+                @if (zona.Total > 5)
+                {
+                    <p class="zona__mas">y @(zona.Total - 5) más en el mapa.</p>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@section Scripts {
+    <script src="~/lib/leaflet/dist/leaflet.js"></script>
+    <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
+    <script>
+        // Al cambiar un filtro se aplica automáticamente (el botón "Agrupar" funciona sin JavaScript).
+        document.querySelectorAll("[data-autoenviar]").forEach(select =>
+            select.addEventListener("change", () => select.form.submit()));
+    </script>
+}
+
+@section Estilos {
+    <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
+}

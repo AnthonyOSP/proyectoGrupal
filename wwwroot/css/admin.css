@@ -1147,3 +1147,120 @@ section[aria-labelledby="titulo-reporte"] + .vacio {
   color: var(--av-error);
   background: var(--av-error-bg);
 }
+
+/* ---------- Zonas críticas (clustering K-Means, Views/Admin/Zonas.cshtml) ---------- */
+.zonas__titulo {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.zonas-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zonas-lista .admin-card + .admin-card {
+  margin-top: 0;
+}
+
+.zona {
+  border-top: 4px solid var(--zona-color);
+}
+
+.zona__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.zona__cabecera > div {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.zona__numero {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-family: var(--av-font-heading);
+  font-weight: 800;
+  color: #fff;
+  background: var(--zona-color);
+}
+
+.zona__nombre {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.zona__datos,
+.zona__mas {
+  margin: 0.125rem 0 0;
+  font-size: 0.875rem;
+  color: var(--av-muted);
+}
+
+.zona__principal {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.875rem 0 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.zona__incidencias {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9375rem;
+}
+
+.zona__incidencias li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.zona__incidencias a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.zona__estado {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--av-muted);
+}
+
+/* Número de la zona sobre el mapa (Leaflet divIcon) */
+.zona-marca__icono {
+  background: none;
+  border: 0;
+}
+
+.zona-marca {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  font-family: var(--av-font-heading);
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+}

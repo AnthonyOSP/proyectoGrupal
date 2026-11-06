@@ -1673,6 +1673,80 @@ textarea.form-control {
   border-color: var(--av-error);
 }
 
+/* Sugerencia de categoría (modelo de ML.NET) en el formulario Reportar */
+.sugerencia-cat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: var(--av-text);
+  background: var(--av-primary-soft);
+  border: 1px solid var(--av-primary-100);
+  border-radius: var(--av-radius);
+}
+
+.sugerencia-cat[hidden] {
+  display: none;
+}
+
+.sugerencia-cat__icono {
+  display: grid;
+  color: var(--av-primary);
+}
+
+.sugerencia-cat__texto {
+  flex: 1 1 220px;
+}
+
+.sugerencia-cat__confianza {
+  color: var(--av-muted);
+}
+
+.sugerencia-cat__boton {
+  min-height: 40px;
+  padding: 0.375rem 0.875rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--av-primary);
+  background: var(--av-surface);
+  border: 1.5px solid var(--av-primary);
+  border-radius: var(--av-radius-sm);
+  cursor: pointer;
+}
+
+.sugerencia-cat__boton:hover {
+  color: var(--av-on-color);
+  background: var(--av-primary);
+}
+
+.sugerencia-cat__boton:focus-visible {
+  outline: 3px solid var(--av-primary);
+  outline-offset: 2px;
+}
+
+.sugerencia-cat__ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--av-success);
+}
+
+.sugerencia-cat__ok[hidden] {
+  display: none;
+}
+
+/* Tarjeta de la categoría sugerida (sin elegir todavía): borde punteado */
+.cat-opcion.is-sugerida:not(:has(input:checked)) {
+  border-style: dashed;
+  border-color: var(--av-primary);
+}
+
 /* Resumen antes de enviar */
 .resumen-reporte {
   margin-bottom: 1.75rem;
