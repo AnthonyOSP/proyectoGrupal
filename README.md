@@ -567,6 +567,7 @@ Algunas páginas se actualizan solas, sin presionar F5:
 
 | Página                          | Qué se actualiza                                                     | Quién la ve                         |
 | ------------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
+| `/Home/Incidencias`             | Aviso de **nueva incidencia**, resultados (con los filtros de la URL) y cambios de estado | Todos, también sin iniciar sesión |
 | `/Admin` y `/Admin/Incidencias` | Aviso de **nueva incidencia**, tabla, contadores y cambios de estado | Administradores                     |
 | `/Home/Seguimiento/{id}`        | **Estado actual**, fecha de actualización e historial                | El ciudadano dueño de la incidencia |
 | `/Admin/Seguimiento/{id}`       | Lo mismo, para cualquier incidencia                                  | Administradores                     |
@@ -586,6 +587,9 @@ Cada página muestra un indicador: _conectando_, _conectado_, _reconectando_ o _
 | --------------------------- | ---------------------------------------------------- | ----------------------------------------------- |
 | `private-admin-incidencias` | `incidencia.creada`, `incidencia.estado_actualizado` | Solo administradores                            |
 | `private-incidencia-{id}`   | `incidencia.estado_actualizado`                      | El dueño de la incidencia y los administradores |
+| `incidencias-publicas`      | `incidencia.creada`, `incidencia.estado_actualizado` | Cualquiera (es público: no pide JWT)            |
+
+El canal `incidencias-publicas` solo lleva datos que ya se muestran en el listado público (Id, título, categoría, estado y fecha). Nadie más puede publicar en él porque la mensajería entre clientes está desactivada (sección 13.2).
 
 Los canales `private-` exigen un JWT. El navegador lo pide a `POST /Realtime/Autorizar`, que comprueba en el servidor (con la sesión y la base de datos) si el usuario puede escuchar ese canal. El JWT vale solo para ese canal y dura 10 minutos. El **API secret nunca llega al navegador**.
 
