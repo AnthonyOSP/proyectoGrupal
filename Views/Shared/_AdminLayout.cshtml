@@ -64,6 +64,11 @@
                         </a>
                     </li>
                     <li>
+                        <a class="admin-nav__link @Activo("Zonas")" aria-current="@Actual("Zonas")" asp-controller="Admin" asp-action="Zonas">
+                            @Iconos.Svg("map-pin", 20) Zonas críticas
+                        </a>
+                    </li>
+                    <li>
                         <a class="admin-nav__link @Activo("Mensajes", "EliminarMensaje")" aria-current="@Actual("Mensajes")" asp-controller="Admin" asp-action="Mensajes">
                             @Iconos.Svg("mail", 20) Mensajes
                         </a>

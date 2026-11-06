@@ -196,4 +196,80 @@
         boton.removeAttribute("aria-busy");
         textoBoton.textContent = textoOriginal;
     });
+
+    // 6. Sugerencia de categoría con ML.NET (clasificación multiclase).
+    //    Mientras el vecino escribe el título o la descripción, se pide al servidor una categoría.
+    //    Es solo una ayuda: nunca se elige sola; el vecino decide con "Elegir esta categoría".
+    const sugerencia = document.getElementById("sugerenciaCategoria");
+    if (sugerencia) {
+        const nombre = sugerencia.querySelector("[data-sugerencia-nombre]");
+        const confianza = sugerencia.querySelector("[data-sugerencia-confianza]");
+        const botonUsar = sugerencia.querySelector("[data-sugerencia-usar]");
+        const coincide = sugerencia.querySelector("[data-sugerencia-ok]");
+        const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value || "";
+        let actual = null, espera = null, peticion = null, ultimoTexto = "";
+
+        function opcionDe(slug) {
+            return slug ? document.getElementById("Categoria_" + slug) : null;
+        }
+
+        // Marca la tarjeta sugerida y muestra el botón o el "coincide" según lo elegido.
+        function pintar() {
+            form.querySelectorAll(".cat-opcion.is-sugerida").forEach(t => t.classList.remove("is-sugerida"));
+            if (!actual) { sugerencia.hidden = true; return; }
+
+            const opcion = opcionDe(actual.slug);
+            opcion?.closest(".cat-opcion")?.classList.add("is-sugerida");
+            const elegida = opcion?.checked === true;
+            nombre.textContent = actual.nombre;
+            confianza.textContent = "(" + actual.confianza + "% de confianza)";
+            botonUsar.hidden = elegida;
+            coincide.hidden = !elegida;
+            sugerencia.hidden = false;
+        }
+
+        async function consultar() {
+            const titulo = form.elements["Titulo"].value, descripcion = form.elements["Descripcion"].value;
+            const texto = (titulo + " " + descripcion).trim();
+            if (texto.length < 8) { actual = null; ultimoTexto = ""; pintar(); return; }
+            if (texto === ultimoTexto) return;
+            ultimoTexto = texto;
+
+            // Si llega una respuesta vieja después de una nueva, se descarta.
+            peticion?.abort();
+            peticion = new AbortController();
+            try {
+                const datos = new FormData();
+                datos.append("__RequestVerificationToken", token);
+                datos.append("titulo", titulo);
+                datos.append("descripcion", descripcion);
+                const respuesta = await fetch(sugerencia.dataset.url, { method: "POST", body: datos, signal: peticion.signal });
+                if (!respuesta.ok) return;
+                actual = (await respuesta.json()).sugerencia || null;
+                pintar();
+            } catch (e) {
+                // Sin conexión o petición cancelada: la sugerencia es opcional, no se muestra nada.
+            }
+        }
+
+        // Se espera a que el vecino deje de escribir medio segundo antes de consultar.
+        ["Titulo", "Descripcion"].forEach(campo => form.elements[campo].addEventListener("input", () => {
+            clearTimeout(espera);
+            espera = setTimeout(consultar, 500);
+        }));
+
+        botonUsar.addEventListener("click", () => {
+            const opcion = opcionDe(actual?.slug);
+            if (!opcion) return;
+            opcion.checked = true;
+            // "change" actualiza el resumen y la validación como si el vecino la hubiera marcado.
+            opcion.dispatchEvent(new Event("change", { bubbles: true }));
+            opcion.focus();
+        });
+
+        form.querySelectorAll('input[name="Categoria"]').forEach(r => r.addEventListener("change", pintar));
+
+        // Si el formulario volvió con datos (por ejemplo, tras un error), se consulta de una vez.
+        consultar();
+    }
 })();

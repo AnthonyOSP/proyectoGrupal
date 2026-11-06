@@ -39,8 +39,13 @@
     <None Update="MLModels\SentimientoModel.zip" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="MLModels\SentimientoModel.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
 
-    <!-- Datos de entrenamiento: los usa el botón "Reentrenar modelo" del panel también en la app publicada. -->
+    <None Update="MLModels\CategoriaModel.zip" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="MLModels\CategoriaModel.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+
+    <!-- Datos de entrenamiento: los usan los botones "Reentrenar" del panel también en la app publicada. -->
     <None Include="ML\sentimentAnalysisNLP\trainingData\comentarios_entrenamiento.csv" Link="MLModels\comentarios_entrenamiento.csv"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="ML\categorizacionIncidencias\trainingData\incidencias_entrenamiento.csv" Link="MLModels\incidencias_entrenamiento.csv"
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

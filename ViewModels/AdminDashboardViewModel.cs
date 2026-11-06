@@ -14,6 +14,10 @@ public class AdminDashboardViewModel
     public bool AlgoliaConfigurado { get; set; }
     public string IndiceBusqueda { get; set; } = "";
 
+    // Clasificador de categorías (ML.NET, multiclase) que sugiere la categoría al reportar.
+    public bool ClasificadorDisponible { get; set; }
+    public proyectoGrupal.Services.Categorias.InfoEntrenamientoCategorias? ClasificadorInfo { get; set; }
+
     // Porcentaje de un estado respecto al total (para la barra de distribución).
     public int Porcentaje(int cantidad) => Total == 0 ? 0 : (int)Math.Round(cantidad * 100.0 / Total);
 }
