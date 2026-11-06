@@ -7,7 +7,8 @@ namespace proyectoGrupal.Data;
 // Datos iniciales de seguridad. Se ejecuta al iniciar la aplicación (ver Program.cs):
 //   1. Crea los roles que falten (Administrador, Ciudadano).
 //   2. Crea el administrador inicial con ADMIN_EMAIL y ADMIN_PASSWORD, si están configurados.
-//   3. Crea el ciudadano de prueba con USER_EMAIL y USER_PASSWORD, si están configurados.
+//   3. Crea un segundo administrador (opcional, para pruebas) con ADMIN2_EMAIL y ADMIN2_PASSWORD.
+//   4. Crea el ciudadano de prueba con USER_EMAIL y USER_PASSWORD, si están configurados.
 // Es seguro ejecutarlo en cada inicio: nunca crea duplicados.
 public static class IdentitySeeder
 {
@@ -19,7 +20,8 @@ public static class IdentitySeeder
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(IdentitySeeder));
 
         await CrearRolesAsync(roleManager, logger);
-        await CrearAdministradorAsync(userManager, configuration, logger);
+        await CrearAdministradorAsync(userManager, configuration, logger, "ADMIN_EMAIL", "ADMIN_PASSWORD", opcional: false);
+        await CrearAdministradorAsync(userManager, configuration, logger, "ADMIN2_EMAIL", "ADMIN2_PASSWORD", opcional: true);
         await CrearUsuarioPruebaAsync(userManager, configuration, logger);
     }
 
@@ -43,17 +45,27 @@ public static class IdentitySeeder
     }
 
     // Las credenciales se leen de variables de entorno o User Secrets, nunca del código ni de appsettings.json.
+    // Se usa para el administrador inicial (ADMIN_*) y para el segundo administrador opcional (ADMIN2_*).
     private static async Task CrearAdministradorAsync(
-        UserManager<ApplicationUser> userManager, IConfiguration configuration, ILogger logger)
+        UserManager<ApplicationUser> userManager, IConfiguration configuration, ILogger logger,
+        string claveEmail, string clavePassword, bool opcional)
     {
-        var email = configuration["ADMIN_EMAIL"]?.Trim();
-        var password = configuration["ADMIN_PASSWORD"];
+        var email = configuration[claveEmail]?.Trim();
+        var password = configuration[clavePassword];
 
         if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
         {
-            logger.LogWarning(
-                "Administrador inicial no configurado: faltan ADMIN_EMAIL y/o ADMIN_PASSWORD. " +
-                "Nadie podrá entrar a /Admin hasta configurarlas (ver README, sección \"Configuración del administrador inicial\").");
+            if (opcional)
+            {
+                logger.LogInformation("Administrador opcional no configurado ({Email} / {Password}): no se crea.", claveEmail, clavePassword);
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Administrador inicial no configurado: faltan {Email} y/o {Password}. " +
+                    "Nadie podrá entrar a /Admin hasta configurarlas (ver README, sección \"Configuración del administrador inicial\").",
+                    claveEmail, clavePassword);
+            }
             return;
         }
 
@@ -74,12 +86,12 @@ public static class IdentitySeeder
             if (!creado.Succeeded)
             {
                 logger.LogError(
-                    "No se creó el administrador inicial {Email}: {Errores}. Revisa ADMIN_EMAIL y ADMIN_PASSWORD.",
-                    email, Errores(creado));
+                    "No se creó el administrador {Email}: {Errores}. Revisa {ClaveEmail} y {ClavePassword}.",
+                    email, Errores(creado), claveEmail, clavePassword);
                 return;
             }
 
-            logger.LogInformation("Administrador inicial {Email} creado.", email);
+            logger.LogInformation("Administrador {Email} creado.", email);
         }
 
         // Si la cuenta ya existía (por ejemplo, registrada como ciudadano), solo se asegura el rol.
