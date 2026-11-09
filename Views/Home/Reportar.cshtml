@@ -84,12 +84,13 @@
                         <legend class="campo__label">Categoría<span class="campo__requerido" aria-hidden="true">*</span></legend>
 
                         @* Sugerencia del modelo de ML.NET (clasificación multiclase) según el título y la descripción.
-                           La llena reportar.js; sin JavaScript o sin modelo simplemente no aparece. *@
+                           reportar.js marca sola la categoría sugerida mientras el vecino no elija otra a mano.
+                           Sin JavaScript o sin modelo simplemente no aparece. *@
                         <div class="sugerencia-cat" id="sugerenciaCategoria" data-url="@Url.Action("SugerirCategoria")" role="status" hidden>
                             <span class="sugerencia-cat__icono" aria-hidden="true">@Iconos.Svg("info", 18)</span>
                             <span class="sugerencia-cat__texto">
-                                Según lo que escribiste, parece <strong data-sugerencia-nombre></strong>
-                                <span class="sugerencia-cat__confianza" data-sugerencia-confianza></span>
+                                <span data-sugerencia-intro>Según lo que escribiste, parece</span> <strong data-sugerencia-nombre></strong>
+                                <span class="sugerencia-cat__confianza" data-sugerencia-confianza></span><span data-sugerencia-nota hidden>. Puedes cambiarla si no corresponde.</span>
                             </span>
                             <button type="button" class="sugerencia-cat__boton" data-sugerencia-usar>Elegir esta categoría</button>
                             <span class="sugerencia-cat__ok" data-sugerencia-ok hidden>@Iconos.Svg("check", 16) Coincide con tu elección</span>
@@ -133,18 +134,20 @@
                                autocomplete="street-address" maxlength="@CrearIncidenciaViewModel.UbicacionMaximo" aria-describedby="Ubicacion-ayuda"
                                data-resumen-origen="Ubicacion" />
                         <span asp-validation-for="Ubicacion"></span>
-                        <div class="campo__ayuda" id="Ubicacion-ayuda"><span>Dirección, cruce de calles o una referencia cercana.</span></div>
+                        <div class="campo__ayuda" id="Ubicacion-ayuda"><span>Dirección, cruce de calles o una referencia cercana. Si eliges una de las sugerencias, el punto se marca solo en el mapa.</span></div>
                     </div>
 
                     @* Punto en el mapa (opcional). Es un dato distinto de la ubicación escrita: se guardan los dos.
+                       mapa-incidencias.js los sincroniza (Google Maps): al elegir una dirección sugerida se marca el punto,
+                       y al marcar un punto se propone su dirección (sin pisar lo que el vecino escribió a mano).
                        Los campos ocultos los llena mapa-incidencias.js; el servidor valida formato, rango y que vengan en pareja. *@
                     <div class="campo mapa-campo">
                         <span class="campo__label" id="mapa-etiqueta">Ubicación en el mapa <span class="campo__opcional">(opcional)</span></span>
                         <p class="mapa-campo__ayuda" id="mapa-ayuda">
-                            Selecciona en el mapa dónde ocurrió la incidencia. Puedes mover el marcador para ajustar la ubicación.
+                            Selecciona en el mapa dónde ocurrió la incidencia. Puedes mover el marcador para ajustar la ubicación; la dirección del punto se completa sola.
                         </p>
                         <div class="mapa mapa--selector" id="mapaReporte" tabindex="-1" data-mapa="selector"
-                             data-latitud="Latitud" data-longitud="Longitud" data-panel="mapaPanel"
+                             data-latitud="Latitud" data-longitud="Longitud" data-direccion="Ubicacion" data-panel="mapaPanel"
                              data-centro-lat="@CoordenadasGeograficas.CentroInicialLatitud" data-centro-lng="@CoordenadasGeograficas.CentroInicialLongitud"
                              data-zoom="@CoordenadasGeograficas.ZoomInicial"
                              role="region" aria-labelledby="mapa-etiqueta" aria-describedby="mapa-ayuda"></div>
@@ -160,6 +163,12 @@
                                     @Iconos.Svg("x", 16) Quitar punto
                                 </button>
                             </div>
+                            <p class="mapa-direccion" data-mapa-direccion aria-live="polite" hidden>
+                                <span data-mapa-direccion-texto></span>
+                                <button type="button" class="btn btn-av-secondary mapa-seleccion__boton" data-mapa-direccion-usar hidden>
+                                    Usar esta dirección
+                                </button>
+                            </p>
                         </div>
                         <input type="hidden" asp-for="Latitud" data-resumen-origen="Mapa" />
                         <input type="hidden" asp-for="Longitud" />
@@ -276,10 +285,5 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/reportar.js" asp-append-version="true"></script>
-    <script src="~/lib/leaflet/dist/leaflet.js"></script>
-    <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
-}
-
-@section Estilos {
-    <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
+    <partial name="_GoogleMaps" />
 }

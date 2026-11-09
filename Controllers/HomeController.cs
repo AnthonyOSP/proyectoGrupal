@@ -390,7 +390,7 @@ public class HomeController : Controller
 
     // POST: /Home/SugerirCategoria  (lo llama reportar.js mientras el vecino escribe)
     // Clasificación multiclase con ML.NET: propone una categoría a partir del título y la descripción.
-    // Es solo una sugerencia: el vecino elige la categoría y el servidor la valida al enviar el reporte.
+    // reportar.js la marca sola mientras el vecino no elija otra a mano; el servidor la valida al enviar el reporte.
     [HttpPost]
     [Authorize]
     [ValidateAntiForgeryToken]

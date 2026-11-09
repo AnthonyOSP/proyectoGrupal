@@ -37,18 +37,9 @@
     </div>
 </div>
 
-@* Leaflet solo si hay un punto que mostrar. *@
-@section Estilos {
-    @if (incidencia.TieneUbicacion)
-    {
-        <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
-    }
-}
-
 @section Scripts {
     @if (incidencia.TieneUbicacion)
     {
-        <script src="~/lib/leaflet/dist/leaflet.js"></script>
-        <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
+        <partial name="_GoogleMaps" />
     }
 }

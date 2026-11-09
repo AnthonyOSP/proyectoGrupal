@@ -3057,8 +3057,8 @@ textarea.form-control {
   .realtime__punto { animation: none !important; }
 }
 
-/* Mapas (Leaflet + OpenStreetMap): formulario, detalle, seguimiento y panel.
-   isolation: los z-index internos de Leaflet (hasta 1000) no tapan el menú fijo ni los desplegables. */
+/* Mapas (Google Maps): formulario, detalle, seguimiento y panel.
+   isolation: los z-index internos del mapa no tapan el menú fijo ni los desplegables. */
 .mapa {
   position: relative;
   isolation: isolate;
@@ -3162,12 +3162,14 @@ textarea.form-control {
   .seguimiento-mapa { max-width: calc(100% - 320px - 2rem); }
 }
 
-/* Contenido de los popups: solo texto (título, categoría y estado) */
+/* Contenido de los popups: solo texto (título, categoría y estado).
+   El globo de Google siempre es blanco, así que los colores son fijos (también en tema oscuro). */
 .mapa-popup {
   display: grid;
   gap: 0.125rem;
   min-width: 160px;
   font-family: var(--av-font-body);
+  color: #1e293b;
 }
 
 .mapa-popup__titulo {
@@ -3175,9 +3177,85 @@ textarea.form-control {
   overflow-wrap: anywhere;
 }
 
+a.mapa-popup__titulo {
+  color: #1d4ed8;
+}
+
 .mapa-popup__dato {
   font-size: 0.8125rem;
+  color: #475569;
+}
+
+/* Dirección del punto marcado (Reportar): se propone para el campo "¿Dónde ocurre el problema?" */
+.mapa-direccion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.9375rem;
   color: var(--av-muted);
+}
+
+.mapa-direccion[hidden] {
+  display: none;
+}
+
+/* Autocompletado de direcciones (Google Places) debajo del campo de ubicación */
+.autocompletar {
+  position: relative;
+}
+
+.autocompletar__lista {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  margin: 0;
+  padding: 0.25rem;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--av-surface);
+  border: 1px solid var(--av-border-strong);
+  border-radius: var(--av-radius-sm);
+  box-shadow: var(--av-shadow);
+}
+
+.autocompletar__lista[hidden] {
+  display: none;
+}
+
+.autocompletar__opcion {
+  display: grid;
+  gap: 0.0625rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.autocompletar__opcion:hover,
+.autocompletar__opcion[aria-selected="true"] {
+  background: var(--av-primary-soft);
+}
+
+.autocompletar__principal {
+  color: var(--av-ink);
+  font-weight: 700;
+}
+
+.autocompletar__secundario {
+  font-size: 0.8125rem;
+  color: var(--av-muted);
+}
+
+.autocompletar__atribucion {
+  padding: 0.25rem 0.75rem 0.125rem;
+  font-size: 0.75rem;
+  color: var(--av-muted);
+  text-align: right;
 }
 
 /* ---------- 13. Utilidades y accesibilidad ---------- */

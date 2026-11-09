@@ -1,0 +1,10 @@
+@inject Microsoft.Extensions.Options.IOptions<proyectoGrupal.Services.GoogleMaps.GoogleMapsOptions> OpcionesMapas
+@* Mapas con Google Maps. mapa-incidencias.js carga la API de Google con esta clave (pública por diseño:
+   se protege restringiéndola por dominio en Google Cloud). Sin clave, cada mapa muestra un aviso
+   y el resto de la página funciona igual (en Reportar, el punto en el mapa es opcional). *@
+@{
+    var mapas = OpcionesMapas.Value;
+}
+<script src="~/js/mapa-incidencias.js" asp-append-version="true"
+        data-api-key="@(mapas.EstaConfigurado ? mapas.ApiKey!.Trim() : "")"
+        data-map-id="@mapas.MapId"></script>

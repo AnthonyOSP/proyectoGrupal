@@ -41,9 +41,8 @@ Todo lo que el proyecto usa y no fue escrito por nosotros. Las versiones son las
 | [jQuery](https://jquery.com)                                                             | 3.7.1   | Requerido por la validación de formularios                | MIT          |
 | [jQuery Validation](https://jqueryvalidation.org)                                        | 1.21.0  | Validación de formularios en el navegador                 | MIT          |
 | [jQuery Validation Unobtrusive](https://github.com/aspnet/jquery-validation-unobtrusive) | 4.0.0   | Conecta las validaciones de ASP.NET con jQuery Validation | MIT          |
-| [Leaflet](https://leafletjs.com)                                                         | 1.9.4   | Mapas interactivos (sección 14)                           | BSD 2-Clause |
 
-El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site.js`) no usa otras librerías: el tiempo real usa el WebSocket nativo del navegador.
+El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site.js`) no usa otras librerías: el tiempo real usa el WebSocket nativo del navegador y los mapas cargan la API de Google Maps desde Google (sección 14).
 
 ### APIs y servicios externos
 
@@ -54,10 +53,10 @@ El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site
 | [Algolia](https://www.algolia.com)                       | Búsqueda de incidencias (índice de búsqueda, no guarda datos propios) | Sí (`ALGOLIA_*`)                      | La búsqueda usa SQLite                    | Sección 12                                                     |
 | [PieSocket](https://piehost.com) (PieHost)               | Actualización en tiempo real del panel y del seguimiento              | Sí (`PIESOCKET_*`)                    | Las páginas no se actualizan solas        | Sección 13                                                     |
 | [Redis](https://redis.io) (Upstash o Redis Cloud)        | Límite de reportes por usuario (contra el spam)                       | Sí (`REDIS_CONNECTION`)               | El límite se cuenta en la memoria del servidor | Sección 16                                               |
-| [OpenStreetMap](https://www.openstreetmap.org) (teselas) | Imágenes de los mapas                                                 | No                                    | — (se muestran siempre que haya internet) | Sección 14. Datos © OpenStreetMap contributors (licencia ODbL) |
+| [Google Maps Platform](https://developers.google.com/maps) | Mapas, autocompletado de direcciones y dirección de un punto     | Sí (`GOOGLE_MAPS_API_KEY`)            | Los mapas muestran un aviso; el reporte se envía con la ubicación escrita | Sección 14 |
 | [Google Fonts](https://fonts.google.com)                 | Tipografías Atkinson Hyperlegible y Plus Jakarta Sans                 | No                                    | El navegador usa una fuente del sistema   | SIL Open Font License                                          |
 
-Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, el inicio con Google, Algolia, PieSocket y Redis son opcionales: la aplicación arranca y funciona sin ellas.
+Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, el inicio con Google, Google Maps, Algolia, PieSocket y Redis son opcionales: la aplicación arranca y funciona sin ellas.
 
 ### Herramientas de desarrollo y despliegue
 
@@ -235,7 +234,7 @@ Services/Algolia Índice de búsqueda en Algolia (ver sección 12)
 Services/PieSocket Avisos en tiempo real con PieSocket (ver sección 13)
 Migrations/      Historial de cambios de la base de datos (NO borrar)
 Dockerfile       Imagen Docker para publicar en Render (ver sección 11)
-wwwroot/         CSS, JavaScript y librerías (Leaflet para los mapas en wwwroot/lib/leaflet)
+wwwroot/         CSS, JavaScript y librerías (los mapas usan Google Maps: ver sección 14)
 ```
 
 Páginas disponibles y quién puede verlas:
@@ -645,19 +644,44 @@ Además de la ubicación escrita (`Ubicacion`, por ejemplo "Av. Próceres con Jr
 
 ### 14.1 Tecnología
 
-- **[Leaflet](https://leafletjs.com) 1.9.4** (versión estable), guardado en `wwwroot/lib/leaflet` como el resto de librerías del proyecto.
-- **Mapas de [OpenStreetMap](https://www.openstreetmap.org)** (`https://tile.openstreetmap.org`). No necesitan API key.
-- Cada mapa muestra siempre la atribución **© OpenStreetMap contributors**, como exige su [política de uso](https://operations.osmfoundation.org/policies/tiles/). Solo se cargan las partes del mapa que la persona está viendo: no hay descargas, precarga ni modo sin conexión.
+- **[Google Maps JavaScript API](https://developers.google.com/maps/documentation/javascript)**: los mapas, los marcadores y los círculos de las zonas. Se carga desde Google solo en las páginas que tienen mapa (`Views/Shared/_GoogleMaps.cshtml`).
+- **[Places API (New)](https://developers.google.com/maps/documentation/javascript/place-autocomplete-data)**: sugerencias de direcciones mientras se escribe la ubicación (solo en Perú).
+- **[Geocoding API](https://developers.google.com/maps/documentation/javascript/geocoding)**: la dirección aproximada del punto marcado en el mapa.
+- Todo el código propio está en `wwwroot/js/mapa-incidencias.js`. No hay librerías de mapas en `wwwroot/lib`.
 
-### 14.2 Cómo se elige y se guarda el punto
+### 14.2 Configurar la clave de Google Maps
+
+1. En [Google Cloud Console](https://console.cloud.google.com/) (puede ser el mismo proyecto de Cloud Vision), en **APIs y servicios → Biblioteca**, activa **Maps JavaScript API**, **Places API (New)** y **Geocoding API**.
+2. En **APIs y servicios → Credenciales**, crea una **clave de API** solo para los mapas (no reutilices otras claves).
+3. **Restringe la clave**, porque llega al navegador:
+   - _Restricciones de aplicación_ → **Sitios web**, una por campo: `http://localhost:5131/*`, `https://localhost:7297/*` (puertos de `launchSettings.json`) y `https://alertavecinal.onrender.com/*`. Google no acepta `*` en el puerto.
+   - _Restricciones de API_ → solo las tres APIs del paso 1.
+4. Configúrala:
+
+| Variable              | Ejemplo                                                                     |
+| --------------------- | --------------------------------------------------------------------------- |
+| `GOOGLE_MAPS_API_KEY` | la clave de API (pública por diseño, protegida por las restricciones)       |
+| `GOOGLE_MAPS_MAP_ID`  | opcional. Sin ella se usa `DEMO_MAP_ID`, el ID de pruebas que da Google      |
+
+```bash
+dotnet user-secrets set "GOOGLE_MAPS_API_KEY" "<tu-clave-de-maps>"
+```
+
+En Render, agrégala en **Environment → Environment Variables**. Sin la clave la aplicación funciona igual: cada mapa muestra _"El mapa no está disponible: falta configurar Google Maps."_ y el reporte se envía solo con la ubicación escrita. Si la clave no es válida para el dominio, el aviso lo dice.
+
+> Los marcadores usan `AdvancedMarkerElement`, que necesita un **Map ID**. `DEMO_MAP_ID` sirve para pruebas; para producción crea uno en **Google Maps Platform → Administración de mapas** y ponlo en `GOOGLE_MAPS_MAP_ID`.
+
+### 14.3 Cómo se elige y se guarda el punto
 
 - En `/Home/Reportar`, la sección **Ubicación en el mapa** es **opcional**: se hace clic en el mapa (o se usa **Marcar el centro del mapa**) y se puede **arrastrar el marcador** para ajustarlo. **Quitar punto** lo borra.
+- **Dirección → mapa**: al escribir en _¿Dónde ocurre el problema?_ aparecen sugerencias de Google (flechas y Enter, o clic). Al elegir una, el mapa se centra y **el punto se marca solo**.
+- **Mapa → dirección**: al marcar o mover el punto se busca su dirección. Si el campo está vacío (o tiene una dirección que puso el mapa), **se completa solo**; si el vecino ya escribió algo, no se pisa: aparece **Usar esta dirección** para reemplazarlo. El texto se puede corregir o completar con una referencia ("frente al parque").
 - El mapa empieza centrado en **La Molina** (zoom 14), pero se puede mover libremente: el punto puede marcarse en cualquier lugar.
 - En pantalla se muestran 6 decimales; se guarda el valor completo que da el navegador.
 - En la base de datos: columnas `Latitud` y `Longitud` de tipo `decimal` (SQLite las guarda como texto exacto, sin errores de redondeo) y **nullable**.
 - El servidor vuelve a validar todo (no confía en el navegador): número con punto decimal, latitud entre -90 y 90, longitud entre -180 y 180, y las **dos o ninguna**. Rechaza `NaN`, `Infinity`, notación científica y textos. Si algo no es válido, el reporte no se guarda (ni se indexa en Algolia ni se publica en PieSocket).
 
-### 14.3 Dónde aparece el mapa
+### 14.4 Dónde aparece el mapa
 
 | Página                   | Qué muestra                                                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -665,16 +689,18 @@ Además de la ubicación escrita (`Ubicacion`, por ejemplo "Av. Próceres con Jr
 | `/Home/Seguimiento/{id}` | El punto, debajo del historial (sigue funcionando cuando el estado cambia en tiempo real)                                                   |
 | `/Admin/Incidencias`     | Un mapa con las incidencias **filtradas** (búsqueda, categoría y estado) que tienen punto. Cada marcador muestra título, categoría y estado |
 | `/Admin/Detalle/{id}`    | El punto de la incidencia                                                                                                                   |
+| `/Admin/Zonas`           | Las zonas críticas (K-Means): un círculo numerado por zona y un punto por incidencia                                                        |
 
 Los mapas solo muestran datos públicos del reporte: **nunca** el nombre, correo o teléfono de quien lo hizo.
 
-### 14.4 Incidencias antiguas
+### 14.5 Incidencias antiguas
 
 Las incidencias creadas antes de esta etapa quedan con `Latitud` y `Longitud` vacías: no se inventan ni se calculan desde la dirección escrita. Simplemente no tienen marcador.
 
-### 14.5 Limitaciones actuales
+### 14.6 Limitaciones actuales
 
-- **No hay geocodificación**: la dirección escrita no se convierte en coordenadas; el punto se marca a mano en el mapa.
+- La dirección escrita solo se convierte en un punto si se elige una **sugerencia**; un texto escrito a mano sin elegir sugerencia no mueve el mapa.
+- Cada sugerencia y cada dirección de un punto es una consulta a Google Maps Platform (se cobra de los créditos o de la cuota gratuita).
 - **No hay búsqueda por distancia** ("cerca de mí", por radio o kilómetros) ni agrupación de marcadores (clustering). Las coordenadas no se envían a Algolia.
 - El mapa necesita JavaScript; sin él, el reporte se puede enviar solo con la ubicación escrita.
 
