@@ -147,15 +147,10 @@ else
 }
 
 @section Scripts {
-    <script src="~/lib/leaflet/dist/leaflet.js"></script>
-    <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
+    <partial name="_GoogleMaps" />
     <script>
         // Al cambiar un filtro se aplica automáticamente (el botón "Agrupar" funciona sin JavaScript).
         document.querySelectorAll("[data-autoenviar]").forEach(select =>
             select.addEventListener("change", () => select.form.submit()));
     </script>
-}
-
-@section Estilos {
-    <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
 }

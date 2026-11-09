@@ -1245,13 +1245,20 @@ section[aria-labelledby="titulo-reporte"] + .vacio {
   color: var(--av-muted);
 }
 
-/* Número de la zona sobre el mapa (Leaflet divIcon) */
-.zona-marca__icono {
-  background: none;
-  border: 0;
+/* Número de la zona y puntos de sus incidencias sobre el mapa (marcadores de Google Maps).
+   Google apoya el marcador por su borde inferior: translateY(50%) lo centra en el punto. */
+.zona-punto {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+  transform: translateY(50%);
 }
 
 .zona-marca {
+  transform: translateY(50%);
   display: grid;
   place-items: center;
   width: 28px;

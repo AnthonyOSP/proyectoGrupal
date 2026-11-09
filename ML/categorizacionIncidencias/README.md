@@ -2,7 +2,7 @@
 
 Mientras el vecino escribe el título y la descripción en **Reportar incidencia**, un modelo de
 ML.NET le sugiere una de las 8 categorías: *"Según lo que escribiste, parece **Alumbrado público**
-(91% de confianza) · [Elegir esta categoría]"*. Nunca se elige sola: el vecino decide.
+(91% de confianza) · [Elegir esta categoría]"*. La categoría sugerida **se marca sola** mientras el vecino no haya elegido otra a mano; si elige otra, se respeta y solo se le ofrece el botón.
 
 ## Cómo funciona
 

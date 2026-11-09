@@ -198,19 +198,36 @@
     });
 
     // 6. Sugerencia de categoría con ML.NET (clasificación multiclase).
-    //    Mientras el vecino escribe el título o la descripción, se pide al servidor una categoría.
-    //    Es solo una ayuda: nunca se elige sola; el vecino decide con "Elegir esta categoría".
+    //    Mientras el vecino escribe el título o la descripción, se pide al servidor una categoría
+    //    y se marca sola. Si el vecino elige otra a mano, se respeta: desde ahí solo se le sugiere
+    //    con "Elegir esta categoría". Al borrar el título para escribir otro se empieza de nuevo:
+    //    la próxima sugerencia vuelve a marcarse sola. El servidor valida la categoría al enviar el reporte.
     const sugerencia = document.getElementById("sugerenciaCategoria");
     if (sugerencia) {
+        const intro = sugerencia.querySelector("[data-sugerencia-intro]");
         const nombre = sugerencia.querySelector("[data-sugerencia-nombre]");
         const confianza = sugerencia.querySelector("[data-sugerencia-confianza]");
+        const nota = sugerencia.querySelector("[data-sugerencia-nota]");
         const botonUsar = sugerencia.querySelector("[data-sugerencia-usar]");
         const coincide = sugerencia.querySelector("[data-sugerencia-ok]");
         const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value || "";
         let actual = null, espera = null, peticion = null, ultimoTexto = "";
 
+        // ¿El vecino eligió la categoría él mismo? Si el formulario volvió con una ya marcada, cuenta como suya.
+        let eligioAMano = form.querySelector('input[name="Categoria"]:checked') !== null;
+        let marcadaSola = false; // la categoría marcada ahora la puso la sugerencia
+        let cambiandoSolo = false; // true mientras este script cambia la categoría (no fue el vecino)
+
         function opcionDe(slug) {
             return slug ? document.getElementById("Categoria_" + slug) : null;
+        }
+
+        // "change" actualiza el resumen y la validación como si el vecino la hubiera marcado.
+        function cambiarSolo(opcion, marcada) {
+            opcion.checked = marcada;
+            cambiandoSolo = true;
+            try { opcion.dispatchEvent(new Event("change", { bubbles: true })); }
+            finally { cambiandoSolo = false; }
         }
 
         // Marca la tarjeta sugerida y muestra el botón o el "coincide" según lo elegido.
@@ -221,17 +238,48 @@
             const opcion = opcionDe(actual.slug);
             opcion?.closest(".cat-opcion")?.classList.add("is-sugerida");
             const elegida = opcion?.checked === true;
+            const automatica = elegida && marcadaSola;
+            intro.textContent = automatica ? "Elegimos" : "Según lo que escribiste, parece";
             nombre.textContent = actual.nombre;
-            confianza.textContent = "(" + actual.confianza + "% de confianza)";
+            confianza.textContent = automatica
+                ? " según lo que escribiste (" + actual.confianza + "% de confianza)"
+                : "(" + actual.confianza + "% de confianza)";
+            nota.hidden = !automatica;
             botonUsar.hidden = elegida;
-            coincide.hidden = !elegida;
+            coincide.hidden = !elegida || automatica;
             sugerencia.hidden = false;
+        }
+
+        // Llega una sugerencia nueva: se marca sola salvo que el vecino ya haya elegido a mano.
+        function aplicar() {
+            const opcion = opcionDe(actual?.slug);
+            if (opcion && !eligioAMano && !opcion.checked) {
+                marcadaSola = true;
+                cambiarSolo(opcion, true);
+            }
+            pintar();
+        }
+
+        // Título borrado (o reemplazado: al escribir encima queda con 1 o 2 letras): se empieza de nuevo.
+        // Se quita la categoría que puso la sugerencia y la próxima vuelve a marcarse sola,
+        // aunque antes el vecino hubiera elegido otra a mano.
+        function empezarDeNuevo() {
+            peticion?.abort(); // una respuesta del título anterior ya no sirve
+            if (marcadaSola) {
+                const marcada = form.querySelector('input[name="Categoria"]:checked');
+                if (marcada) cambiarSolo(marcada, false);
+            }
+            eligioAMano = false;
+            marcadaSola = false;
+            actual = null;
+            ultimoTexto = "";
+            pintar();
         }
 
         async function consultar() {
             const titulo = form.elements["Titulo"].value, descripcion = form.elements["Descripcion"].value;
             const texto = (titulo + " " + descripcion).trim();
-            if (texto.length < 8) { actual = null; ultimoTexto = ""; pintar(); return; }
+            if (texto.length < 8) { peticion?.abort(); actual = null; ultimoTexto = ""; pintar(); return; }
             if (texto === ultimoTexto) return;
             ultimoTexto = texto;
 
@@ -246,7 +294,7 @@
                 const respuesta = await fetch(sugerencia.dataset.url, { method: "POST", body: datos, signal: peticion.signal });
                 if (!respuesta.ok) return;
                 actual = (await respuesta.json()).sugerencia || null;
-                pintar();
+                aplicar();
             } catch (e) {
                 // Sin conexión o petición cancelada: la sugerencia es opcional, no se muestra nada.
             }
@@ -254,6 +302,7 @@
 
         // Se espera a que el vecino deje de escribir medio segundo antes de consultar.
         ["Titulo", "Descripcion"].forEach(campo => form.elements[campo].addEventListener("input", () => {
+            if (campo === "Titulo" && form.elements["Titulo"].value.trim().length < 3) empezarDeNuevo();
             clearTimeout(espera);
             espera = setTimeout(consultar, 500);
         }));
@@ -261,13 +310,18 @@
         botonUsar.addEventListener("click", () => {
             const opcion = opcionDe(actual?.slug);
             if (!opcion) return;
-            opcion.checked = true;
-            // "change" actualiza el resumen y la validación como si el vecino la hubiera marcado.
-            opcion.dispatchEvent(new Event("change", { bubbles: true }));
+            cambiarSolo(opcion, true);
+            eligioAMano = true; // lo eligió él, con el botón
+            marcadaSola = false;
+            pintar();
             opcion.focus();
         });
 
-        form.querySelectorAll('input[name="Categoria"]').forEach(r => r.addEventListener("change", pintar));
+        form.querySelectorAll('input[name="Categoria"]').forEach(r => r.addEventListener("change", () => {
+            // Si no lo cambió este script, lo hizo la persona (clic, teclado o toque).
+            if (!cambiandoSolo) { eligioAMano = true; marcadaSola = false; }
+            pintar();
+        }));
 
         // Si el formulario volvió con datos (por ejemplo, tras un error), se consulta de una vez.
         consultar();
