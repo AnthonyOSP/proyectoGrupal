@@ -78,3 +78,6 @@ google-credentials*.json
 gcp-*.json
 application_default_credentials.json
 credentials/
+
+# Documentos generados localmente (por ejemplo, el PDF de tecnologías): no se suben al repositorio
+docs/

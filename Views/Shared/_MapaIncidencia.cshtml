@@ -1,7 +1,7 @@
 @model IncidenciaViewModel
 @* Ubicación geográfica de una incidencia (Detalle y Seguimiento). Solo datos públicos del reporte.
    Sin coordenadas (por ejemplo, incidencias anteriores a la Etapa 13) se muestra un mensaje, no un mapa vacío.
-   La página que lo usa carga Leaflet y mapa-incidencias.js solo si Model.TieneUbicacion. *@
+   La página que lo usa carga los mapas (_GoogleMaps) solo si Model.TieneUbicacion. *@
 <section class="bloque mapa-bloque" aria-labelledby="titulo-mapa-@Model.Id">
     <h2 class="bloque__titulo" id="titulo-mapa-@Model.Id">Ubicación en el mapa</h2>
     @if (Model.TieneUbicacion)

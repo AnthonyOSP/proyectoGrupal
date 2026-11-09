@@ -79,7 +79,7 @@
     </div>
 </form>
 
-@* Mapa de las incidencias filtradas (Leaflet + OpenStreetMap). Queda fuera de la zona de tiempo real
+@* Mapa de las incidencias filtradas (Google Maps). Queda fuera de la zona de tiempo real
    para no redibujarlo desde cero; sus datos (JSON) sí están dentro y se actualizan con la lista. *@
 <section class="admin-card mapa-admin" aria-labelledby="titulo-mapa-admin">
     <div class="admin-card__cabecera">
@@ -169,8 +169,7 @@ else
 </div>
 
 @section Scripts {
-    <script src="~/lib/leaflet/dist/leaflet.js"></script>
-    <script src="~/js/mapa-incidencias.js" asp-append-version="true"></script>
+    <partial name="_GoogleMaps" />
     <script>
         // Anuncia el mensaje de confirmación a los lectores de pantalla.
         document.getElementById("mensajeAdmin")?.focus();
@@ -179,8 +178,4 @@ else
         document.querySelectorAll("[data-autoenviar]").forEach(select =>
             select.addEventListener("change", () => select.form.submit()));
     </script>
-}
-
-@section Estilos {
-    <link rel="stylesheet" href="~/lib/leaflet/dist/leaflet.css" />
 }

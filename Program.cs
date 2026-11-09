@@ -7,6 +7,7 @@ using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.GoogleMaps;
 using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.Services.Sentimiento;
@@ -105,6 +106,19 @@ if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientS
 builder.Services.AddSingleton<IFaceDetectionService, GoogleVisionFaceDetectionService>();
 builder.Services.AddScoped<FotoIncidenciaService>();
 
+// Mapas con Google Maps (Maps JavaScript API, Places API (New) y Geocoding API).
+// Clave en variables de entorno o User Secrets (ver README). Sin ella, los mapas muestran un aviso
+// y el reporte se puede enviar solo con la ubicación escrita.
+builder.Services.Configure<GoogleMapsOptions>(opciones =>
+{
+    opciones.ApiKey = builder.Configuration["GOOGLE_MAPS_API_KEY"]?.Trim();
+    var mapId = builder.Configuration["GOOGLE_MAPS_MAP_ID"]?.Trim();
+    if (!string.IsNullOrEmpty(mapId))
+    {
+        opciones.MapId = mapId;
+    }
+});
+
 // Búsqueda de incidencias con Algolia (índice de búsqueda; SQLite sigue siendo la fuente de verdad).
 // Claves en variables de entorno o User Secrets (ver README). Sin ellas, la búsqueda usa SQLite.
 builder.Services.Configure<AlgoliaOptions>(opciones =>
@@ -192,6 +206,10 @@ app.Services.GetRequiredService<ILimiteReportesService>();
 if (string.IsNullOrEmpty(googleClientId) || string.IsNullOrEmpty(googleClientSecret))
 {
     app.Logger.LogInformation("Google no está configurado (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET): no se muestra \"Continuar con Google\".");
+}
+if (string.IsNullOrWhiteSpace(builder.Configuration["GOOGLE_MAPS_API_KEY"]))
+{
+    app.Logger.LogInformation("Google Maps no está configurado (GOOGLE_MAPS_API_KEY): los mapas muestran un aviso.");
 }
 
 app.UseForwardedHeaders();
