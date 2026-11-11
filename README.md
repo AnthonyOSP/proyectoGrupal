@@ -457,6 +457,7 @@ El proyecto incluye un `Dockerfile` listo para Render. Al iniciar, la aplicació
 
 - **Configura el administrador** con `ADMIN_EMAIL` y `ADMIN_PASSWORD` (sección 11.3). Sin ellas, nadie puede entrar a `/Admin`. Usa una contraseña distinta de la de tu computadora.
 - **Los datos no son permanentes en el plan gratuito.** El disco del contenedor se borra en cada despliegue y cada vez que Render reinicia el servicio. Se pierden las incidencias, las fotos y las **cuentas de ciudadanos**. El administrador se vuelve a crear solo al iniciar. Es suficiente para una demostración, pero no para uso real.
+- **Incidencias de demostración.** Para que la página no arranque vacía, si la tabla de incidencias está vacía al iniciar se crean **24 incidencias de ejemplo** (las 8 categorías, los 3 estados, con historial y punto en el mapa en La Molina; ver `Data/IncidenciasDemoSeeder.cs`). Si está configurado el usuario de prueba (`USER_EMAIL`), 5 quedan a su nombre para mostrar "Mis incidencias". Siempre tienen los mismos números (#1 a #24); Algolia y Qdrant se resincronizan solos. En la base local (que ya tiene incidencias) no se crea nada. Se desactiva con `INCIDENCIAS_DEMO=false`.
 - **Las sesiones se cierran en cada reinicio.** Las claves que protegen las cookies se guardan dentro del contenedor, así que después de un despliegue hay que volver a iniciar sesión.
 - **El plan gratuito se "duerme"** tras unos 15 minutos sin visitas. La primera visita después tarda cerca de un minuto en responder, y al despertar la base de datos empieza vacía.
 - **Limita el uso de Google Vision** (cuota diaria baja en Google Cloud Console), porque ahora cualquier persona podría subir fotos.
@@ -889,7 +890,7 @@ En **Panel → Asistente** también se puede subir un documento extra (`.md` o `
 | `QDRANT_ENDPOINT`           | No          | `https://xxxx.us-east-1-1.aws.cloud.qdrant.io`                |
 | `QDRANT_API_KEY`            | No          | clave del clúster                                             |
 | `QDRANT_COLLECTION`         | No          | `alerta_vecinal_conocimiento` (por defecto)                   |
-| `QDRANT_COLLECTION_INCIDENCIAS` | No      | `alerta_vecinal_incidencias` (por defecto)                    |
+| `QDRANT_COLLECTION_INCIDENCIAS` | No (sí en Render, ver abajo) | `alerta_vecinal_incidencias` (por defecto)  |
 | `ASISTENTE_LIMITE_MENSAJES` | No          | `20` (por defecto)                                            |
 | `ASISTENTE_LIMITE_MINUTOS`  | No          | `10` (por defecto)                                            |
 
@@ -900,6 +901,8 @@ dotnet user-secrets set "QDRANT_API_KEY" "<clave del clúster>"
 ```
 
 En Render: **Environment → Environment Variables**, con los mismos nombres. **Nunca** pongas estas claves en `appsettings.json` ni en el código.
+
+**Si tu computadora y Render usan el mismo clúster de Qdrant**, en Render pon una colección de incidencias distinta, por ejemplo `QDRANT_COLLECTION_INCIDENCIAS=alerta_vecinal_incidencias_render`. Cada base de datos tiene sus propias incidencias (la #1 local no es la #1 de Render): si compartieran la colección, cada una la recargaría al arrancar y la búsqueda por significado podría mostrar una incidencia equivocada. La colección de conocimiento sí se puede compartir (los documentos son los mismos). Lo mismo aplica a Algolia: usa un `ALGOLIA_INDEX_NAME` distinto en cada entorno.
 
 ### 17.5 Sin configurar
 
