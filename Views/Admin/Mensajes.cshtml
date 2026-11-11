@@ -70,13 +70,17 @@
     <button type="submit" class="btn btn-av-primary btn-sm-av">Ver día</button>
     @if (!Model.EsHoy)
     {
-        <a class="btn btn-av-ghost btn-sm-av" asp-action="Mensajes">Hoy</a>
+        <a class="btn btn-av-ghost btn-sm-av" asp-action="Mensajes" asp-route-fecha="@hoy.ToString("yyyy-MM-dd")">Hoy</a>
     }
 </form>
 
 @* Reporte del día: se cuenta sobre todos los mensajes del día, sin los filtros de la lista. *@
 <section aria-labelledby="titulo-reporte">
     <h2 class="reporte-dia__titulo" id="titulo-reporte">Reporte del @fechaTexto@(Model.EsHoy ? " (hoy)" : "")</h2>
+    @if (Model.UltimoDiaConMensajes)
+    {
+        <p class="busqueda-admin__texto">@Iconos.Svg("info", 16) Hoy todavía no llegan mensajes: se muestra el último día que tiene mensajes.</p>
+    }
     <div class="stats stats--3">
         @foreach (var tarjeta in tarjetas)
         {

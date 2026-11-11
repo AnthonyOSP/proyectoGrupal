@@ -425,7 +425,27 @@ public class AdminController : Controller
     public async Task<IActionResult> Mensajes(DateOnly? fecha, string? sentimiento, string? buscar,
         [FromServices] ISentimientoService analisis)
     {
-        var dia = fecha ?? DateOnly.FromDateTime(DateTime.Now);
+        // Sin fecha en la URL: hoy si llegaron mensajes hoy; si no, el último día con mensajes
+        // (así la bandeja no se abre vacía cuando hoy todavía no escribió nadie).
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+        var dia = fecha ?? hoy;
+        var ultimoDiaConMensajes = false;
+        if (fecha == null)
+        {
+            var inicioHoy = hoy.ToDateTime(TimeOnly.MinValue);
+            if (!await _context.MensajesContacto.AnyAsync(m => m.FechaRegistro >= inicioHoy))
+            {
+                var ultimo = await _context.MensajesContacto
+                    .OrderByDescending(m => m.FechaRegistro)
+                    .Select(m => (DateTime?)m.FechaRegistro)
+                    .FirstOrDefaultAsync();
+                if (ultimo is DateTime ultimaFecha)
+                {
+                    dia = DateOnly.FromDateTime(ultimaFecha);
+                    ultimoDiaConMensajes = true;
+                }
+            }
+        }
         buscar = BusquedaIncidenciasService.NormalizarTexto(buscar);
         // Solo valores conocidos ("Positivo" / "Negativo"); cualquier otro se ignora.
         sentimiento = SentimientosMensaje.Todos.FirstOrDefault(s => s == sentimiento);
@@ -460,6 +480,7 @@ public class AdminController : Controller
         return View(new MensajesAdminViewModel
         {
             Fecha = dia,
+            UltimoDiaConMensajes = ultimoDiaConMensajes,
             Buscar = buscar,
             Sentimiento = sentimiento,
             TotalDia = delDia.Count,

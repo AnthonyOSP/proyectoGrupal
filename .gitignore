@@ -81,3 +81,6 @@ credentials/
 
 # Documentos generados localmente (por ejemplo, el PDF de tecnologías): no se suben al repositorio
 docs/
+
+# Presentaciones de PowerPoint (por ejemplo, la exposición del proyecto): no se suben al repositorio
+*.pptx

@@ -11,6 +11,9 @@ public class MensajesAdminViewModel
     public DateOnly Fecha { get; set; }
     public bool EsHoy => Fecha == DateOnly.FromDateTime(DateTime.Now);
 
+    // true si se abrió sin fecha y hoy no hay mensajes: se muestra el último día que tiene mensajes.
+    public bool UltimoDiaConMensajes { get; set; }
+
     // Filtros de la lista (ya validados), o null si no se usan.
     public string? Buscar { get; set; }
     public string? Sentimiento { get; set; }
