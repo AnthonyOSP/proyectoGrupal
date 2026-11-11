@@ -1,0 +1,67 @@
+@using proyectoGrupal.Services.Asistente
+@inject IAsistenteService Asistente
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@*
+    Asistente virtual (chat flotante). Solo aparece si Groq está configurado (GROQ_API_KEY).
+    asistente.js envía las preguntas a /Asistente/Preguntar y dibuja la respuesta en streaming.
+    El token antiforgery va en un atributo data-*: el controlador lo exige en cada POST.
+*@
+@if (Asistente.EstaDisponible)
+{
+    var token = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    var sugerencias = new[]
+    {
+        "¿Cómo reporto un problema?",
+        "Quiero reportar un poste apagado",
+        "¿Qué pasa con las fotos que subo?",
+        "¿Hay reportes de baches?"
+    };
+
+    <div class="asistente" id="asistente" data-token="@token"
+         data-url-preguntar="@Url.Action("Preguntar", "Asistente")" data-url-limpiar="@Url.Action("Limpiar", "Asistente")">
+        <button type="button" class="asistente__lanzador" id="asistenteLanzador"
+                aria-controls="asistentePanel" aria-expanded="false">
+            <span class="asistente__lanzador-icono">@Iconos.Svg("message", 24)</span>
+            <span class="asistente__lanzador-texto">¿Necesitas ayuda?</span>
+        </button>
+
+        <section class="asistente__panel" id="asistentePanel" role="dialog" aria-modal="false" aria-labelledby="asistenteTitulo" hidden>
+            <header class="asistente__cabecera">
+                <span class="asistente__avatar" aria-hidden="true">@Iconos.Svg("megaphone", 20)</span>
+                <div class="asistente__cabecera-texto">
+                    <h2 class="asistente__titulo" id="asistenteTitulo">Asistente de Alerta Vecinal</h2>
+                    <p class="asistente__sub">Dudas, incidencias y reportes</p>
+                </div>
+                <button type="button" class="asistente__icono-btn" id="asistenteNueva" title="Nueva conversación" aria-label="Nueva conversación">
+                    @Iconos.Svg("refresh", 18)
+                </button>
+                <button type="button" class="asistente__icono-btn" id="asistenteCerrar" title="Cerrar" aria-label="Cerrar el asistente">
+                    @Iconos.Svg("x", 20)
+                </button>
+            </header>
+
+            <div class="asistente__mensajes" id="asistenteMensajes" role="log" aria-live="polite" aria-relevant="additions" tabindex="0">
+                <div class="asistente-msg asistente-msg--bot asistente-msg--bienvenida">
+                    <p>¡Hola! Soy el asistente de Alerta Vecinal. Puedo resolver tus dudas sobre la página, buscar incidencias reportadas y ayudarte a preparar un reporte.</p>
+                </div>
+                <div class="asistente__sugerencias" id="asistenteSugerencias">
+                    @foreach (var sugerencia in sugerencias)
+                    {
+                        <button type="button" class="asistente__chip" data-sugerencia="@sugerencia">@sugerencia</button>
+                    }
+                </div>
+            </div>
+
+            <form class="asistente__form" id="asistenteForm" autocomplete="off">
+                <label class="visually-hidden" for="asistenteEntrada">Escribe tu pregunta</label>
+                <textarea class="asistente__entrada" id="asistenteEntrada" rows="1" maxlength="1000"
+                          placeholder="Escribe tu pregunta…" enterkeyhint="send"></textarea>
+                <button type="submit" class="asistente__enviar" id="asistenteEnviar" aria-label="Enviar pregunta">
+                    @Iconos.Svg("send", 18)
+                </button>
+            </form>
+            <p class="asistente__aviso">El asistente puede equivocarse. No compartas contraseñas ni datos personales.</p>
+        </section>
+    </div>
+    <script src="~/js/asistente.js" asp-append-version="true" defer></script>
+}

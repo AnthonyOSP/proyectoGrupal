@@ -76,12 +76,14 @@ public class HomeController : Controller
     }
 
     // GET: /Home/Reportar?categoria=alumbrado
-    // Requiere sesión iniciada: un visitante es enviado a /Account/Login y vuelve aquí al entrar.
+    // GET: /Home/Reportar?titulo=...&descripcion=...&ubicacion=...&categoria=...  (botón del asistente virtual)
+    // Requiere sesión iniciada: un visitante es enviado a /Account/Login y vuelve aquí (con los datos) al entrar.
+    // Los datos de la URL solo rellenan el formulario: el vecino los revisa y el POST los valida como siempre.
     [Authorize]
-    public async Task<IActionResult> Reportar(string? categoria)
+    public async Task<IActionResult> Reportar(string? categoria, string? titulo, string? descripcion, string? ubicacion)
     {
-        // El parámetro "categoria" (slug de la URL) queda en ModelState y el <select> lo usaría
-        // en lugar del modelo. Se limpia para que se aplique el nombre completo de abajo.
+        // Los parámetros de la URL quedan en ModelState y los campos los usarían en lugar del modelo.
+        // Se limpia para que se apliquen los valores ya normalizados de abajo (y el nombre completo de la categoría).
         ModelState.Clear();
 
         // Si ya llegó al límite de reportes, se avisa antes de que llene el formulario.
@@ -91,10 +93,14 @@ public class HomeController : Controller
             ModelState.AddModelError(string.Empty, limite.Mensaje());
         }
 
-        // Permite llegar desde una tarjeta de categoría con la categoría ya elegida.
+        // Permite llegar desde una tarjeta de categoría con la categoría ya elegida, o desde el asistente
+        // con el reporte preparado. Los textos se normalizan y se recortan a los máximos del formulario.
         var modelo = new CrearIncidenciaViewModel
         {
-            Categoria = CatalogoCategorias.PorSlug(categoria)?.Nombre
+            Categoria = CatalogoCategorias.PorSlug(categoria)?.Nombre,
+            Titulo = TextoFormulario.Recortar(UnaLinea(titulo), CrearIncidenciaViewModel.TituloMaximo),
+            Descripcion = TextoFormulario.Recortar(TextoLargo(descripcion), CrearIncidenciaViewModel.DescripcionMaximo),
+            Ubicacion = TextoFormulario.Recortar(UnaLinea(ubicacion), CrearIncidenciaViewModel.UbicacionMaximo)
         };
 
         return View(modelo);
@@ -268,30 +274,11 @@ public class HomeController : Controller
         return await _limiteReportes.ConsultarAsync(usuarioId, HttpContext.RequestAborted);
     }
 
-    // Título y ubicación: una sola línea, sin espacios al inicio/final ni repetidos.
-    // No cambia mayúsculas ni el resto del texto. Si solo había espacios, queda null (campo obligatorio).
-    private static string? UnaLinea(string? texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto))
-        {
-            return null;
-        }
+    // Título y ubicación: una sola línea (ver Helpers/TextoFormulario.cs). Si solo había espacios, queda null.
+    private static string? UnaLinea(string? texto) => TextoFormulario.UnaLinea(texto);
 
-        return string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-    }
-
-    // Descripción: se respeta lo escrito (incluidos los saltos de línea); solo se quitan los espacios
-    // del inicio y el final, y los saltos "\r\n" del navegador se guardan como "\n" (1 carácter,
-    // igual que en el contador del formulario).
-    private static string? TextoLargo(string? texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto))
-        {
-            return null;
-        }
-
-        return texto.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
-    }
+    // Descripción: se respetan los saltos de línea; solo se quitan los espacios del inicio y el final.
+    private static string? TextoLargo(string? texto) => TextoFormulario.TextoLargo(texto);
 
     // GET: /Home/Incidencias?buscar=poste&categoria=alumbrado&estado=EnRevision
     public async Task<IActionResult> Incidencias(string? buscar, string? categoria, EstadoIncidencia? estado)

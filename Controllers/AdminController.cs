@@ -8,6 +8,8 @@ using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.Asistente;
+using proyectoGrupal.Services.Asistente.Conocimiento;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.Services.Sentimiento;
 using proyectoGrupal.Services.Categorias;
@@ -90,6 +92,120 @@ public class AdminController : Controller
         TempData["MensajeBusqueda"] = resultado.Mensaje;
         TempData["BusquedaOk"] = resultado.Exito;
         return RedirectToAction(nameof(Index));
+    }
+
+    // ---------- Asistente virtual: base de conocimiento ----------
+
+    private const long TamanoMaximoDocumento = 1024 * 1024; // 1 MB de texto es mucho para un documento de ayuda
+    private const int LargoMaximoConsulta = 200;
+
+    // GET: /Admin/Asistente?consulta=limite de reportes
+    // Estado del asistente, documentos cargados en Qdrant y prueba de búsqueda (solo lectura).
+    public async Task<IActionResult> Asistente(string? consulta,
+        [FromServices] IBaseConocimientoService conocimiento,
+        [FromServices] IAsistenteService asistente)
+    {
+        var modelo = new AsistenteAdminViewModel
+        {
+            AsistenteDisponible = asistente.EstaDisponible,
+            Modelo = asistente.Modelo,
+            UsaQdrant = conocimiento.UsaQdrant,
+            Coleccion = conocimiento.Opciones.Coleccion,
+            ModeloEmbedding = conocimiento.Opciones.ModeloEmbedding,
+            ArchivosCarpeta = conocimiento.ArchivosCarpeta,
+            Consulta = BusquedaIncidenciasService.NormalizarTexto(consulta) is { } texto
+                ? (texto.Length <= LargoMaximoConsulta ? texto : texto[..LargoMaximoConsulta])
+                : null
+        };
+
+        if (conocimiento.UsaQdrant)
+        {
+            try
+            {
+                modelo.Documentos = await conocimiento.ListarDocumentosAsync(HttpContext.RequestAborted);
+            }
+            catch (InvalidOperationException ex)
+            {
+                modelo.ErrorDocumentos = ex.Message;
+            }
+        }
+
+        if (modelo.Consulta != null)
+        {
+            modelo.Busqueda = await conocimiento.BuscarAsync(modelo.Consulta, 5, HttpContext.RequestAborted);
+        }
+
+        return View(modelo);
+    }
+
+    // POST: /Admin/SincronizarConocimiento
+    // Carga (o vuelve a cargar) en Qdrant los documentos de la carpeta Conocimiento/. Se puede repetir sin duplicar.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SincronizarConocimiento([FromServices] IBaseConocimientoService conocimiento)
+    {
+        var resultado = await conocimiento.SincronizarCarpetaAsync(HttpContext.RequestAborted);
+        _logger.LogInformation("Sincronización de la base de conocimiento por {Usuario}: {Mensaje}", User.Identity?.Name, resultado.Mensaje);
+
+        TempData["MensajeConocimiento"] = resultado.Mensaje;
+        TempData["ConocimientoOk"] = resultado.Exito;
+        return RedirectToAction(nameof(Asistente));
+    }
+
+    // POST: /Admin/CargarConocimiento  (documento extra: Markdown o texto)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public async Task<IActionResult> CargarConocimiento(IFormFile? archivo, [FromServices] IBaseConocimientoService conocimiento)
+    {
+        var extension = Path.GetExtension(archivo?.FileName ?? string.Empty).ToLowerInvariant();
+        string? error = archivo switch
+        {
+            null or { Length: 0 } => "Elige un archivo Markdown (.md) o de texto (.txt).",
+            _ when extension is not (".md" or ".markdown" or ".txt") => "Solo se aceptan archivos .md o .txt.",
+            { Length: > TamanoMaximoDocumento } => "El archivo supera el límite de 1 MB.",
+            _ => null
+        };
+
+        if (error == null)
+        {
+            string texto;
+            using (var lector = new StreamReader(archivo!.OpenReadStream(), System.Text.Encoding.UTF8))
+            {
+                texto = await lector.ReadToEndAsync(HttpContext.RequestAborted);
+            }
+
+            var nombre = Path.GetFileName(archivo.FileName);
+            var resultado = string.IsNullOrWhiteSpace(texto)
+                ? new ResultadoOperacionConocimiento(false, "El archivo está vacío.")
+                : await conocimiento.CargarDocumentoAsync(nombre, texto, HttpContext.RequestAborted);
+
+            _logger.LogInformation("Documento de conocimiento '{Archivo}' cargado por {Usuario}: {Mensaje}", nombre, User.Identity?.Name, resultado.Mensaje);
+            TempData["MensajeConocimiento"] = resultado.Mensaje;
+            TempData["ConocimientoOk"] = resultado.Exito;
+        }
+        else
+        {
+            TempData["MensajeConocimiento"] = error;
+            TempData["ConocimientoOk"] = false;
+        }
+
+        return RedirectToAction(nameof(Asistente));
+    }
+
+    // POST: /Admin/EliminarConocimiento
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EliminarConocimiento(string? id, [FromServices] IBaseConocimientoService conocimiento)
+    {
+        var resultado = string.IsNullOrWhiteSpace(id) || id.Length > 100
+            ? new ResultadoOperacionConocimiento(false, "Documento no válido.")
+            : await conocimiento.EliminarDocumentoAsync(id, HttpContext.RequestAborted);
+
+        _logger.LogInformation("Documento de conocimiento {Id} eliminado por {Usuario}: {Mensaje}", id, User.Identity?.Name, resultado.Mensaje);
+        TempData["MensajeConocimiento"] = resultado.Mensaje;
+        TempData["ConocimientoOk"] = resultado.Exito;
+        return RedirectToAction(nameof(Asistente));
     }
 
     // GET: /Admin/Incidencias?buscar=poste&categoria=alumbrado&estado=Pendiente
