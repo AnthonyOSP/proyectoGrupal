@@ -15,6 +15,10 @@ public class QdrantOptions
 
     public string Coleccion { get; set; } = "alerta_vecinal_conocimiento";
 
+    // Colección con las incidencias (búsqueda por significado y detección de reportes parecidos).
+    // Opcional: QDRANT_COLLECTION_INCIDENCIAS.
+    public string ColeccionIncidencias { get; set; } = "alerta_vecinal_incidencias";
+
     // Modelo de embeddings de Qdrant Cloud Inference. multilingual-e5-small entiende bien el español
     // y genera vectores de 384 dimensiones. Si se cambia el modelo, hay que cambiar Dimensiones
     // y usar una colección nueva (los vectores de modelos distintos no se pueden mezclar).

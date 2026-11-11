@@ -164,6 +164,86 @@
     }
 </section>
 
+@* Índice semántico de incidencias (Qdrant): búsqueda por significado y aviso de reportes parecidos en el chat. *@
+<section class="admin-card busqueda-admin" aria-labelledby="titulo-indice-incidencias">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-indice-incidencias">Incidencias en Qdrant</h2>
+        @if (Model.IncidenciasIndexadas is long indexadas && indexadas == Model.IncidenciasTotales)
+        {
+            <span class="estado estado--atendida">@Iconos.Svg("check-circle", 14) Al día</span>
+        }
+        else if (Model.IncidenciasIndexadas != null)
+        {
+            <span class="estado estado--pendiente">@Iconos.Svg("info", 14) Desactualizado</span>
+        }
+    </div>
+    @if (!Model.UsaQdrant)
+    {
+        <p class="busqueda-admin__texto mb-0">
+            Sin Qdrant, el asistente busca incidencias solo por palabras y detecta reportes parecidos por el nombre del lugar.
+        </p>
+    }
+    else
+    {
+        <p class="busqueda-admin__texto">
+            Colección <strong>@Model.ColeccionIncidencias</strong>:
+            <strong>@(Model.IncidenciasIndexadas?.ToString() ?? "?")</strong> de <strong>@Model.IncidenciasTotales</strong> incidencias.
+            Permite al asistente encontrarlas por significado ("buzón sin tapa" encuentra "desagüe sin tapa") y avisar de reportes parecidos.
+            Se actualiza solo al crear, cambiar de estado o eliminar una incidencia; sincroniza si Qdrant no estuvo disponible.
+        </p>
+        <form asp-action="SincronizarIncidenciasSemanticas" method="post" data-ocupado="Sincronizando…">
+            <button type="submit" class="btn btn-av-secondary">
+                @Iconos.Svg("refresh", 18) <span class="btn-texto">Sincronizar incidencias</span>
+            </button>
+        </form>
+    }
+</section>
+
+@* Valoraciones de los vecinos (👍/👎): las respuestas que no sirvieron dicen qué falta en la ayuda. *@
+<section class="admin-card busqueda-admin" aria-labelledby="titulo-valoraciones">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-valoraciones">Valoraciones de los vecinos</h2>
+        <span class="busqueda-admin__texto mb-0">Últimos @AsistenteAdminViewModel.DiasValoraciones días</span>
+    </div>
+
+    @{
+        var totalValoraciones = Model.ValoracionesUtiles + Model.ValoracionesNoUtiles;
+    }
+    @if (totalValoraciones == 0)
+    {
+        <p class="busqueda-admin__texto mb-0">Todavía no hay valoraciones. Los vecinos pueden marcar cada respuesta del chat como útil o no útil.</p>
+    }
+    else
+    {
+        <div class="asistente-admin__valoraciones">
+            <p><strong>@Model.ValoracionesUtiles</strong> útiles</p>
+            <p><strong>@Model.ValoracionesNoUtiles</strong> no útiles</p>
+            <p><strong>@(Model.ValoracionesUtiles * 100 / totalValoraciones)%</strong> de respuestas útiles</p>
+        </div>
+
+        @if (Model.NoUtiles.Count > 0)
+        {
+            <p class="busqueda-admin__texto">
+                Respuestas que no sirvieron. Si falta información, agrégala a un documento de <code>Conocimiento/</code> y sincroniza.
+            </p>
+            <ol class="asistente-admin__resultados">
+                @foreach (var valoracion in Model.NoUtiles)
+                {
+                    <li class="asistente-admin__resultado">
+                        <div class="asistente-admin__resultado-cabecera">
+                            <strong>@valoracion.Pregunta</strong>
+                            <span class="admin-id">@valoracion.Fecha.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        @{ var respuestaSinFormato = valoracion.Respuesta.Replace("**", ""); }
+                        <p>@(respuestaSinFormato.Length <= 400 ? respuestaSinFormato : respuestaSinFormato[..400] + "…")</p>
+                        <p class="asistente-admin__fuentes">Fuentes: @(valoracion.Fuentes.Length > 0 ? valoracion.Fuentes : "ninguna (no usó la ayuda)")</p>
+                    </li>
+                }
+            </ol>
+        }
+    }
+</section>
+
 @* Prueba de búsqueda: muestra los fragmentos que recibiría el asistente para una pregunta. *@
 <section class="admin-card busqueda-admin" aria-labelledby="titulo-prueba">
     <div class="admin-card__cabecera">

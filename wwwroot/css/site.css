@@ -3536,6 +3536,35 @@ a.asistente-card:hover { border-color: var(--av-primary); background: var(--av-p
 
 .asistente-fuentes { margin: 0.625rem 0 0 !important; font-size: 0.75rem; color: var(--av-muted); }
 
+/* Valoración de la respuesta (👍/👎) */
+.asistente-valorar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--av-border);
+}
+.asistente-valorar__texto { flex: 1; font-size: 0.75rem; color: var(--av-muted); }
+.asistente-valorar__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--av-radius-sm);
+  background: transparent;
+  color: var(--av-muted);
+}
+.asistente-valorar__boton:hover { background: var(--av-border); color: var(--av-ink); }
+.asistente-valorar__boton--no svg { transform: rotate(180deg); }
+.asistente-valorar__boton[aria-pressed="true"] {
+  background: var(--av-primary-soft);
+  border-color: var(--av-primary-100);
+  color: var(--av-primary);
+}
+
 .asistente__form {
   display: flex;
   align-items: flex-end;
@@ -3599,3 +3628,18 @@ a.asistente-card:hover { border-color: var(--av-primary); background: var(--av-p
 @media print {
   .asistente { display: none; }
 }
+
+/* Aviso de reportes abiertos cerca del punto marcado (formulario Reportar) */
+.aviso-cercanas {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--av-pendiente-text);
+  border-left-width: 4px;
+  border-radius: var(--av-radius-sm);
+  background: var(--av-pendiente-bg);
+  color: var(--av-text);
+  font-size: 0.9375rem;
+}
+.aviso-cercanas[hidden] { display: none; }
+.aviso-cercanas ul { margin: 0.375rem 0; padding-left: 1.25rem; }
+.aviso-cercanas a { font-weight: 700; }

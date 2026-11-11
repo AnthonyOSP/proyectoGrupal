@@ -197,6 +197,59 @@
         textoBoton.textContent = textoOriginal;
     });
 
+    // 5b. Reportes abiertos cerca del punto marcado en el mapa (menos de 150 m).
+    //     Solo informa: el vecino decide si es el mismo problema. Los enlaces abren en otra pestaña
+    //     para no perder lo que ya escribió en el formulario.
+    const avisoCercanas = document.getElementById("avisoCercanas");
+    const campoLatitud = form.elements["Latitud"], campoLongitud = form.elements["Longitud"];
+    if (avisoCercanas && campoLatitud && campoLongitud) {
+        let consultaCercanas = null;
+        const texto = (etiqueta, clase, contenido) => {
+            const el = document.createElement(etiqueta);
+            if (clase) el.className = clase;
+            el.textContent = contenido;
+            return el;
+        };
+
+        campoLatitud.addEventListener("change", async () => {
+            consultaCercanas?.abort();
+            avisoCercanas.hidden = true;
+            avisoCercanas.replaceChildren();
+            if (!campoLatitud.value || !campoLongitud.value) return;
+
+            consultaCercanas = new AbortController();
+            try {
+                const url = avisoCercanas.dataset.url + "?latitud=" + encodeURIComponent(campoLatitud.value) +
+                    "&longitud=" + encodeURIComponent(campoLongitud.value);
+                const respuesta = await fetch(url, { signal: consultaCercanas.signal });
+                if (!respuesta.ok) return;
+                const datos = await respuesta.json();
+                if (!datos.incidencias || datos.incidencias.length === 0) return;
+
+                const n = datos.incidencias.length;
+                avisoCercanas.appendChild(texto("strong", null, n === 1
+                    ? "Ya hay 1 reporte abierto a menos de " + datos.radio + " m de este punto:"
+                    : "Ya hay " + n + " reportes abiertos a menos de " + datos.radio + " m de este punto:"));
+                const lista = document.createElement("ul");
+                datos.incidencias.forEach(i => {
+                    const item = document.createElement("li");
+                    const enlace = texto("a", null, "#" + i.id + " " + i.titulo);
+                    enlace.href = i.url;
+                    enlace.target = "_blank";
+                    enlace.rel = "noopener";
+                    item.appendChild(enlace);
+                    item.appendChild(texto("span", null, " · " + i.categoria + " · " + i.estado + " · a " + i.metros + " m"));
+                    lista.appendChild(item);
+                });
+                avisoCercanas.appendChild(lista);
+                avisoCercanas.appendChild(texto("span", null, "Si es el mismo problema, no hace falta reportarlo otra vez."));
+                avisoCercanas.hidden = false;
+            } catch (e) {
+                // Sin conexión o consulta cancelada: el aviso es opcional.
+            }
+        });
+    }
+
     // 6. Sugerencia de categoría con ML.NET (clasificación multiclase).
     //    Mientras el vecino escribe el título o la descripción, se pide al servidor una categoría
     //    y se marca sola. Si el vecino elige otra a mano, se respeta: desde ahí solo se le sugiere

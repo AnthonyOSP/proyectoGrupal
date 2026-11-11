@@ -9,13 +9,16 @@ public sealed class SesionAsistente
     private readonly List<string> _fuentes = [];
     private readonly List<TarjetaIncidencia> _incidencias = [];
 
+    // Identificador de la respuesta: el navegador lo usa para valorarla (👍/👎).
+    public string RespuestaId { get; } = Guid.NewGuid().ToString("N");
+
     public IReadOnlyList<string> Fuentes => _fuentes;
 
     public IReadOnlyList<TarjetaIncidencia> Incidencias => _incidencias;
 
     public BorradorReporte? Borrador { get; private set; }
 
-    public bool TieneControl => _fuentes.Count > 0 || _incidencias.Count > 0 || Borrador != null;
+    public BorradorContacto? Contacto { get; private set; }
 
     public void AgregarFuente(string documento)
     {
@@ -35,10 +38,14 @@ public sealed class SesionAsistente
 
     public void PonerBorrador(BorradorReporte borrador) => Borrador = borrador;
 
+    public void PonerContacto(BorradorContacto contacto) => Contacto = contacto;
+
     public MensajeControlAsistente Control() => new()
     {
+        Id = RespuestaId,
         Fuentes = _fuentes,
         Incidencias = _incidencias,
-        Borrador = Borrador
+        Borrador = Borrador,
+        Contacto = Contacto
     };
 }

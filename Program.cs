@@ -215,19 +215,28 @@ builder.Services.Configure<QdrantOptions>(opciones =>
     {
         opciones.Coleccion = coleccion.Trim();
     }
+    var coleccionIncidencias = builder.Configuration["QDRANT_COLLECTION_INCIDENCIAS"];
+    if (!string.IsNullOrWhiteSpace(coleccionIncidencias))
+    {
+        opciones.ColeccionIncidencias = coleccionIncidencias.Trim();
+    }
 });
-builder.Services.AddHttpClient(BaseConocimientoService.NombreClienteHttp, cliente =>
+builder.Services.AddHttpClient(ClienteQdrant.NombreClienteHttp, cliente =>
 {
     // Cargar todos los documentos puede tardar (Qdrant genera los vectores); cada operación tiene además su propio límite.
     cliente.Timeout = TimeSpan.FromMinutes(2);
 });
+builder.Services.AddSingleton<ClienteQdrant>();
 builder.Services.AddSingleton<IBaseConocimientoService, BaseConocimientoService>();
+builder.Services.AddSingleton<IIncidenciasSemanticasService, IncidenciasSemanticasService>();
 builder.Services.AddHostedService<SincronizacionInicialConocimiento>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<SesionAsistente>();
 builder.Services.AddScoped<AyudaPlugin>();
 builder.Services.AddScoped<IncidenciasPlugin>();
 builder.Services.AddScoped<ReportePlugin>();
+builder.Services.AddScoped<ContactoPlugin>();
+builder.Services.AddScoped<MisReportesPlugin>();
 builder.Services.AddScoped<IAsistenteService, AsistenteService>();
 
 // Sesión del servidor: guarda el historial de la conversación con el asistente (en memoria).

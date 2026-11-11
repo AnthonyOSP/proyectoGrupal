@@ -46,7 +46,7 @@ El punto en el mapa es opcional, pero ayuda mucho a ubicar el problema. Puedes:
 - Usar el botón "Marcar el centro del mapa".
 - Quitar el punto con el botón "Quitar punto".
 
-Al marcar un punto, la página propone la dirección de ese lugar; si ya escribiste una dirección a mano, no la reemplaza, pero te ofrece el botón "Usar esta dirección". La dirección escrita y el punto del mapa se guardan los dos.
+Al marcar un punto, la página revisa si ya hay reportes abiertos a menos de 150 metros y te los muestra con un enlace, para que veas si alguien ya reportó el mismo problema. También propone la dirección de ese lugar; si ya escribiste una dirección a mano, no la reemplaza, pero te ofrece el botón "Usar esta dirección". La dirección escrita y el punto del mapa se guardan los dos.
 
 Si el mapa no carga (por ejemplo, sin conexión o con el JavaScript desactivado), igual puedes enviar el reporte solo con la ubicación escrita.
 

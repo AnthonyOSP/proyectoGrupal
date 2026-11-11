@@ -24,6 +24,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Tabla "MensajesContacto" (formulario "Contáctanos")
     public DbSet<MensajeContacto> MensajesContacto { get; set; }
 
+    // Tabla "ValoracionesAsistente" (👍/👎 de las respuestas del asistente virtual)
+    public DbSet<ValoracionAsistente> ValoracionesAsistente { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         // Obligatorio: configura las tablas de Identity.
@@ -46,6 +49,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(i => i.Historial)
             .HasForeignKey(h => h.IncidenciaId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Una valoración por respuesta del asistente: si el vecino cambia de opinión, se actualiza la misma fila.
+        builder.Entity<ValoracionAsistente>()
+            .HasIndex(v => v.RespuestaId)
+            .IsUnique();
 
         // ApplicationUser 1 ── N HistorialEstadoIncidencia (quién hizo cada cambio).
         // Si se elimina la cuenta, el historial se conserva y queda sin usuario.

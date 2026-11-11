@@ -3,7 +3,10 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel;
+using proyectoGrupal.Data;
+using proyectoGrupal.Models;
 using proyectoGrupal.Services.Asistente;
 
 namespace proyectoGrupal.Controllers;
@@ -11,6 +14,16 @@ namespace proyectoGrupal.Controllers;
 public class PreguntaAsistente
 {
     public string? Mensaje { get; set; }
+
+    // Ruta de la página en la que está el vecino (location.pathname). Solo se usan rutas conocidas.
+    public string? Pagina { get; set; }
+}
+
+public class ValoracionPedido
+{
+    public string? Id { get; set; }
+
+    public bool Util { get; set; }
 }
 
 // Asistente virtual (chat). Disponible para cualquier visitante, con o sin sesión.
@@ -18,20 +31,25 @@ public class PreguntaAsistente
 //     así nadie puede inyectar mensajes falsos del asistente.
 //   - Límite de mensajes por persona (política "asistente" en Program.cs) contra el abuso de la cuota de Groq.
 //   - La respuesta se transmite en streaming como texto plano (ver ProtocoloAsistente).
+//   - Cada respuesta tiene un Id: el vecino la puede valorar (👍/👎) y el panel muestra las que no sirvieron.
 public class AsistenteController : Controller
 {
     public const string PoliticaLimite = "asistente";
 
     private const string ClaveHistorial = "Asistente.Historial";
+    private const string ClaveRespuestas = "Asistente.Respuestas";
     private const int MaximoMensajesHistorial = 8;
+    private const int MaximoRespuestasValorables = 10;
     private const int MaximoCaracteresPregunta = 1000;
 
     private readonly IAsistenteService _asistente;
+    private readonly SesionAsistente _sesion;
     private readonly ILogger<AsistenteController> _logger;
 
-    public AsistenteController(IAsistenteService asistente, ILogger<AsistenteController> logger)
+    public AsistenteController(IAsistenteService asistente, SesionAsistente sesion, ILogger<AsistenteController> logger)
     {
         _asistente = asistente;
+        _sesion = sesion;
         _logger = logger;
     }
 
@@ -65,17 +83,21 @@ public class AsistenteController : Controller
             pregunta = pregunta[..MaximoCaracteresPregunta];
         }
 
-        var historial = LeerHistorial();
+        var historial = Leer<MensajeAsistente>(ClaveHistorial);
+
+        // Para la valoración: si la pregunta es muy corta ("sí, por favor"), se guarda junto con la anterior.
+        var preguntaAnterior = historial.LastOrDefault(m => m.Rol == "user")?.Texto;
+        var preguntaConContexto = pregunta.Length < 40 && preguntaAnterior != null ? $"{preguntaAnterior} → {pregunta}" : pregunta;
 
         // La cookie de sesión solo puede enviarse en las cabeceras, que salen con el primer fragmento:
         // la sesión se crea y se guarda ANTES de empezar el streaming.
-        GuardarHistorial(historial);
+        Guardar(ClaveHistorial, Ultimos(historial, MaximoMensajesHistorial));
         await HttpContext.Session.CommitAsync(cancellationToken);
 
         var respuesta = new StringBuilder();
         try
         {
-            await foreach (var fragmento in _asistente.ResponderAsync(historial, pregunta, cancellationToken))
+            await foreach (var fragmento in _asistente.ResponderAsync(historial, pregunta, peticion?.Pagina, cancellationToken))
             {
                 respuesta.Append(fragmento);
                 await Response.WriteAsync(fragmento, cancellationToken);
@@ -104,22 +126,72 @@ public class AsistenteController : Controller
         }
 
         var texto = ProtocoloAsistente.Limpiar(respuesta.ToString()).Trim();
-        if (texto.Length > 0)
+        if (texto.Length == 0)
         {
-            historial.Add(new MensajeAsistente { Rol = "user", Texto = pregunta });
-            historial.Add(new MensajeAsistente { Rol = "assistant", Texto = texto });
-            GuardarHistorial(historial);
-
-            try
-            {
-                await HttpContext.Session.CommitAsync(CancellationToken.None);
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or IOException)
-            {
-                // La respuesta ya se envió: perder el historial no debe cortar el chat.
-                _logger.LogWarning(ex, "Asistente | No se pudo guardar el historial en la sesión.");
-            }
+            return;
         }
+
+        historial.Add(new MensajeAsistente { Rol = "user", Texto = pregunta });
+        historial.Add(new MensajeAsistente { Rol = "assistant", Texto = texto });
+        Guardar(ClaveHistorial, Ultimos(historial, MaximoMensajesHistorial));
+
+        // Copia de la pregunta y la respuesta para poder valorarla después (el navegador solo envía el Id).
+        var valorables = Leer<RespuestaValorable>(ClaveRespuestas);
+        valorables.Add(new RespuestaValorable(_sesion.RespuestaId, preguntaConContexto, texto, string.Join(" · ", _sesion.Fuentes)));
+        Guardar(ClaveRespuestas, Ultimos(valorables, MaximoRespuestasValorables));
+
+        try
+        {
+            await HttpContext.Session.CommitAsync(CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            // La respuesta ya se envió: perder el historial no debe cortar el chat.
+            _logger.LogWarning(ex, "Asistente | No se pudo guardar el historial en la sesión.");
+        }
+    }
+
+    // POST: /Asistente/Valorar   {"id": "...", "util": true}
+    // Guarda (o cambia) el 👍/👎 de una respuesta de ESTA sesión. La pregunta y la respuesta salen de la
+    // sesión del servidor, no del navegador: así nadie puede llenar la tabla con textos inventados.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting(PoliticaLimite)]
+    public async Task<IActionResult> Valorar([FromBody] ValoracionPedido? pedido, [FromServices] ApplicationDbContext context)
+    {
+        var original = Leer<RespuestaValorable>(ClaveRespuestas).FirstOrDefault(r => r.Id == pedido?.Id);
+        if (original == null)
+        {
+            return NotFound();
+        }
+
+        var valoracion = await context.ValoracionesAsistente.FirstOrDefaultAsync(v => v.RespuestaId == original.Id);
+        if (valoracion == null)
+        {
+            valoracion = new ValoracionAsistente
+            {
+                RespuestaId = original.Id,
+                Pregunta = Recortar(original.Pregunta, ValoracionAsistente.PreguntaMaximo),
+                Respuesta = Recortar(original.Respuesta, ValoracionAsistente.RespuestaMaximo),
+                Fuentes = Recortar(original.Fuentes, ValoracionAsistente.FuentesMaximo)
+            };
+            context.ValoracionesAsistente.Add(valoracion);
+        }
+
+        valoracion.Util = pedido!.Util;
+        valoracion.Fecha = DateTime.Now;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Asistente | No se pudo guardar la valoración {Id}.", original.Id);
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+
+        return NoContent();
     }
 
     // POST: /Asistente/Limpiar  ("Nueva conversación")
@@ -131,9 +203,11 @@ public class AsistenteController : Controller
         return NoContent();
     }
 
-    private List<MensajeAsistente> LeerHistorial()
+    private record RespuestaValorable(string Id, string Pregunta, string Respuesta, string Fuentes);
+
+    private List<T> Leer<T>(string clave)
     {
-        var json = HttpContext.Session.GetString(ClaveHistorial);
+        var json = HttpContext.Session.GetString(clave);
         if (string.IsNullOrEmpty(json))
         {
             return [];
@@ -141,7 +215,7 @@ public class AsistenteController : Controller
 
         try
         {
-            return JsonSerializer.Deserialize<List<MensajeAsistente>>(json) ?? [];
+            return JsonSerializer.Deserialize<List<T>>(json) ?? [];
         }
         catch (JsonException)
         {
@@ -149,12 +223,12 @@ public class AsistenteController : Controller
         }
     }
 
-    private void GuardarHistorial(List<MensajeAsistente> historial)
-    {
-        // Solo los últimos mensajes: suficiente contexto sin gastar demasiados tokens.
-        var recientes = historial.Count > MaximoMensajesHistorial
-            ? historial.Skip(historial.Count - MaximoMensajesHistorial).ToList()
-            : historial;
-        HttpContext.Session.SetString(ClaveHistorial, JsonSerializer.Serialize(recientes));
-    }
+    private void Guardar<T>(string clave, List<T> lista) =>
+        HttpContext.Session.SetString(clave, JsonSerializer.Serialize(lista));
+
+    // Solo los últimos elementos: suficiente contexto sin gastar demasiados tokens ni memoria.
+    private static List<T> Ultimos<T>(List<T> lista, int maximo) =>
+        lista.Count > maximo ? lista.Skip(lista.Count - maximo).ToList() : lista;
+
+    private static string Recortar(string texto, int maximo) => texto.Length <= maximo ? texto : texto[..maximo];
 }

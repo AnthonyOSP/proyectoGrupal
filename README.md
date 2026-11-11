@@ -809,32 +809,48 @@ En Render: **Environment → Environment Variables**, con los mismos nombres. Al
 
 Un chat flotante (botón **"¿Necesitas ayuda?"** abajo a la derecha) que ayuda a los vecinos en todas las páginas públicas:
 
-- **Responde dudas sobre la página** (cómo reportar, límites, categorías, estados, fotos, cuenta, contacto) con los documentos de ayuda de la carpeta `Conocimiento/`.
-- **Busca incidencias públicas** ("¿ya reportaron el poste de mi calle?", "¿cuántas hay pendientes de alumbrado?") y las muestra como tarjetas con enlace al detalle.
-- **Prepara un reporte conversando**: el vecino cuenta el problema, el asistente revisa si ya hay uno parecido, redacta el título y la descripción, sugiere la categoría (con el mismo modelo de ML.NET del formulario) y muestra un botón que **abre el formulario ya completado**. El asistente **nunca envía** el reporte: la foto, el pixelado, el límite de reportes y las validaciones siguen pasando por el formulario de siempre.
+- **Responde dudas sobre la página** (cómo reportar, límites, categorías, estados, fotos, cuenta, contacto) con los documentos de ayuda de la carpeta `Conocimiento/`. **Sabe en qué página está el vecino** ("¿qué pongo en este campo?" en Reportar, "¿de qué trata esta incidencia?" en un detalle).
+- **Busca incidencias públicas** ("¿ya reportaron el poste de mi calle?", "¿cuántas hay pendientes de alumbrado?") y las muestra como tarjetas con enlace al detalle. Si no hay coincidencias por palabras, busca **por significado** en Qdrant ("buzón sin tapa" encuentra "desagüe sin tapa").
+- **Prepara un reporte conversando**: el vecino cuenta el problema, el asistente redacta el título y la descripción, elige la categoría, **avisa si ya hay un reporte parecido en el mismo lugar** y muestra un botón que **abre el formulario ya completado**. El asistente **nunca envía** el reporte: la foto, el pixelado, el límite de reportes y las validaciones siguen pasando por el formulario de siempre.
+- **"¿Cómo va mi reporte?"**: con la sesión iniciada, muestra el estado y los cambios de los reportes del propio vecino, con enlace al seguimiento.
+- **Pasar a una persona**: si la ayuda no resuelve el problema, ofrece preparar un mensaje para el equipo y abre **Contacto ya completado** (el vecino lo revisa y lo envía; pasa por el análisis de sentimiento de siempre).
+- **👍/👎 en cada respuesta**: el panel muestra las respuestas que no sirvieron, para saber qué falta en la ayuda.
+
+Además, en el formulario **Reportar**, al marcar el punto en el mapa aparece un aviso si hay **reportes abiertos a menos de 150 m** (`/Home/Cercanas`), con enlace a cada uno.
 
 ### 17.1 Cómo funciona
 
 ```text
 Navegador (asistente.js) ──POST /Asistente/Preguntar──▶ AsistenteController
-                                                         │  historial en la sesión del servidor
+   (pregunta + página actual)                            │  historial en la sesión del servidor
                                                          ▼
                                      AsistenteService (Semantic Kernel)
                                      modelo de Groq + function calling
-                       ┌───────────────────┼─────────────────────┐
-                       ▼                   ▼                     ▼
-                 AyudaPlugin        IncidenciasPlugin       ReportePlugin
-           BaseConocimientoService  BusquedaIncidencias    enlace a /Home/Reportar
-           (Qdrant o búsqueda local) (Algolia o SQLite)     con los datos prellenados
+        ┌───────────────┬────────────────┼────────────────┬──────────────────┐
+        ▼               ▼                ▼                ▼                  ▼
+   AyudaPlugin   IncidenciasPlugin  ReportePlugin   ContactoPlugin   MisReportesPlugin
+   ayuda en      Algolia/SQLite +   enlace a        enlace a         reportes del vecino
+   Qdrant        índice semántico   /Home/Reportar  /Home/Contacto   (solo con sesión)
+                 de incidencias     prellenado      prellenado
 ```
 
+| Herramienta | Qué hace |
+| --- | --- |
+| `BuscarAyuda` | Busca en los documentos de ayuda (Qdrant; sin Qdrant, por palabras en `Conocimiento/`). |
+| `BuscarIncidencias`, `ObtenerIncidencia`, `ResumenIncidencias` | Incidencias públicas: búsqueda (Algolia o SQLite y, si no hay resultados, por significado en Qdrant), detalle y cantidades. |
+| `PrepararReporte` | Valida los mínimos del formulario, revisa reportes parecidos y arma el enlace a Reportar prellenado. |
+| `PrepararMensajeContacto` | Arma el enlace a Contacto con el mensaje prellenado. |
+| `MisReportes` | Reportes del vecino con su historial. Solo se entrega al modelo si hay sesión, y el usuario sale de la cookie de Identity (nunca de lo que diga el modelo). |
+
 - **Groq** ejecuta el modelo de lenguaje (por defecto `openai/gpt-oss-120b`). Groq usa la misma API que OpenAI, así que Semantic Kernel se conecta con su conector de OpenAI cambiando la URL.
-- **Semantic Kernel** arma el agente: el modelo decide qué herramienta (plugin) usar y Semantic Kernel la ejecuta y le devuelve el resultado. **Todas las herramientas son de solo lectura**: el asistente no puede crear, cambiar ni borrar datos, ni ver cuentas, reportes de un usuario o quién reportó una incidencia.
-- **Qdrant Cloud** guarda los documentos de ayuda divididos por secciones (`##`) y los busca **por significado** ("me bloquearon la cuenta" encuentra "intentos fallidos"). Los vectores los genera **Qdrant Cloud Inference** con el modelo multilingüe `intfloat/multilingual-e5-small`, así que no hace falta otro proveedor de embeddings.
-- La respuesta llega **en streaming** (palabra por palabra). Al final viaja un mensaje de control con las fuentes y las tarjetas (`ProtocoloAsistente`).
-- El **historial** (últimos 12 mensajes) se guarda en la **sesión del servidor**: el navegador no lo envía, así nadie puede inyectar mensajes falsos del asistente.
+- **Semantic Kernel** arma el agente: el modelo decide qué herramienta usar y Semantic Kernel la ejecuta y le devuelve el resultado. **Todas las herramientas son de solo lectura**: el asistente no puede crear, cambiar ni borrar datos, ni ver cuentas ni quién reportó una incidencia.
+- **Qdrant Cloud** tiene dos colecciones, y los vectores los genera **Qdrant Cloud Inference** con el modelo multilingüe `intfloat/multilingual-e5-small` (no hace falta otro proveedor de embeddings):
+  - `alerta_vecinal_conocimiento`: los documentos de ayuda divididos por secciones (`##`), buscados **por significado** ("me bloquearon la cuenta" encuentra "intentos fallidos").
+  - `alerta_vecinal_incidencias`: el texto de cada incidencia (título, descripción, ubicación y categoría) con su estado. Se actualiza solo al crear, cambiar de estado o eliminar una incidencia (igual que Algolia). SQLite sigue siendo la fuente de verdad.
+- La respuesta llega **en streaming** (palabra por palabra). Al final viaja un mensaje de control con el Id de la respuesta, las fuentes y las tarjetas (`ProtocoloAsistente`).
+- El **historial** (últimos 8 mensajes) se guarda en la **sesión del servidor**: el navegador no lo envía, así nadie puede inyectar mensajes falsos del asistente. Lo mismo con las valoraciones: el navegador solo envía el Id de la respuesta y si sirvió; la pregunta y la respuesta salen de la sesión (tabla `ValoracionesAsistente`).
 - **Límite**: 20 preguntas cada 10 minutos por persona (usuario con sesión o, si no, su IP), para cuidar la cuota de Groq. Al superarlo se responde 429 con un aviso.
-- **Reportes parecidos**: al preparar un reporte, `PrepararReporte` busca incidencias abiertas que compartan un nombre de lugar con la ubicación y tengan la misma categoría o alguna palabra del tema ("poste", "basura"). Si hay, se muestran como tarjetas para que el vecino vea si ya fue reportado.
+- **Reportes parecidos**: `PrepararReporte` busca incidencias abiertas que compartan un nombre de lugar con la ubicación y, además, tengan la misma categoría, alguna palabra del tema ("poste", "basura") o un significado muy parecido según Qdrant.
 - En el log, cada herramienta que usa el modelo aparece como `Asistente | Herramienta PrepararReporte(...)`: sirve para entender (y mostrar) qué hizo el agente.
 
 **Por qué está hecho así** (aprendido en las pruebas con Groq):
@@ -843,6 +859,7 @@ Navegador (asistente.js) ──POST /Asistente/Preguntar──▶ AsistenteContr
 - `PrepararReporte` revisa los reportes parecidos por su cuenta: cuando el modelo tenía que encadenar dos herramientas en un turno, `gpt-oss` a veces terminaba sin responder.
 - Todas las herramientas están en un solo plugin de nombre corto (`av-BuscarAyuda`, `av-PrepararReporte`...): con prefijos como `incidencias-...` el modelo a veces escribía `incidentes-...` y Groq rechazaba la llamada.
 - Si aun así el modelo termina sin texto, se le pide una vez más que responda; si tampoco, el vecino ve un mensaje amable en lugar de una burbuja vacía.
+- Los puntajes de `multilingual-e5-small` quedan muy juntos (los parecidos de verdad ~0,86-0,90; los que no tienen relación ~0,80-0,85). Por eso la búsqueda de incidencias por significado solo usa el mejor resultado si **se separa del segundo** (0,015 o más) y supera 0,82. Es un modelo pequeño: con sinónimos sueltos ("hueco" por "bache") no siempre acierta.
 
 ### 17.2 Documentos de ayuda (`Conocimiento/`)
 
@@ -856,7 +873,7 @@ Reglas para editarlos o agregar uno nuevo:
 
 Después de cambiar los documentos, en el sitio publicado entra a **Panel → Asistente** y pulsa **Sincronizar carpeta** (reemplaza los documentos de la carpeta en Qdrant; se puede repetir sin duplicar). La primera vez no hace falta: al iniciar, si la colección de Qdrant está vacía, se cargan solos.
 
-En **Panel → Asistente** también se puede subir un documento extra (`.md` o `.txt`), eliminarlo y **probar la búsqueda** para ver qué secciones recibiría el asistente ante una pregunta.
+En **Panel → Asistente** también se puede subir un documento extra (`.md` o `.txt`), eliminarlo, **probar la búsqueda** para ver qué secciones recibiría el asistente ante una pregunta, **sincronizar el índice de incidencias** (si Qdrant no estuvo disponible por un tiempo) y revisar las **valoraciones** de los vecinos: las respuestas marcadas como "no me sirvió" muestran qué falta en la ayuda.
 
 ### 17.3 Crear las cuentas
 
@@ -872,6 +889,7 @@ En **Panel → Asistente** también se puede subir un documento extra (`.md` o `
 | `QDRANT_ENDPOINT`           | No          | `https://xxxx.us-east-1-1.aws.cloud.qdrant.io`                |
 | `QDRANT_API_KEY`            | No          | clave del clúster                                             |
 | `QDRANT_COLLECTION`         | No          | `alerta_vecinal_conocimiento` (por defecto)                   |
+| `QDRANT_COLLECTION_INCIDENCIAS` | No      | `alerta_vecinal_incidencias` (por defecto)                    |
 | `ASISTENTE_LIMITE_MENSAJES` | No          | `20` (por defecto)                                            |
 | `ASISTENTE_LIMITE_MINUTOS`  | No          | `10` (por defecto)                                            |
 

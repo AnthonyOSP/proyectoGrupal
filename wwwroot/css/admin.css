@@ -1349,3 +1349,14 @@ section[aria-labelledby="titulo-reporte"] + .vacio {
     color: var(--av-muted);
   }
 }
+
+.asistente-admin__valoraciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.asistente-admin__valoraciones p { margin: 0; color: var(--av-muted); }
+.asistente-admin__valoraciones strong { font-size: 1.25rem; color: var(--av-ink); }
+.asistente-admin__fuentes { font-size: 0.8125rem; }

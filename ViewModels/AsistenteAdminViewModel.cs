@@ -27,4 +27,21 @@ public class AsistenteAdminViewModel
     public string? Consulta { get; set; }
 
     public BusquedaConocimiento? Busqueda { get; set; }
+
+    // Índice semántico de incidencias en Qdrant (null si Qdrant no está configurado o no responde).
+    public string ColeccionIncidencias { get; set; } = string.Empty;
+
+    public long? IncidenciasIndexadas { get; set; }
+
+    public int IncidenciasTotales { get; set; }
+
+    // Valoraciones de los vecinos (👍/👎) de los últimos DiasValoraciones días.
+    public const int DiasValoraciones = 30;
+
+    public int ValoracionesUtiles { get; set; }
+
+    public int ValoracionesNoUtiles { get; set; }
+
+    // Respuestas que no sirvieron, de la más reciente a la más antigua: dicen qué falta en la ayuda.
+    public IReadOnlyList<Models.ValoracionAsistente> NoUtiles { get; set; } = [];
 }

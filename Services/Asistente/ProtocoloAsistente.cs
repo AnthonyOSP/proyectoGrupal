@@ -50,12 +50,25 @@ public static class ProtocoloAsistente
 
 public sealed class MensajeControlAsistente
 {
+    // Identificador de esta respuesta (para valorarla con 👍/👎).
+    public string? Id { get; init; }
+
     // Documentos de ayuda consultados (para mostrar "Fuentes").
     public IReadOnlyList<string> Fuentes { get; init; } = [];
 
     public IReadOnlyList<TarjetaIncidencia> Incidencias { get; init; } = [];
 
     public BorradorReporte? Borrador { get; init; }
+
+    public BorradorContacto? Contacto { get; init; }
+}
+
+// Mensaje para el equipo del distrito preparado en la conversación ("pasar a una persona").
+public sealed class BorradorContacto
+{
+    public string Mensaje { get; init; } = string.Empty;
+
+    public string Url { get; init; } = string.Empty;
 }
 
 // Incidencia pública que el chat muestra como tarjeta (los mismos datos del listado público).

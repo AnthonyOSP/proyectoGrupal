@@ -170,6 +170,8 @@
                                 </button>
                             </p>
                         </div>
+                        @* Aviso de reportes abiertos cerca del punto marcado (reportar.js consulta /Home/Cercanas). *@
+                        <div class="aviso-cercanas" id="avisoCercanas" data-url="@Url.Action("Cercanas")" role="status" hidden></div>
                         <input type="hidden" asp-for="Latitud" data-resumen-origen="Mapa" />
                         <input type="hidden" asp-for="Longitud" />
                         <span asp-validation-for="Latitud"></span>

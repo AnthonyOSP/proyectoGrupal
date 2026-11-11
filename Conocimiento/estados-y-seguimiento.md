@@ -19,6 +19,8 @@ El estado lo cambia el equipo municipal desde su panel de administración. Los v
 
 En "Mis incidencias" solo aparecen tus propios reportes. Nadie más puede ver el seguimiento de tus reportes.
 
+También puedes preguntarle al asistente virtual "¿cómo va mi reporte?" con la sesión iniciada: te dice el estado y los cambios de cada uno, con un enlace a su seguimiento.
+
 ## Qué muestra el historial de estados
 
 El historial muestra cada cambio con su fecha y hora, por ejemplo:

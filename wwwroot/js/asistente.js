@@ -137,8 +137,47 @@
         } else {
             div.innerHTML = formatear(mensaje.texto);
             if (mensaje.control) pintarControl(div, mensaje.control);
+            if (mensaje.control && mensaje.control.id && !mensaje.error) div.appendChild(valoracion(mensaje));
         }
         return div;
+    }
+
+    // ---------- Valoración (👍/👎) ----------
+
+    const PULGAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>';
+
+    function valoracion(mensaje) {
+        const caja = crear("div", "asistente-valorar");
+        const etiqueta = crear("span", "asistente-valorar__texto", mensaje.voto == null ? "¿Te sirvió?" : "¡Gracias por tu opinión!");
+        caja.appendChild(etiqueta);
+
+        [[true, "Sí, me sirvió"], [false, "No me sirvió"]].forEach(([util, nombre]) => {
+            const boton = crear("button", "asistente-valorar__boton" + (util ? "" : " asistente-valorar__boton--no"));
+            boton.type = "button";
+            boton.innerHTML = PULGAR;
+            boton.setAttribute("aria-label", nombre);
+            boton.title = nombre;
+            boton.setAttribute("aria-pressed", String(mensaje.voto === util));
+            boton.addEventListener("click", async () => {
+                if (mensaje.voto === util) return;
+                try {
+                    const r = await fetch(raiz.dataset.urlValorar, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "RequestVerificationToken": raiz.dataset.token },
+                        body: JSON.stringify({ id: mensaje.control.id, util })
+                    });
+                    if (!r.ok) throw new Error();
+                    mensaje.voto = util;
+                    guardarConversacion();
+                    caja.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === boton)));
+                    etiqueta.textContent = "¡Gracias por tu opinión!";
+                } catch (e) {
+                    etiqueta.textContent = "No se pudo guardar tu opinión.";
+                }
+            });
+            caja.appendChild(boton);
+        });
+        return caja;
     }
 
     function pintarControl(div, control) {
@@ -148,6 +187,7 @@
             div.appendChild(contenedor);
         }
         if (control.borrador) div.appendChild(tarjetaBorrador(control.borrador));
+        if (control.contacto) div.appendChild(tarjetaContacto(control.contacto));
         if (control.fuentes && control.fuentes.length) {
             div.appendChild(crear("p", "asistente-fuentes", "Según la ayuda: " + control.fuentes.join(" · ")));
         }
@@ -189,6 +229,20 @@
         return card;
     }
 
+    function tarjetaContacto(c) {
+        const card = crear("div", "asistente-card asistente-card--borrador");
+        card.appendChild(crear("span", "asistente-card__etiqueta", "Mensaje para el equipo"));
+        const datos = crear("dl", "asistente-card__datos");
+        datos.appendChild(crear("dt", null, "Mensaje"));
+        datos.appendChild(crear("dd", null, c.mensaje));
+        card.appendChild(datos);
+        const boton = crear("a", "btn btn-av-primary asistente-card__boton", "Abrir Contacto");
+        boton.href = c.url;
+        card.appendChild(boton);
+        card.appendChild(crear("span", "asistente-card__nota", "Revisa el mensaje, completa tu nombre y correo, y pulsa «Enviar mensaje»."));
+        return card;
+    }
+
     function pintarTodo() {
         lista.querySelectorAll(".asistente-msg:not(.asistente-msg--bienvenida)").forEach(el => el.remove());
         sugerencias.hidden = conversacion.length > 0;
@@ -221,7 +275,7 @@
             const respuesta = await fetch(raiz.dataset.urlPreguntar, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "RequestVerificationToken": raiz.dataset.token },
-                body: JSON.stringify({ mensaje: texto })
+                body: JSON.stringify({ mensaje: texto, pagina: location.pathname })
             });
 
             error = !respuesta.ok;

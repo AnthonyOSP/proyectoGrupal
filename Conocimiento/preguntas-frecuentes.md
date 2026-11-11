@@ -42,7 +42,15 @@ Pendiente significa que el reporte fue registrado y todavía no ha sido revisado
 
 ## Qué hace el asistente virtual
 
-El asistente virtual (botón de chat en la esquina inferior derecha) responde dudas sobre cómo usar Alerta Vecinal, busca incidencias públicas por tema o ubicación y te ayuda a preparar un reporte: tú le cuentas el problema y te da un botón que abre el formulario ya completado. El asistente no envía reportes por su cuenta: siempre eres tú quien revisa y pulsa "Enviar reporte".
+El asistente virtual (botón "¿Necesitas ayuda?" en la esquina inferior derecha) puede:
+
+- Responder dudas sobre cómo usar Alerta Vecinal. Sabe en qué página estás, así que puedes preguntarle por "este campo" o "esta incidencia".
+- Buscar incidencias públicas por tema o ubicación, aunque uses otras palabras.
+- Ayudarte a preparar un reporte: le cuentas el problema y te da un botón que abre el formulario ya completado. Antes te avisa si ya hay un reporte parecido en el mismo lugar.
+- Decirte cómo van tus reportes, si iniciaste sesión.
+- Preparar un mensaje para el equipo del distrito cuando necesitas ayuda de una persona.
+
+El asistente no envía reportes ni mensajes por su cuenta: siempre eres tú quien revisa y los envía. Debajo de cada respuesta puedes marcar si te sirvió o no: eso ayuda a mejorar la ayuda.
 
 El asistente puede equivocarse. Para datos importantes, revisa la información en la página.
 

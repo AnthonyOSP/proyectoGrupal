@@ -9,6 +9,7 @@ using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Constants;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.Asistente.Conocimiento;
 using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.Services.Sentimiento;
@@ -22,6 +23,7 @@ public class HomeController : Controller
     private readonly FotoIncidenciaService _fotos;
     private readonly BusquedaIncidenciasService _busqueda;
     private readonly IAlgoliaIncidenciaService _algolia;
+    private readonly IIncidenciasSemanticasService _semanticas;
     private readonly IPieSocketRealtimeService _realtime;
     private readonly ILimiteReportesService _limiteReportes;
     private readonly ISentimientoService _sentimiento;
@@ -35,6 +37,7 @@ public class HomeController : Controller
         FotoIncidenciaService fotos,
         BusquedaIncidenciasService busqueda,
         IAlgoliaIncidenciaService algolia,
+        IIncidenciasSemanticasService semanticas,
         IPieSocketRealtimeService realtime,
         ILimiteReportesService limiteReportes,
         ISentimientoService sentimiento,
@@ -46,6 +49,7 @@ public class HomeController : Controller
         _fotos = fotos;
         _busqueda = busqueda;
         _algolia = algolia;
+        _semanticas = semanticas;
         _realtime = realtime;
         _limiteReportes = limiteReportes;
         _sentimiento = sentimiento;
@@ -248,6 +252,9 @@ public class HomeController : Controller
         // administrador puede resincronizar el índice desde el panel.
         await _algolia.IndexarAsync(incidencia);
 
+        // Índice semántico del asistente (Qdrant): igual que Algolia, si falla no se deshace nada.
+        await _semanticas.IndexarAsync(incidencia, HttpContext.RequestAborted);
+
         // Aviso en tiempo real al panel de administración. Solo DESPUÉS de confirmar SQLite:
         // si PieSocket falla, la incidencia y su historial ya están guardados y no se deshacen.
         await _realtime.NotificarIncidenciaCreadaAsync(incidencia);
@@ -412,6 +419,46 @@ public class HomeController : Controller
         });
     }
 
+    // GET: /Home/Cercanas?latitud=-12.1&longitud=-76.9  (lo llama reportar.js al marcar el punto en el mapa)
+    // Incidencias abiertas (Pendiente o En revisión) a menos de RadioCercanas metros del punto, para avisar al
+    // vecino antes de reportar algo que ya fue reportado. Solo datos públicos (los mismos del listado).
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> Cercanas(string? latitud, string? longitud)
+    {
+        var punto = CoordenadasGeograficas.Leer(latitud, longitud);
+        if (!punto.EsValido || punto.Latitud is not { } lat || punto.Longitud is not { } lng)
+        {
+            return Json(new { incidencias = Array.Empty<object>() });
+        }
+
+        // Pocas incidencias tienen coordenadas: se filtran en memoria (SQLite guarda los decimales como texto).
+        var abiertas = await _context.Incidencias
+            .AsNoTracking()
+            .Where(i => i.Estado != EstadosIncidencia.Atendida && i.Latitud != null && i.Longitud != null)
+            .Select(i => new { i.Id, i.Titulo, i.Categoria, i.Estado, i.Latitud, i.Longitud })
+            .ToListAsync(HttpContext.RequestAborted);
+
+        var cercanas = abiertas
+            .Select(i => (Incidencia: i, Metros: CoordenadasGeograficas.DistanciaMetros(lat, lng, i.Latitud!.Value, i.Longitud!.Value)))
+            .Where(x => x.Metros <= RadioCercanas)
+            .OrderBy(x => x.Metros)
+            .Take(3)
+            .Select(x => new
+            {
+                id = x.Incidencia.Id,
+                titulo = x.Incidencia.Titulo,
+                categoria = x.Incidencia.Categoria,
+                estado = x.Incidencia.Estado,
+                metros = (int)Math.Round(x.Metros),
+                url = Url.Action(nameof(Detalle), new { id = x.Incidencia.Id })
+            });
+
+        return Json(new { radio = RadioCercanas, incidencias = cercanas });
+    }
+
+    private const int RadioCercanas = 150;
+
     private const int LargoMinimoParaSugerir = 8;
     private const float ConfianzaMinimaSugerencia = 0.40f;
 
@@ -419,10 +466,16 @@ public class HomeController : Controller
         texto == null ? string.Empty : texto.Length <= maximo ? texto : texto[..maximo];
 
     // GET: /Home/Contacto
+    // GET: /Home/Contacto?mensaje=...  (botón del asistente virtual: mensaje ya redactado)
     // Página pública. Si hay sesión, el nombre y el correo vienen llenos (se pueden cambiar).
-    public async Task<IActionResult> Contacto()
+    // El mensaje de la URL solo rellena el campo: el POST lo valida como siempre.
+    public async Task<IActionResult> Contacto(string? mensaje)
     {
-        var modelo = new ContactoViewModel();
+        ModelState.Clear();
+        var modelo = new ContactoViewModel
+        {
+            Mensaje = TextoFormulario.Recortar(TextoLargo(mensaje), ContactoViewModel.MensajeMaximo)
+        };
 
         var usuario = await _userManager.GetUserAsync(User);
         if (usuario != null)

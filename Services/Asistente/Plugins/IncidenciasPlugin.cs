@@ -6,6 +6,7 @@ using Microsoft.SemanticKernel;
 using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
+using proyectoGrupal.Services.Asistente.Conocimiento;
 using proyectoGrupal.ViewModels;
 
 namespace proyectoGrupal.Services.Asistente.Plugins;
@@ -20,6 +21,7 @@ public sealed class IncidenciasPlugin
 
     private readonly ApplicationDbContext _context;
     private readonly BusquedaIncidenciasService _busqueda;
+    private readonly IIncidenciasSemanticasService _semanticas;
     private readonly SesionAsistente _sesion;
     private readonly LinkGenerator _enlaces;
     private readonly IHttpContextAccessor _http;
@@ -27,12 +29,14 @@ public sealed class IncidenciasPlugin
     public IncidenciasPlugin(
         ApplicationDbContext context,
         BusquedaIncidenciasService busqueda,
+        IIncidenciasSemanticasService semanticas,
         SesionAsistente sesion,
         LinkGenerator enlaces,
         IHttpContextAccessor http)
     {
         _context = context;
         _busqueda = busqueda;
+        _semanticas = semanticas;
         _sesion = sesion;
         _enlaces = enlaces;
         _http = http;
@@ -41,7 +45,7 @@ public sealed class IncidenciasPlugin
     [KernelFunction("BuscarIncidencias")]
     [Description("Busca incidencias públicas por palabras (tema o lugar) y/o categoría o estado. Para preguntas sobre lo ya reportado.")]
     public async Task<string> BuscarIncidenciasAsync(
-        [Description("Palabras del tema o lugar. Ej: 'poste apagado'. Vacío para no filtrar.")] string? texto = null,
+        [Description("Tema y/o lugar en 2 a 5 palabras, como lo dijo el vecino. Ej: 'buzón sin tapa', 'poste apagado'. Vacío para no filtrar.")] string? texto = null,
         [Description("Categoría opcional, ej: Alumbrado público.")] string? categoria = null,
         [Description("Estado opcional: Pendiente, En revisión o Atendida.")] string? estado = null,
         CancellationToken cancellationToken = default)
@@ -58,6 +62,20 @@ public sealed class IncidenciasPlugin
         if (categoriaElegida != null) filtros.Add($"categoría {categoriaElegida.Nombre}");
         if (estadoElegido != null) filtros.Add($"estado {estadoElegido.Value.Texto()}");
         var descripcionFiltros = filtros.Count == 0 ? "sin filtros" : string.Join(", ", filtros);
+
+        if (encontradas.Count == 0 && busqueda != null)
+        {
+            // Sin coincidencias por palabras: se prueba por significado ("buzón abierto" → "desagüe sin tapa").
+            var porSignificado = await BuscarPorSignificadoAsync(busqueda, categoriaElegida, estadoElegido, cancellationToken);
+            if (porSignificado.Count > 0)
+            {
+                var similares = new StringBuilder(
+                    $"No hay coincidencias exactas con {descripcionFiltros}, pero por significado se parecen estas " +
+                    "(se muestran como tarjetas; aclara que podrían no ser lo mismo):");
+                AgregarIncidencias(similares, porSignificado);
+                return similares.ToString();
+            }
+        }
 
         if (encontradas.Count == 0)
         {
@@ -151,6 +169,33 @@ public sealed class IncidenciasPlugin
         }
     }
 
+    // Puntajes del modelo multilingual-e5-small (calibrados con incidencias reales): quedan muy juntos
+    // (~0,78-0,90), así que no basta un mínimo: el mejor resultado debe SEPARARSE del segundo.
+    // Ej.: "buzón sin tapa" → desagüe 0,844 vs 0,821 (sí); "perro perdido" → 0,808 vs 0,808 (no).
+    private const double PuntajeMinimoSignificado = 0.82;
+    private const double VentajaSobreElSegundo = 0.015;
+    private const double PuntajeParecidoMismoLugar = 0.85;
+
+    private async Task<List<Incidencia>> BuscarPorSignificadoAsync(
+        string texto, CategoriaViewModel? categoria, EstadoIncidencia? estado, CancellationToken cancellationToken)
+    {
+        var coincidencias = await _semanticas.BuscarAsync(texto, 2, soloAbiertas: false, cancellationToken);
+        if (coincidencias.Count == 0 || coincidencias[0].Puntaje < PuntajeMinimoSignificado ||
+            (coincidencias.Count > 1 && coincidencias[0].Puntaje - coincidencias[1].Puntaje < VentajaSobreElSegundo))
+        {
+            return [];
+        }
+
+        var ids = new List<int> { coincidencias[0].IncidenciaId };
+
+        // Se leen de SQLite (fuente de verdad) y se aplican los mismos filtros públicos.
+        var encontradas = await _context.Incidencias.AsNoTracking()
+            .Filtrar(null, categoria, estado)
+            .Where(i => ids.Contains(i.Id))
+            .ToListAsync(cancellationToken);
+        return encontradas.OrderBy(i => ids.IndexOf(i.Id)).ToList();
+    }
+
     // Palabras que aparecen en casi cualquier dirección: no sirven para decir que dos lugares son el mismo.
     private static readonly HashSet<string> PalabrasGenericas = new(StringComparer.Ordinal)
     {
@@ -172,6 +217,10 @@ public sealed class IncidenciasPlugin
         }
         var tema = PalabrasLugar(titulo);
 
+        // Parecido por significado (si Qdrant está disponible): ayuda cuando el tema se dice con otras palabras.
+        var semanticas = (await _semanticas.BuscarAsync($"{titulo}. {ubicacion}", 5, soloAbiertas: true, cancellationToken))
+            .ToDictionary(c => c.IncidenciaId, c => c.Puntaje);
+
         var candidatas = await _context.Incidencias
             .AsNoTracking()
             .Where(i => i.Estado != EstadosIncidencia.Atendida)
@@ -184,9 +233,10 @@ public sealed class IncidenciasPlugin
                 Incidencia: i,
                 Lugar: PalabrasLugar(i.Ubicacion).Intersect(lugar).Count(),
                 Tema: PalabrasLugar(i.Titulo).Intersect(tema).Count(),
-                MismaCategoria: i.Categoria == categoria))
-            .Where(x => x.Lugar > 0 && (x.MismaCategoria || x.Tema > 0))
-            .OrderByDescending(x => x.Lugar * 2 + x.Tema + (x.MismaCategoria ? 1 : 0))
+                MismaCategoria: i.Categoria == categoria,
+                Significado: semanticas.GetValueOrDefault(i.Id)))
+            .Where(x => x.Lugar > 0 && (x.MismaCategoria || x.Tema > 0 || x.Significado >= PuntajeParecidoMismoLugar))
+            .OrderByDescending(x => x.Lugar * 2 + x.Tema + (x.MismaCategoria ? 1 : 0) + x.Significado)
             .Take(3)
             .Select(x => x.Incidencia)
             .ToList();

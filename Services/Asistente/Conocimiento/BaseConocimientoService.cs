@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 
 namespace proyectoGrupal.Services.Asistente.Conocimiento;
 
@@ -12,19 +11,17 @@ namespace proyectoGrupal.Services.Asistente.Conocimiento;
 // y el nombre del modelo, y Qdrant calcula el embedding al guardar y al buscar.
 public class BaseConocimientoService : IBaseConocimientoService
 {
-    public const string NombreClienteHttp = "Qdrant";
     public const string CarpetaConocimiento = "Conocimiento";
     public const string OrigenCarpeta = "carpeta";
     public const string OrigenSubido = "subido";
 
-    private const string NombreVector = "texto";
     private const int PuntosPorLote = 32;
 
     // Tiempos máximos: una búsqueda lenta no debe hacer esperar al chat.
     private static readonly TimeSpan LimiteBusqueda = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan LimiteEscritura = TimeSpan.FromMinutes(2);
 
-    private readonly IHttpClientFactory _httpFactory;
+    private readonly ClienteQdrant _qdrant;
     private readonly ILogger<BaseConocimientoService> _logger;
     private readonly string _carpeta;
 
@@ -32,13 +29,11 @@ public class BaseConocimientoService : IBaseConocimientoService
     private volatile List<FragmentoConocimiento>? _fragmentosLocales;
 
     public BaseConocimientoService(
-        IOptions<QdrantOptions> opciones,
-        IHttpClientFactory httpFactory,
+        ClienteQdrant qdrant,
         IWebHostEnvironment entorno,
         ILogger<BaseConocimientoService> logger)
     {
-        Opciones = opciones.Value;
-        _httpFactory = httpFactory;
+        _qdrant = qdrant;
         _logger = logger;
         _carpeta = Path.Combine(entorno.ContentRootPath, CarpetaConocimiento);
 
@@ -50,7 +45,7 @@ public class BaseConocimientoService : IBaseConocimientoService
         }
     }
 
-    public QdrantOptions Opciones { get; }
+    public QdrantOptions Opciones => _qdrant.Opciones;
 
     public bool UsaQdrant => Opciones.EstaConfigurado;
 
@@ -94,13 +89,13 @@ public class BaseConocimientoService : IBaseConocimientoService
         var cuerpo = new Dictionary<string, object>
         {
             // Los modelos e5 esperan el prefijo "query: " en las preguntas y "passage: " en los documentos.
-            ["query"] = new { text = "query: " + consulta, model = Opciones.ModeloEmbedding },
-            ["using"] = NombreVector,
+            ["query"] = _qdrant.Documento("query: " + consulta),
+            ["using"] = ClienteQdrant.NombreVector,
             ["limit"] = limite,
             ["with_payload"] = true
         };
 
-        using var respuesta = await Cliente().PostAsJsonAsync(
+        using var respuesta = await _qdrant.Crear().PostAsJsonAsync(
             $"collections/{Opciones.Coleccion}/points/query", cuerpo, cancellationToken);
 
         if (respuesta.StatusCode == HttpStatusCode.NotFound)
@@ -109,7 +104,7 @@ public class BaseConocimientoService : IBaseConocimientoService
             throw new InvalidOperationException($"La colección '{Opciones.Coleccion}' no existe en Qdrant.");
         }
 
-        await AsegurarExitoAsync(respuesta, "buscar en la base de conocimiento", cancellationToken);
+        await _qdrant.AsegurarExitoAsync(respuesta, "buscar en la base de conocimiento", cancellationToken);
 
         using var json = JsonDocument.Parse(await respuesta.Content.ReadAsStringAsync(cancellationToken));
         var resultados = new List<ResultadoConocimiento>();
@@ -276,7 +271,7 @@ public class BaseConocimientoService : IBaseConocimientoService
 
         try
         {
-            using var respuesta = await Cliente().PostAsJsonAsync(
+            using var respuesta = await _qdrant.Crear().PostAsJsonAsync(
                 $"collections/{Opciones.Coleccion}/points/count", new { exact = true }, cancellationToken);
 
             if (respuesta.IsSuccessStatusCode)
@@ -289,7 +284,7 @@ public class BaseConocimientoService : IBaseConocimientoService
             }
             else if (respuesta.StatusCode != HttpStatusCode.NotFound)
             {
-                await AsegurarExitoAsync(respuesta, "contar los fragmentos de la colección", cancellationToken);
+                await _qdrant.AsegurarExitoAsync(respuesta, "contar los fragmentos de la colección", cancellationToken);
             }
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException
@@ -346,7 +341,7 @@ public class BaseConocimientoService : IBaseConocimientoService
             id = Guid.NewGuid().ToString(),
             vector = new Dictionary<string, object>
             {
-                [NombreVector] = new { text = "passage: " + f.TextoCompleto, model = Opciones.ModeloEmbedding }
+                [ClienteQdrant.NombreVector] = _qdrant.Documento("passage: " + f.TextoCompleto)
             },
             payload = new
             {
@@ -364,9 +359,9 @@ public class BaseConocimientoService : IBaseConocimientoService
 
         foreach (var lote in puntos.Chunk(PuntosPorLote))
         {
-            using var respuesta = await Cliente().PutAsJsonAsync(
+            using var respuesta = await _qdrant.Crear().PutAsJsonAsync(
                 $"collections/{Opciones.Coleccion}/points?wait=true", new { points = lote }, cancellationToken);
-            await AsegurarExitoAsync(respuesta, $"cargar '{archivo}'", cancellationToken);
+            await _qdrant.AsegurarExitoAsync(respuesta, $"cargar '{archivo}'", cancellationToken);
         }
 
         return fragmentos.Count;
@@ -398,13 +393,13 @@ public class BaseConocimientoService : IBaseConocimientoService
                     cuerpo["offset"] = offset;
                 }
 
-                using var respuesta = await Cliente().PostAsJsonAsync(
+                using var respuesta = await _qdrant.Crear().PostAsJsonAsync(
                     $"collections/{Opciones.Coleccion}/points/scroll", cuerpo, cancellationToken);
                 if (respuesta.StatusCode == HttpStatusCode.NotFound)
                 {
                     return [];
                 }
-                await AsegurarExitoAsync(respuesta, "listar los documentos", cancellationToken);
+                await _qdrant.AsegurarExitoAsync(respuesta, "listar los documentos", cancellationToken);
 
                 using var json = JsonDocument.Parse(await respuesta.Content.ReadAsStringAsync(cancellationToken));
                 var resultado = json.RootElement.GetProperty("result");
@@ -476,84 +471,22 @@ public class BaseConocimientoService : IBaseConocimientoService
 
     // ---------- Colección ----------
 
-    private async Task AsegurarColeccionAsync(CancellationToken cancellationToken)
-    {
-        using (var existe = await Cliente().GetAsync($"collections/{Opciones.Coleccion}", cancellationToken))
-        {
-            if (existe.IsSuccessStatusCode)
-            {
-                return;
-            }
-            if (existe.StatusCode != HttpStatusCode.NotFound)
-            {
-                await AsegurarExitoAsync(existe, "revisar la colección", cancellationToken);
-            }
-        }
-
-        var coleccion = new
-        {
-            vectors = new Dictionary<string, object>
-            {
-                [NombreVector] = new { size = Opciones.Dimensiones, distance = "Cosine" }
-            }
-        };
-        using (var creada = await Cliente().PutAsJsonAsync($"collections/{Opciones.Coleccion}", coleccion, cancellationToken))
-        {
-            await AsegurarExitoAsync(creada, "crear la colección", cancellationToken);
-        }
-
-        // Índices para borrar por documento o por origen (Qdrant Cloud los exige para filtrar).
-        foreach (var campo in new[] { "documentoId", "origen" })
-        {
-            using var indice = await Cliente().PutAsJsonAsync(
-                $"collections/{Opciones.Coleccion}/index?wait=true",
-                new { field_name = campo, field_schema = "keyword" }, cancellationToken);
-            await AsegurarExitoAsync(indice, $"crear el índice de '{campo}'", cancellationToken);
-        }
-
-        _logger.LogInformation("Qdrant | Colección '{Coleccion}' creada ({Modelo}, {Dimensiones} dimensiones).",
-            Opciones.Coleccion, Opciones.ModeloEmbedding, Opciones.Dimensiones);
-    }
+    private Task AsegurarColeccionAsync(CancellationToken cancellationToken) =>
+        _qdrant.AsegurarColeccionAsync(Opciones.Coleccion, ["documentoId", "origen"], cancellationToken);
 
     private async Task EliminarPorFiltroAsync(string campo, string valor, CancellationToken cancellationToken)
     {
         var filtro = new { filter = new { must = new[] { new { key = campo, match = new { value = valor } } } } };
-        using var respuesta = await Cliente().PostAsJsonAsync(
+        using var respuesta = await _qdrant.Crear().PostAsJsonAsync(
             $"collections/{Opciones.Coleccion}/points/delete?wait=true", filtro, cancellationToken);
 
         if (respuesta.StatusCode != HttpStatusCode.NotFound)
         {
-            await AsegurarExitoAsync(respuesta, "eliminar fragmentos", cancellationToken);
+            await _qdrant.AsegurarExitoAsync(respuesta, "eliminar fragmentos", cancellationToken);
         }
     }
 
     // ---------- Utilidades ----------
-
-    private HttpClient Cliente()
-    {
-        var cliente = _httpFactory.CreateClient(NombreClienteHttp);
-        cliente.BaseAddress = new Uri(Opciones.Endpoint!.Trim().TrimEnd('/') + "/");
-        cliente.DefaultRequestHeaders.Remove("api-key");
-        cliente.DefaultRequestHeaders.Add("api-key", Opciones.ApiKey!.Trim());
-        return cliente;
-    }
-
-    private async Task AsegurarExitoAsync(HttpResponseMessage respuesta, string accion, CancellationToken cancellationToken)
-    {
-        if (respuesta.IsSuccessStatusCode)
-        {
-            return;
-        }
-
-        var detalle = await respuesta.Content.ReadAsStringAsync(cancellationToken);
-        if (detalle.Length > 500)
-        {
-            detalle = detalle[..500];
-        }
-
-        _logger.LogError("Qdrant | Error al {Accion} ({Codigo}): {Detalle}", accion, (int)respuesta.StatusCode, detalle);
-        throw new InvalidOperationException($"Qdrant respondió {(int)respuesta.StatusCode} al {accion}.");
-    }
 
     private static string Texto(JsonElement payload, string propiedad) =>
         payload.TryGetProperty(propiedad, out var valor) && valor.ValueKind == JsonValueKind.String
