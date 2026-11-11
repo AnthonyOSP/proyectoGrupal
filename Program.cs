@@ -289,6 +289,20 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);
 
+    // Incidencias de demostración: solo si la tabla está vacía (en Render, después de cada reinicio).
+    // Algolia se resincroniza para que no queden resultados del arranque anterior (Qdrant se revisa
+    // en SincronizacionInicialConocimiento, en segundo plano).
+    if (await IncidenciasDemoSeeder.SeedAsync(scope.ServiceProvider) > 0)
+    {
+        var algolia = scope.ServiceProvider.GetRequiredService<IAlgoliaIncidenciaService>();
+        if (algolia.EstaConfigurado)
+        {
+            var demo = await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Incidencias.AsNoTracking().ToListAsync();
+            var resultado = await algolia.SincronizarTodoAsync(demo);
+            app.Logger.LogInformation("Algolia tras crear las incidencias de demostración: {Mensaje}", resultado.Mensaje);
+        }
+    }
+
     // Mensajes de contacto guardados sin sentimiento (anteriores al modelo o sin modelo disponible).
     var analizados = await SentimientoService.AnalizarMensajesAsync(
         scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
