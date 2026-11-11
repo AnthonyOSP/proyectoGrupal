@@ -3320,3 +3320,326 @@ html {
     scroll-behavior: auto !important;
   }
 }
+
+/* =====================================================================
+   Asistente virtual (chat flotante) — Views/Shared/_Asistente.cshtml
+   Usa los tokens de color: el modo oscuro se aplica solo.
+   ===================================================================== */
+.asistente {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  font-family: var(--av-font-body);
+}
+
+.asistente__lanzador {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 56px;
+  padding: 0 1.25rem 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--av-primary);
+  color: var(--av-on-color);
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+  transition: background-color var(--av-transition), transform var(--av-transition);
+  touch-action: manipulation;
+}
+.asistente__lanzador:hover { background: var(--av-primary-hover); }
+/* El panel se abre encima del lanzador. */
+.asistente__lanzador { order: 2; }
+.asistente__lanzador:focus-visible { outline: 3px solid var(--av-primary); outline-offset: 3px; }
+.asistente__lanzador-icono { display: inline-flex; }
+
+/* Con el panel abierto, el lanzador queda como un botón redondo (cierra el chat). */
+.asistente.is-abierto .asistente__lanzador { padding: 0; width: 56px; justify-content: center; }
+.asistente.is-abierto .asistente__lanzador-texto {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.asistente__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 2rem));
+  height: min(620px, calc(100vh - 7rem));
+  background: var(--av-surface);
+  color: var(--av-text);
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius-lg);
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
+}
+.asistente__panel[hidden] { display: none; }
+
+.asistente__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 0.75rem 0.875rem 1rem;
+  border-bottom: 1px solid var(--av-border);
+  background: var(--av-primary-soft);
+}
+.asistente__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--av-primary);
+  color: var(--av-on-color);
+}
+.asistente__cabecera-texto { flex: 1; min-width: 0; }
+.asistente__titulo {
+  margin: 0;
+  font-family: var(--av-font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--av-ink);
+}
+.asistente__sub { margin: 0; font-size: 0.8125rem; color: var(--av-muted); }
+.asistente__icono-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--av-radius-sm);
+  background: transparent;
+  color: var(--av-muted);
+}
+.asistente__icono-btn:hover { background: var(--av-border); color: var(--av-ink); }
+
+.asistente__mensajes {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--av-bg);
+  position: relative; /* offsetTop de los mensajes relativo a la lista (asistente.js) */
+}
+.asistente__mensajes:focus-visible { outline: 2px solid var(--av-primary); outline-offset: -2px; }
+
+.asistente-msg {
+  max-width: 88%;
+  padding: 0.625rem 0.875rem;
+  border-radius: 14px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.asistente-msg p { margin: 0 0 0.5rem; }
+.asistente-msg p:last-child { margin-bottom: 0; }
+.asistente-msg ul, .asistente-msg ol { margin: 0 0 0.5rem; padding-left: 1.25rem; }
+.asistente-msg ul:last-child, .asistente-msg ol:last-child { margin-bottom: 0; }
+.asistente-msg li + li { margin-top: 0.25rem; }
+
+.asistente-msg--bot {
+  align-self: flex-start;
+  background: var(--av-surface);
+  border: 1px solid var(--av-border);
+  border-bottom-left-radius: 4px;
+  color: var(--av-text);
+}
+.asistente-msg--bot:has(.asistente-card) { width: 100%; max-width: 100%; }
+.asistente-msg--usuario {
+  align-self: flex-end;
+  background: var(--av-primary);
+  color: var(--av-on-color);
+  border-bottom-right-radius: 4px;
+  white-space: pre-wrap;
+}
+.asistente-msg--error {
+  background: var(--av-error-bg);
+  border-color: var(--av-error-border);
+  color: var(--av-error);
+}
+
+.asistente__sugerencias { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.asistente__sugerencias[hidden] { display: none; }
+.asistente__chip {
+  min-height: 36px;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--av-border-strong);
+  border-radius: 999px;
+  background: var(--av-surface);
+  color: var(--av-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: left;
+  transition: background-color var(--av-transition), border-color var(--av-transition);
+}
+.asistente__chip:hover { background: var(--av-primary-soft); border-color: var(--av-primary); }
+
+/* Indicador "escribiendo…" */
+.asistente-puntos { display: inline-flex; gap: 4px; padding: 0.25rem 0; }
+.asistente-puntos i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--av-muted);
+  animation: asistente-punto 1.2s infinite ease-in-out;
+}
+.asistente-puntos i:nth-child(2) { animation-delay: 0.15s; }
+.asistente-puntos i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes asistente-punto {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* Tarjetas dentro de la respuesta: incidencias y reporte preparado */
+.asistente-tarjetas { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+.asistente-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius);
+  background: var(--av-bg);
+  color: var(--av-text);
+  text-decoration: none;
+}
+a.asistente-card:hover { border-color: var(--av-primary); background: var(--av-primary-soft); color: var(--av-text); }
+.asistente-card__cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.asistente-card__numero { font-size: 0.8125rem; font-weight: 700; color: var(--av-muted); }
+.asistente-card .estado { font-size: 0.75rem; padding: 0.125rem 0.5rem; }
+.asistente-card__titulo { font-weight: 700; color: var(--av-ink); }
+.asistente-card__dato { font-size: 0.8125rem; color: var(--av-muted); }
+
+.asistente-card--borrador { margin-top: 0.75rem; border-color: var(--av-primary-100); background: var(--av-primary-soft); }
+.asistente-card__etiqueta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--av-primary);
+}
+.asistente-card__datos { margin: 0.25rem 0 0; font-size: 0.875rem; }
+.asistente-card__datos dt { font-weight: 700; color: var(--av-ink); }
+.asistente-card__datos dd { margin: 0 0 0.375rem; color: var(--av-text); white-space: pre-line; }
+.asistente-card__boton { align-self: flex-start; margin-top: 0.25rem; text-decoration: none; }
+.asistente-card__nota { font-size: 0.8125rem; color: var(--av-muted); }
+
+.asistente-fuentes { margin: 0.625rem 0 0 !important; font-size: 0.75rem; color: var(--av-muted); }
+
+/* Valoración de la respuesta (👍/👎) */
+.asistente-valorar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--av-border);
+}
+.asistente-valorar__texto { flex: 1; font-size: 0.75rem; color: var(--av-muted); }
+.asistente-valorar__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--av-radius-sm);
+  background: transparent;
+  color: var(--av-muted);
+}
+.asistente-valorar__boton:hover { background: var(--av-border); color: var(--av-ink); }
+.asistente-valorar__boton--no svg { transform: rotate(180deg); }
+.asistente-valorar__boton[aria-pressed="true"] {
+  background: var(--av-primary-soft);
+  border-color: var(--av-primary-100);
+  color: var(--av-primary);
+}
+
+.asistente__form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--av-border);
+  background: var(--av-surface);
+}
+.asistente__entrada {
+  flex: 1;
+  min-height: 44px;
+  max-height: 140px;
+  padding: 0.625rem 0.75rem;
+  border: 1.5px solid var(--av-border-strong);
+  border-radius: var(--av-radius-sm);
+  background: var(--av-surface);
+  color: var(--av-text);
+  font-size: 1rem; /* 16px: evita el zoom automático en iOS */
+  line-height: 1.4;
+  resize: none;
+}
+.asistente__entrada::placeholder { color: var(--av-placeholder); }
+.asistente__entrada:focus { outline: none; border-color: var(--av-primary); box-shadow: 0 0 0 3px var(--av-focus-ring); }
+.asistente__enviar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--av-radius-sm);
+  background: var(--av-primary);
+  color: var(--av-on-color);
+}
+.asistente__enviar:hover { background: var(--av-primary-hover); }
+.asistente__enviar:disabled { opacity: 0.5; cursor: not-allowed; }
+.asistente__aviso {
+  margin: 0;
+  padding: 0 0.75rem 0.625rem;
+  font-size: 0.75rem;
+  color: var(--av-muted);
+  background: var(--av-surface);
+}
+
+/* Celular: el panel ocupa casi toda la pantalla y el lanzador queda como botón redondo. */
+@media (max-width: 575.98px) {
+  .asistente { right: 1rem; bottom: 1rem; }
+  .asistente__lanzador { padding: 0; width: 56px; justify-content: center; }
+  .asistente__lanzador-texto {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .asistente__panel {
+    position: fixed;
+    inset: 0.75rem 0.75rem 5.25rem;
+    width: auto;
+    height: auto;
+  }
+}
+
+@media print {
+  .asistente { display: none; }
+}
+
+/* Aviso de reportes abiertos cerca del punto marcado (formulario Reportar) */
+.aviso-cercanas {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--av-pendiente-text);
+  border-left-width: 4px;
+  border-radius: var(--av-radius-sm);
+  background: var(--av-pendiente-bg);
+  color: var(--av-text);
+  font-size: 0.9375rem;
+}
+.aviso-cercanas[hidden] { display: none; }
+.aviso-cercanas ul { margin: 0.375rem 0; padding-left: 1.25rem; }
+.aviso-cercanas a { font-weight: 700; }

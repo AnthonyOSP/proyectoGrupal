@@ -73,6 +73,11 @@
                             @Iconos.Svg("mail", 20) Mensajes
                         </a>
                     </li>
+                    <li>
+                        <a class="admin-nav__link @Activo("Asistente")" aria-current="@Actual("Asistente")" asp-controller="Admin" asp-action="Asistente">
+                            @Iconos.Svg("message", 20) Asistente
+                        </a>
+                    </li>
                 </ul>
                 <a class="admin-nav__link admin-nav__volver" asp-controller="Home" asp-action="Index">
                     @Iconos.Svg("arrow-left", 20) Volver al sitio

@@ -1,0 +1,306 @@
+@model AsistenteAdminViewModel
+@using proyectoGrupal.Services.Asistente.Conocimiento
+@{
+    ViewData["Title"] = "Asistente virtual";
+}
+
+<header class="admin-cabecera">
+    <div>
+        <h1 class="admin-cabecera__titulo">Asistente virtual</h1>
+        <p class="admin-cabecera__sub">
+            Chat de ayuda para los vecinos: un agente de Semantic Kernel sobre Groq que responde con los documentos de ayuda
+            (base de conocimiento en Qdrant), busca incidencias públicas y prepara reportes.
+        </p>
+    </div>
+</header>
+
+@if (TempData["MensajeConocimiento"] is string mensaje)
+{
+    var ok = TempData["ConocimientoOk"] as bool? == true;
+    <p class="@(ok ? "busqueda-admin__ok" : "busqueda-admin__error")" role="status">
+        @Iconos.Svg(ok ? "check" : "info", 16) <span>@mensaje</span>
+    </p>
+}
+
+@* Estado de los servicios. Nunca se muestran claves. *@
+<div class="asistente-admin__estado">
+    <section class="admin-card busqueda-admin" aria-labelledby="titulo-modelo">
+        <div class="admin-card__cabecera">
+            <h2 class="admin-card__titulo" id="titulo-modelo">Modelo de lenguaje (Groq)</h2>
+            @if (Model.AsistenteDisponible)
+            {
+                <span class="estado estado--atendida">@Iconos.Svg("check-circle", 14) Activo</span>
+            }
+            else
+            {
+                <span class="estado estado--pendiente">@Iconos.Svg("info", 14) Sin configurar</span>
+            }
+        </div>
+        @if (Model.AsistenteDisponible)
+        {
+            <p class="busqueda-admin__texto mb-0">Modelo: <strong>@Model.Modelo</strong>. El chat aparece en todas las páginas públicas.</p>
+        }
+        else
+        {
+            <p class="busqueda-admin__texto mb-0">
+                El chat no aparece en el sitio. Para activarlo, configura <code>GROQ_API_KEY</code> (ver README, sección 17).
+            </p>
+        }
+    </section>
+
+    <section class="admin-card busqueda-admin" aria-labelledby="titulo-qdrant">
+        <div class="admin-card__cabecera">
+            <h2 class="admin-card__titulo" id="titulo-qdrant">Base de conocimiento</h2>
+            @if (Model.UsaQdrant)
+            {
+                <span class="estado estado--atendida">@Iconos.Svg("check-circle", 14) Qdrant</span>
+            }
+            else
+            {
+                <span class="estado estado--pendiente">@Iconos.Svg("info", 14) Búsqueda básica</span>
+            }
+        </div>
+        @if (Model.UsaQdrant)
+        {
+            <p class="busqueda-admin__texto mb-0">
+                Colección <strong>@Model.Coleccion</strong>. Los vectores los genera Qdrant Cloud Inference con
+                <strong>@Model.ModeloEmbedding</strong> (búsqueda por significado).
+            </p>
+        }
+        else
+        {
+            <p class="busqueda-admin__texto mb-0">
+                Qdrant no está configurado: el asistente busca por palabras en los archivos de <code>Conocimiento/</code>.
+                Para la búsqueda por significado, configura <code>QDRANT_ENDPOINT</code> y <code>QDRANT_API_KEY</code>.
+            </p>
+        }
+    </section>
+</div>
+
+@* Documentos de ayuda. Los de la carpeta Conocimiento/ se versionan con el código; "Sincronizar" los vuelve a cargar. *@
+<section class="admin-card busqueda-admin" aria-labelledby="titulo-documentos">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-documentos">Documentos de ayuda</h2>
+    </div>
+
+    <p class="busqueda-admin__texto">
+        La carpeta <code>Conocimiento/</code> del proyecto tiene <strong>@Model.ArchivosCarpeta.Count</strong> documento(s):
+        @string.Join(", ", Model.ArchivosCarpeta).
+        Si cambias un archivo, haz commit y pulsa <strong>Sincronizar carpeta</strong> en el sitio publicado.
+        Al iniciar, si la colección de Qdrant está vacía, se cargan solos.
+    </p>
+
+    <div class="asistente-admin__acciones">
+        <form asp-action="SincronizarConocimiento" method="post" data-ocupado="Sincronizando…">
+            <button type="submit" class="btn btn-av-primary">
+                @Iconos.Svg("refresh", 18) <span class="btn-texto">Sincronizar carpeta</span>
+            </button>
+        </form>
+
+        @if (Model.UsaQdrant)
+        {
+            <form asp-action="CargarConocimiento" method="post" enctype="multipart/form-data" class="asistente-admin__subir" data-ocupado="Subiendo…">
+                <label class="visually-hidden" for="archivoConocimiento">Documento extra (.md o .txt)</label>
+                <input class="form-control" type="file" id="archivoConocimiento" name="archivo" accept=".md,.markdown,.txt,text/markdown,text/plain" required />
+                <button type="submit" class="btn btn-av-secondary">@Iconos.Svg("upload", 18) <span class="btn-texto">Subir documento</span></button>
+            </form>
+        }
+    </div>
+
+    @if (Model.ErrorDocumentos != null)
+    {
+        <p class="busqueda-admin__error" role="alert">@Iconos.Svg("info", 16) <span>@Model.ErrorDocumentos</span></p>
+    }
+    else if (Model.UsaQdrant && Model.Documentos.Count == 0)
+    {
+        <p class="busqueda-admin__texto mb-0">La colección está vacía. Pulsa <strong>Sincronizar carpeta</strong> para cargar los documentos.</p>
+    }
+    else if (Model.Documentos.Count > 0)
+    {
+        <div class="admin-card--tabla asistente-admin__tabla">
+            <table class="admin-tabla">
+                <caption class="visually-hidden">Documentos cargados en Qdrant</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Documento</th>
+                        <th scope="col">Origen</th>
+                        <th scope="col">Fragmentos</th>
+                        <th scope="col">Cargado</th>
+                        <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var documento in Model.Documentos)
+                    {
+                        var esCarpeta = documento.Origen == BaseConocimientoService.OrigenCarpeta;
+                        <tr>
+                            <td class="admin-tabla__principal" data-label="Documento">
+                                <span class="admin-tabla__titulo">@documento.Nombre</span>
+                                <span class="admin-tabla__ubicacion">@Iconos.Svg("file", 14) @documento.Archivo</span>
+                            </td>
+                            <td data-label="Origen">@(esCarpeta ? "Carpeta Conocimiento/" : "Subido desde el panel")</td>
+                            <td data-label="Fragmentos">@documento.Fragmentos <span class="text-muted">(@documento.Caracteres.ToString("N0") caracteres)</span></td>
+                            <td data-label="Cargado">@(documento.FechaCarga == default ? "—" : documento.FechaCarga.ToString("dd/MM/yyyy HH:mm"))</td>
+                            <td class="admin-tabla__acciones">
+                                @if (!esCarpeta)
+                                {
+                                    <form asp-action="EliminarConocimiento" method="post"
+                                          data-confirmar="¿Eliminar «@documento.Nombre» de la base de conocimiento? Esta acción no se puede deshacer.">
+                                        <input type="hidden" name="id" value="@documento.Id" />
+                                        <button type="submit" class="btn btn-av-danger btn-sm-av" aria-label="Eliminar @documento.Nombre">
+                                            @Iconos.Svg("trash", 16) Eliminar
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="busqueda-admin__texto mb-0 mt-2">
+            Los documentos de la carpeta no se eliminan aquí: borra o cambia el archivo en el proyecto y sincroniza.
+        </p>
+    }
+</section>
+
+@* Índice semántico de incidencias (Qdrant): búsqueda por significado y aviso de reportes parecidos en el chat. *@
+<section class="admin-card busqueda-admin" aria-labelledby="titulo-indice-incidencias">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-indice-incidencias">Incidencias en Qdrant</h2>
+        @if (Model.IncidenciasIndexadas is long indexadas && indexadas == Model.IncidenciasTotales)
+        {
+            <span class="estado estado--atendida">@Iconos.Svg("check-circle", 14) Al día</span>
+        }
+        else if (Model.IncidenciasIndexadas != null)
+        {
+            <span class="estado estado--pendiente">@Iconos.Svg("info", 14) Desactualizado</span>
+        }
+    </div>
+    @if (!Model.UsaQdrant)
+    {
+        <p class="busqueda-admin__texto mb-0">
+            Sin Qdrant, el asistente busca incidencias solo por palabras y detecta reportes parecidos por el nombre del lugar.
+        </p>
+    }
+    else
+    {
+        <p class="busqueda-admin__texto">
+            Colección <strong>@Model.ColeccionIncidencias</strong>:
+            <strong>@(Model.IncidenciasIndexadas?.ToString() ?? "?")</strong> de <strong>@Model.IncidenciasTotales</strong> incidencias.
+            Permite al asistente encontrarlas por significado ("buzón sin tapa" encuentra "desagüe sin tapa") y avisar de reportes parecidos.
+            Se actualiza solo al crear, cambiar de estado o eliminar una incidencia; sincroniza si Qdrant no estuvo disponible.
+        </p>
+        <form asp-action="SincronizarIncidenciasSemanticas" method="post" data-ocupado="Sincronizando…">
+            <button type="submit" class="btn btn-av-secondary">
+                @Iconos.Svg("refresh", 18) <span class="btn-texto">Sincronizar incidencias</span>
+            </button>
+        </form>
+    }
+</section>
+
+@* Valoraciones de los vecinos (👍/👎): las respuestas que no sirvieron dicen qué falta en la ayuda. *@
+<section class="admin-card busqueda-admin" aria-labelledby="titulo-valoraciones">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-valoraciones">Valoraciones de los vecinos</h2>
+        <span class="busqueda-admin__texto mb-0">Últimos @AsistenteAdminViewModel.DiasValoraciones días</span>
+    </div>
+
+    @{
+        var totalValoraciones = Model.ValoracionesUtiles + Model.ValoracionesNoUtiles;
+    }
+    @if (totalValoraciones == 0)
+    {
+        <p class="busqueda-admin__texto mb-0">Todavía no hay valoraciones. Los vecinos pueden marcar cada respuesta del chat como útil o no útil.</p>
+    }
+    else
+    {
+        <div class="asistente-admin__valoraciones">
+            <p><strong>@Model.ValoracionesUtiles</strong> útiles</p>
+            <p><strong>@Model.ValoracionesNoUtiles</strong> no útiles</p>
+            <p><strong>@(Model.ValoracionesUtiles * 100 / totalValoraciones)%</strong> de respuestas útiles</p>
+        </div>
+
+        @if (Model.NoUtiles.Count > 0)
+        {
+            <p class="busqueda-admin__texto">
+                Respuestas que no sirvieron. Si falta información, agrégala a un documento de <code>Conocimiento/</code> y sincroniza.
+            </p>
+            <ol class="asistente-admin__resultados">
+                @foreach (var valoracion in Model.NoUtiles)
+                {
+                    <li class="asistente-admin__resultado">
+                        <div class="asistente-admin__resultado-cabecera">
+                            <strong>@valoracion.Pregunta</strong>
+                            <span class="admin-id">@valoracion.Fecha.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        @{ var respuestaSinFormato = valoracion.Respuesta.Replace("**", ""); }
+                        <p>@(respuestaSinFormato.Length <= 400 ? respuestaSinFormato : respuestaSinFormato[..400] + "…")</p>
+                        <p class="asistente-admin__fuentes">Fuentes: @(valoracion.Fuentes.Length > 0 ? valoracion.Fuentes : "ninguna (no usó la ayuda)")</p>
+                    </li>
+                }
+            </ol>
+        }
+    }
+</section>
+
+@* Prueba de búsqueda: muestra los fragmentos que recibiría el asistente para una pregunta. *@
+<section class="admin-card busqueda-admin" aria-labelledby="titulo-prueba">
+    <div class="admin-card__cabecera">
+        <h2 class="admin-card__titulo" id="titulo-prueba">Probar la búsqueda</h2>
+    </div>
+    <p class="busqueda-admin__texto">Escribe una pregunta como la haría un vecino y revisa qué secciones de la ayuda encuentra el asistente.</p>
+
+    <form asp-action="Asistente" method="get" class="asistente-admin__probar">
+        <label class="visually-hidden" for="consulta">Pregunta de prueba</label>
+        <input class="form-control" type="search" id="consulta" name="consulta" value="@Model.Consulta" maxlength="200"
+               placeholder="Ej. ¿cuántos reportes puedo enviar?" />
+        <button type="submit" class="btn btn-av-primary">@Iconos.Svg("search", 18) Buscar</button>
+    </form>
+
+    @if (Model.Busqueda is { } busqueda)
+    {
+        <p class="busqueda-admin__texto mt-3">
+            @(busqueda.Motor == MotorConocimiento.Qdrant ? "Búsqueda semántica en Qdrant" : "Búsqueda básica en los archivos locales"):
+            <strong>@busqueda.Resultados.Count</strong> resultado(s).
+        </p>
+        <ol class="asistente-admin__resultados">
+            @foreach (var resultado in busqueda.Resultados)
+            {
+                <li class="asistente-admin__resultado">
+                    <div class="asistente-admin__resultado-cabecera">
+                        <strong>@resultado.Documento@(resultado.Seccion.Length > 0 ? $" — {resultado.Seccion}" : "")</strong>
+                        <span class="admin-id">@resultado.Puntaje.ToString("0.000")</span>
+                    </div>
+                    <p>@resultado.Contenido</p>
+                </li>
+            }
+        </ol>
+    }
+</section>
+
+@section Scripts {
+    <script>
+        // Sincronizar y subir pueden tardar unos segundos (Qdrant genera los vectores): se evita el doble envío.
+        document.querySelectorAll("form[data-ocupado]").forEach(form =>
+            form.addEventListener("submit", () => {
+                const boton = form.querySelector("button");
+                setTimeout(() => {
+                    boton.disabled = true;
+                    boton.setAttribute("aria-busy", "true");
+                    boton.querySelector(".btn-texto").textContent = form.dataset.ocupado;
+                }, 0);
+            }));
+
+        // Eliminar no se puede deshacer: se pide confirmación y se evita el doble envío.
+        document.querySelectorAll("form[data-confirmar]").forEach(form =>
+            form.addEventListener("submit", evento => {
+                if (!confirm(form.dataset.confirmar)) {
+                    evento.preventDefault();
+                    return;
+                }
+                const boton = form.querySelector("button");
+                setTimeout(() => { boton.disabled = true; }, 0);
+            }));
+    </script>
+}

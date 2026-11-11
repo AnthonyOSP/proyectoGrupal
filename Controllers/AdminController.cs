@@ -8,6 +8,8 @@ using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.Asistente;
+using proyectoGrupal.Services.Asistente.Conocimiento;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.Services.Sentimiento;
 using proyectoGrupal.Services.Categorias;
@@ -92,6 +94,152 @@ public class AdminController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    // ---------- Asistente virtual: base de conocimiento ----------
+
+    private const long TamanoMaximoDocumento = 1024 * 1024; // 1 MB de texto es mucho para un documento de ayuda
+    private const int LargoMaximoConsulta = 200;
+
+    // GET: /Admin/Asistente?consulta=limite de reportes
+    // Estado del asistente, documentos cargados en Qdrant y prueba de búsqueda (solo lectura).
+    public async Task<IActionResult> Asistente(string? consulta,
+        [FromServices] IBaseConocimientoService conocimiento,
+        [FromServices] IIncidenciasSemanticasService semanticas,
+        [FromServices] IAsistenteService asistente)
+    {
+        var modelo = new AsistenteAdminViewModel
+        {
+            AsistenteDisponible = asistente.EstaDisponible,
+            Modelo = asistente.Modelo,
+            UsaQdrant = conocimiento.UsaQdrant,
+            Coleccion = conocimiento.Opciones.Coleccion,
+            ModeloEmbedding = conocimiento.Opciones.ModeloEmbedding,
+            ArchivosCarpeta = conocimiento.ArchivosCarpeta,
+            Consulta = BusquedaIncidenciasService.NormalizarTexto(consulta) is { } texto
+                ? (texto.Length <= LargoMaximoConsulta ? texto : texto[..LargoMaximoConsulta])
+                : null
+        };
+
+        if (conocimiento.UsaQdrant)
+        {
+            try
+            {
+                modelo.Documentos = await conocimiento.ListarDocumentosAsync(HttpContext.RequestAborted);
+            }
+            catch (InvalidOperationException ex)
+            {
+                modelo.ErrorDocumentos = ex.Message;
+            }
+        }
+
+        if (modelo.Consulta != null)
+        {
+            modelo.Busqueda = await conocimiento.BuscarAsync(modelo.Consulta, 5, HttpContext.RequestAborted);
+        }
+
+        // Índice semántico de incidencias: cuántas hay en Qdrant frente a SQLite.
+        modelo.ColeccionIncidencias = semanticas.Coleccion;
+        modelo.IncidenciasIndexadas = await semanticas.ContarAsync(HttpContext.RequestAborted);
+        modelo.IncidenciasTotales = await _context.Incidencias.CountAsync();
+
+        // Valoraciones de los vecinos: cuántas sirvieron y cuáles no (para mejorar los documentos de ayuda).
+        var desde = DateTime.Now.AddDays(-AsistenteAdminViewModel.DiasValoraciones);
+        var recientes = _context.ValoracionesAsistente.AsNoTracking().Where(v => v.Fecha >= desde);
+        modelo.ValoracionesUtiles = await recientes.CountAsync(v => v.Util);
+        modelo.ValoracionesNoUtiles = await recientes.CountAsync(v => !v.Util);
+        modelo.NoUtiles = await recientes
+            .Where(v => !v.Util)
+            .OrderByDescending(v => v.Fecha)
+            .Take(20)
+            .ToListAsync();
+
+        return View(modelo);
+    }
+
+    // POST: /Admin/SincronizarConocimiento
+    // Carga (o vuelve a cargar) en Qdrant los documentos de la carpeta Conocimiento/. Se puede repetir sin duplicar.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SincronizarConocimiento([FromServices] IBaseConocimientoService conocimiento)
+    {
+        var resultado = await conocimiento.SincronizarCarpetaAsync(HttpContext.RequestAborted);
+        _logger.LogInformation("Sincronización de la base de conocimiento por {Usuario}: {Mensaje}", User.Identity?.Name, resultado.Mensaje);
+
+        TempData["MensajeConocimiento"] = resultado.Mensaje;
+        TempData["ConocimientoOk"] = resultado.Exito;
+        return RedirectToAction(nameof(Asistente));
+    }
+
+    // POST: /Admin/SincronizarIncidenciasSemanticas
+    // Reemplaza el índice semántico de incidencias (Qdrant) con lo que hay en SQLite. Se puede repetir sin duplicar.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SincronizarIncidenciasSemanticas([FromServices] IIncidenciasSemanticasService semanticas)
+    {
+        var incidencias = await _context.Incidencias.AsNoTracking().ToListAsync();
+        var resultado = await semanticas.SincronizarTodoAsync(incidencias, HttpContext.RequestAborted);
+        _logger.LogInformation("Sincronización del índice semántico de incidencias por {Usuario}: {Mensaje}", User.Identity?.Name, resultado.Mensaje);
+
+        TempData["MensajeConocimiento"] = resultado.Mensaje;
+        TempData["ConocimientoOk"] = resultado.Exito;
+        return RedirectToAction(nameof(Asistente));
+    }
+
+    // POST: /Admin/CargarConocimiento  (documento extra: Markdown o texto)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public async Task<IActionResult> CargarConocimiento(IFormFile? archivo, [FromServices] IBaseConocimientoService conocimiento)
+    {
+        var extension = Path.GetExtension(archivo?.FileName ?? string.Empty).ToLowerInvariant();
+        string? error = archivo switch
+        {
+            null or { Length: 0 } => "Elige un archivo Markdown (.md) o de texto (.txt).",
+            _ when extension is not (".md" or ".markdown" or ".txt") => "Solo se aceptan archivos .md o .txt.",
+            { Length: > TamanoMaximoDocumento } => "El archivo supera el límite de 1 MB.",
+            _ => null
+        };
+
+        if (error == null)
+        {
+            string texto;
+            using (var lector = new StreamReader(archivo!.OpenReadStream(), System.Text.Encoding.UTF8))
+            {
+                texto = await lector.ReadToEndAsync(HttpContext.RequestAborted);
+            }
+
+            var nombre = Path.GetFileName(archivo.FileName);
+            var resultado = string.IsNullOrWhiteSpace(texto)
+                ? new ResultadoOperacionConocimiento(false, "El archivo está vacío.")
+                : await conocimiento.CargarDocumentoAsync(nombre, texto, HttpContext.RequestAborted);
+
+            _logger.LogInformation("Documento de conocimiento '{Archivo}' cargado por {Usuario}: {Mensaje}", nombre, User.Identity?.Name, resultado.Mensaje);
+            TempData["MensajeConocimiento"] = resultado.Mensaje;
+            TempData["ConocimientoOk"] = resultado.Exito;
+        }
+        else
+        {
+            TempData["MensajeConocimiento"] = error;
+            TempData["ConocimientoOk"] = false;
+        }
+
+        return RedirectToAction(nameof(Asistente));
+    }
+
+    // POST: /Admin/EliminarConocimiento
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EliminarConocimiento(string? id, [FromServices] IBaseConocimientoService conocimiento)
+    {
+        var resultado = string.IsNullOrWhiteSpace(id) || id.Length > 100
+            ? new ResultadoOperacionConocimiento(false, "Documento no válido.")
+            : await conocimiento.EliminarDocumentoAsync(id, HttpContext.RequestAborted);
+
+        _logger.LogInformation("Documento de conocimiento {Id} eliminado por {Usuario}: {Mensaje}", id, User.Identity?.Name, resultado.Mensaje);
+        TempData["MensajeConocimiento"] = resultado.Mensaje;
+        TempData["ConocimientoOk"] = resultado.Exito;
+        return RedirectToAction(nameof(Asistente));
+    }
+
     // GET: /Admin/Incidencias?buscar=poste&categoria=alumbrado&estado=Pendiente
     public async Task<IActionResult> Incidencias(string? buscar, string? categoria, EstadoIncidencia? estado)
     {
@@ -157,7 +305,7 @@ public class AdminController : Controller
     // Solo recibe el id y el nuevo estado: ningún otro campo de la incidencia puede cambiarse aquí.
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CambiarEstado(int id, string? estado)
+    public async Task<IActionResult> CambiarEstado(int id, string? estado, [FromServices] IIncidenciasSemanticasService semanticas)
     {
         var incidencia = await _context.Incidencias.FirstOrDefaultAsync(i => i.Id == id);
 
@@ -220,6 +368,9 @@ public class AdminController : Controller
             ? "Estado actualizado correctamente."
             : "Estado actualizado correctamente. El índice de búsqueda no se pudo actualizar: puedes resincronizarlo desde el Dashboard.";
 
+        // Índice semántico del asistente (Qdrant): solo cambia el estado; si falla no se deshace nada.
+        await semanticas.ActualizarEstadoAsync(incidencia.Id, estado, HttpContext.RequestAborted);
+
         // Aviso en tiempo real (seguimiento del ciudadano y panel). Solo DESPUÉS de confirmar SQLite:
         // si PieSocket falla, el estado y el historial ya están guardados y no se deshacen.
         await _realtime.NotificarEstadoActualizadoAsync(incidencia, estadoAnterior, fechaCambio);
@@ -231,7 +382,7 @@ public class AdminController : Controller
     // Borra la incidencia, su historial (en cascada) y su foto. No se puede deshacer.
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Eliminar(int id, [FromServices] FotoIncidenciaService fotos)
+    public async Task<IActionResult> Eliminar(int id, [FromServices] FotoIncidenciaService fotos, [FromServices] IIncidenciasSemanticasService semanticas)
     {
         var incidencia = await _context.Incidencias.FirstOrDefaultAsync(i => i.Id == id);
 
@@ -262,6 +413,7 @@ public class AdminController : Controller
             fotos.Eliminar(incidencia.FotoUrl);
         }
         await _algolia.EliminarAsync(id);
+        await semanticas.EliminarAsync(id, HttpContext.RequestAborted);
 
         TempData["MensajeAdmin"] = $"La incidencia #{id} se eliminó correctamente.";
         return RedirectToAction(nameof(Incidencias));

@@ -80,6 +80,19 @@ public static class CoordenadasGeograficas
     // Formato para mostrar a las personas: 6 decimales (≈ 10 cm).
     public static string Mostrar(decimal valor) => valor.ToString("0.000000", CultureInfo.InvariantCulture);
 
+    // Distancia en metros entre dos puntos (fórmula del haversine; suficiente para distancias de barrio).
+    public static double DistanciaMetros(decimal latitud1, decimal longitud1, decimal latitud2, decimal longitud2)
+    {
+        const double RadioTierra = 6_371_000;
+        static double Radianes(decimal grados) => (double)grados * Math.PI / 180;
+
+        var dLat = Radianes(latitud2 - latitud1);
+        var dLng = Radianes(longitud2 - longitud1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(Radianes(latitud1)) * Math.Cos(Radianes(latitud2)) * Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+        return RadioTierra * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+    }
+
     private static string? Limpiar(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
 
     private static Resultado Fallo(string campo, string error) => new(null, null, campo, error);

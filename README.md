@@ -32,6 +32,7 @@ Todo lo que el proyecto usa y no fue escrito por nosotros. Las versiones son las
 | `Google.Cloud.Vision.V1`                            | 3.8.0   | Cliente de Google Cloud Vision (detección de rostros)               | Apache-2.0                   |
 | `SixLabors.ImageSharp`                              | 3.1.12  | Procesar las fotos: orientación, quitar metadatos y pixelar rostros | Six Labors Split License 1.0 |
 | `Algolia.Search`                                    | 7.49.0  | Cliente oficial de Algolia (búsqueda)                               | MIT                          |
+| `Microsoft.SemanticKernel`                          | 1.82.0  | Agente del asistente virtual (herramientas sobre el modelo de Groq) | MIT                          |
 
 ### Librerías del navegador (en `wwwroot/lib`)
 
@@ -42,7 +43,7 @@ Todo lo que el proyecto usa y no fue escrito por nosotros. Las versiones son las
 | [jQuery Validation](https://jqueryvalidation.org)                                        | 1.21.0  | Validación de formularios en el navegador                 | MIT          |
 | [jQuery Validation Unobtrusive](https://github.com/aspnet/jquery-validation-unobtrusive) | 4.0.0   | Conecta las validaciones de ASP.NET con jQuery Validation | MIT          |
 
-El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site.js`) no usa otras librerías: el tiempo real usa el WebSocket nativo del navegador y los mapas cargan la API de Google Maps desde Google (sección 14).
+El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `asistente.js`, `site.js`) no usa otras librerías: el tiempo real usa el WebSocket nativo del navegador y los mapas cargan la API de Google Maps desde Google (sección 14).
 
 ### APIs y servicios externos
 
@@ -54,9 +55,11 @@ El JavaScript propio (`reportar.js`, `realtime.js`, `mapa-incidencias.js`, `site
 | [PieSocket](https://piehost.com) (PieHost)               | Actualización en tiempo real del panel y del seguimiento              | Sí (`PIESOCKET_*`)                    | Las páginas no se actualizan solas        | Sección 13                                                     |
 | [Redis](https://redis.io) (Upstash o Redis Cloud)        | Límite de reportes por usuario (contra el spam)                       | Sí (`REDIS_CONNECTION`)               | El límite se cuenta en la memoria del servidor | Sección 16                                               |
 | [Google Maps Platform](https://developers.google.com/maps) | Mapas, autocompletado de direcciones y dirección de un punto     | Sí (`GOOGLE_MAPS_API_KEY`)            | Los mapas muestran un aviso; el reporte se envía con la ubicación escrita | Sección 14 |
+| [Groq](https://console.groq.com)                         | Modelo de lenguaje del asistente virtual (chat)                       | Sí (`GROQ_API_KEY`)                   | El chat no aparece                        | Sección 17                                                     |
+| [Qdrant Cloud](https://cloud.qdrant.io)                  | Base de conocimiento del asistente (búsqueda por significado)         | Sí (`QDRANT_ENDPOINT`, `QDRANT_API_KEY`) | El asistente busca la ayuda por palabras en `Conocimiento/` | Sección 17                                       |
 | [Google Fonts](https://fonts.google.com)                 | Tipografías Atkinson Hyperlegible y Plus Jakarta Sans                 | No                                    | El navegador usa una fuente del sistema   | SIL Open Font License                                          |
 
-Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, el inicio con Google, Google Maps, Algolia, PieSocket y Redis son opcionales: la aplicación arranca y funciona sin ellas.
+Las claves y credenciales **nunca** se guardan en el repositorio: se configuran con User Secrets o variables de entorno (ver cada sección). Google Cloud Vision, el inicio con Google, Google Maps, Algolia, PieSocket, Redis, Groq y Qdrant son opcionales: la aplicación arranca y funciona sin ellas.
 
 ### Herramientas de desarrollo y despliegue
 
@@ -221,8 +224,9 @@ sqlite3 alerta_vecinal.db "SELECT Id, Titulo, Categoria, Estado, FechaRegistro F
 ## 8. Estructura del proyecto
 
 ```text
-Controllers/     HomeController (sitio público), AccountController (registro, login, logout)
-                 y AdminController (panel /Admin)
+Controllers/     HomeController (sitio público), AccountController (registro, login, logout),
+                 AdminController (panel /Admin) y AsistenteController (chat, ver sección 17)
+Conocimiento/    Documentos de ayuda en Markdown que usa el asistente virtual (ver sección 17)
 Constants/       RoleNames: nombres de los roles (Administrador, Ciudadano)
 Data/            ApplicationDbContext (SQLite + Identity) e IdentitySeeder (roles y administrador inicial)
 Models/          Incidencia, ApplicationUser (cuenta de usuario), estados y categorías
@@ -232,6 +236,7 @@ Helpers/         Iconos SVG, catálogo de categorías y filtros
 Services/        Protección de fotos (Google Cloud Vision + pixelado) y búsqueda de incidencias
 Services/Algolia Índice de búsqueda en Algolia (ver sección 12)
 Services/PieSocket Avisos en tiempo real con PieSocket (ver sección 13)
+Services/Asistente Asistente virtual: agente de Semantic Kernel, plugins y base de conocimiento (ver sección 17)
 Migrations/      Historial de cambios de la base de datos (NO borrar)
 Dockerfile       Imagen Docker para publicar en Render (ver sección 11)
 wwwroot/         CSS, JavaScript y librerías (los mapas usan Google Maps: ver sección 14)
@@ -246,6 +251,7 @@ Páginas disponibles y quién puede verlas:
 | Detalle de una incidencia | `/Home/Detalle/{id}`                      |        ✓        |          ✓          |       ✓       |
 | Reportar incidencia       | `/Home/Reportar`                          | ✗ (va al login) |          ✓          |       ✓       |
 | Panel administrativo      | `/Admin`                                  | ✗ (va al login) | ✗ (acceso denegado) |       ✓       |
+| Asistente virtual (chat)  | botón flotante en las páginas públicas    |        ✓        |          ✓          |       ✓       |
 | Crear cuenta              | `/Account/Register`                       |        ✓        |          —          |       —       |
 | Iniciar sesión            | `/Account/Login`                          |        ✓        |          —          |       —       |
 | Cerrar sesión             | botón del menú (POST a `/Account/Logout`) |        —        |          ✓          |       ✓       |
@@ -796,3 +802,107 @@ dotnet user-secrets set "REDIS_CONNECTION" "rediss://default:<contraseña>@<host
 ```
 
 En Render: **Environment → Environment Variables**, con los mismos nombres. Al iniciar, el log indica `Redis configurado (...)` o `Redis no está configurado ... usará la memoria del servidor`. La contraseña nunca se escribe en el log.
+
+---
+
+## 17. Asistente virtual (Groq, Qdrant y Semantic Kernel)
+
+Un chat flotante (botón **"¿Necesitas ayuda?"** abajo a la derecha) que ayuda a los vecinos en todas las páginas públicas:
+
+- **Responde dudas sobre la página** (cómo reportar, límites, categorías, estados, fotos, cuenta, contacto) con los documentos de ayuda de la carpeta `Conocimiento/`. **Sabe en qué página está el vecino** ("¿qué pongo en este campo?" en Reportar, "¿de qué trata esta incidencia?" en un detalle).
+- **Busca incidencias públicas** ("¿ya reportaron el poste de mi calle?", "¿cuántas hay pendientes de alumbrado?") y las muestra como tarjetas con enlace al detalle. Si no hay coincidencias por palabras, busca **por significado** en Qdrant ("buzón sin tapa" encuentra "desagüe sin tapa").
+- **Prepara un reporte conversando**: el vecino cuenta el problema, el asistente redacta el título y la descripción, elige la categoría, **avisa si ya hay un reporte parecido en el mismo lugar** y muestra un botón que **abre el formulario ya completado**. El asistente **nunca envía** el reporte: la foto, el pixelado, el límite de reportes y las validaciones siguen pasando por el formulario de siempre.
+- **"¿Cómo va mi reporte?"**: con la sesión iniciada, muestra el estado y los cambios de los reportes del propio vecino, con enlace al seguimiento.
+- **Pasar a una persona**: si la ayuda no resuelve el problema, ofrece preparar un mensaje para el equipo y abre **Contacto ya completado** (el vecino lo revisa y lo envía; pasa por el análisis de sentimiento de siempre).
+- **👍/👎 en cada respuesta**: el panel muestra las respuestas que no sirvieron, para saber qué falta en la ayuda.
+
+Además, en el formulario **Reportar**, al marcar el punto en el mapa aparece un aviso si hay **reportes abiertos a menos de 150 m** (`/Home/Cercanas`), con enlace a cada uno.
+
+### 17.1 Cómo funciona
+
+```text
+Navegador (asistente.js) ──POST /Asistente/Preguntar──▶ AsistenteController
+   (pregunta + página actual)                            │  historial en la sesión del servidor
+                                                         ▼
+                                     AsistenteService (Semantic Kernel)
+                                     modelo de Groq + function calling
+        ┌───────────────┬────────────────┼────────────────┬──────────────────┐
+        ▼               ▼                ▼                ▼                  ▼
+   AyudaPlugin   IncidenciasPlugin  ReportePlugin   ContactoPlugin   MisReportesPlugin
+   ayuda en      Algolia/SQLite +   enlace a        enlace a         reportes del vecino
+   Qdrant        índice semántico   /Home/Reportar  /Home/Contacto   (solo con sesión)
+                 de incidencias     prellenado      prellenado
+```
+
+| Herramienta | Qué hace |
+| --- | --- |
+| `BuscarAyuda` | Busca en los documentos de ayuda (Qdrant; sin Qdrant, por palabras en `Conocimiento/`). |
+| `BuscarIncidencias`, `ObtenerIncidencia`, `ResumenIncidencias` | Incidencias públicas: búsqueda (Algolia o SQLite y, si no hay resultados, por significado en Qdrant), detalle y cantidades. |
+| `PrepararReporte` | Valida los mínimos del formulario, revisa reportes parecidos y arma el enlace a Reportar prellenado. |
+| `PrepararMensajeContacto` | Arma el enlace a Contacto con el mensaje prellenado. |
+| `MisReportes` | Reportes del vecino con su historial. Solo se entrega al modelo si hay sesión, y el usuario sale de la cookie de Identity (nunca de lo que diga el modelo). |
+
+- **Groq** ejecuta el modelo de lenguaje (por defecto `openai/gpt-oss-120b`). Groq usa la misma API que OpenAI, así que Semantic Kernel se conecta con su conector de OpenAI cambiando la URL.
+- **Semantic Kernel** arma el agente: el modelo decide qué herramienta usar y Semantic Kernel la ejecuta y le devuelve el resultado. **Todas las herramientas son de solo lectura**: el asistente no puede crear, cambiar ni borrar datos, ni ver cuentas ni quién reportó una incidencia.
+- **Qdrant Cloud** tiene dos colecciones, y los vectores los genera **Qdrant Cloud Inference** con el modelo multilingüe `intfloat/multilingual-e5-small` (no hace falta otro proveedor de embeddings):
+  - `alerta_vecinal_conocimiento`: los documentos de ayuda divididos por secciones (`##`), buscados **por significado** ("me bloquearon la cuenta" encuentra "intentos fallidos").
+  - `alerta_vecinal_incidencias`: el texto de cada incidencia (título, descripción, ubicación y categoría) con su estado. Se actualiza solo al crear, cambiar de estado o eliminar una incidencia (igual que Algolia). SQLite sigue siendo la fuente de verdad.
+- La respuesta llega **en streaming** (palabra por palabra). Al final viaja un mensaje de control con el Id de la respuesta, las fuentes y las tarjetas (`ProtocoloAsistente`).
+- El **historial** (últimos 8 mensajes) se guarda en la **sesión del servidor**: el navegador no lo envía, así nadie puede inyectar mensajes falsos del asistente. Lo mismo con las valoraciones: el navegador solo envía el Id de la respuesta y si sirvió; la pregunta y la respuesta salen de la sesión (tabla `ValoracionesAsistente`).
+- **Límite**: 20 preguntas cada 10 minutos por persona (usuario con sesión o, si no, su IP), para cuidar la cuota de Groq. Al superarlo se responde 429 con un aviso.
+- **Reportes parecidos**: `PrepararReporte` busca incidencias abiertas que compartan un nombre de lugar con la ubicación y, además, tengan la misma categoría, alguna palabra del tema ("poste", "basura") o un significado muy parecido según Qdrant.
+- En el log, cada herramienta que usa el modelo aparece como `Asistente | Herramienta PrepararReporte(...)`: sirve para entender (y mostrar) qué hizo el agente.
+
+**Por qué está hecho así** (aprendido en las pruebas con Groq):
+
+- El plan gratuito de Groq admite **8.000 tokens por minuto** por modelo. Las instrucciones son cortas, el historial es de 8 mensajes, la ayuda devuelve 3 secciones y el razonamiento de `gpt-oss` va en nivel bajo (`ReasoningEffort = "low"`). Si se pasa el límite, las respuestas tardan mucho (el cliente espera y reintenta).
+- `PrepararReporte` revisa los reportes parecidos por su cuenta: cuando el modelo tenía que encadenar dos herramientas en un turno, `gpt-oss` a veces terminaba sin responder.
+- Todas las herramientas están en un solo plugin de nombre corto (`av-BuscarAyuda`, `av-PrepararReporte`...): con prefijos como `incidencias-...` el modelo a veces escribía `incidentes-...` y Groq rechazaba la llamada.
+- Si aun así el modelo termina sin texto, se le pide una vez más que responda; si tampoco, el vecino ve un mensaje amable en lugar de una burbuja vacía.
+- Los puntajes de `multilingual-e5-small` quedan muy juntos (los parecidos de verdad ~0,86-0,90; los que no tienen relación ~0,80-0,85). Por eso la búsqueda de incidencias por significado solo usa el mejor resultado si **se separa del segundo** (0,015 o más) y supera 0,82. Es un modelo pequeño: con sinónimos sueltos ("hueco" por "bache") no siempre acierta.
+
+### 17.2 Documentos de ayuda (`Conocimiento/`)
+
+Los documentos están en Markdown, en la carpeta `Conocimiento/`, y se versionan con el código. Están escritos para el vecino (sin detalles técnicos ni internos): todo lo que está ahí puede aparecer en una respuesta del chat.
+
+Reglas para editarlos o agregar uno nuevo:
+
+- `# Título` al inicio: es el nombre del documento.
+- Una sección `## ...` por tema, y que **cada sección se entienda sola** (el asistente recibe secciones sueltas). El título de la sección debe decir de qué trata, por ejemplo `## Cómo cambiar mi contraseña`.
+- Si una regla cambia en el código (por ejemplo, un límite), actualiza también el documento.
+
+Después de cambiar los documentos, en el sitio publicado entra a **Panel → Asistente** y pulsa **Sincronizar carpeta** (reemplaza los documentos de la carpeta en Qdrant; se puede repetir sin duplicar). La primera vez no hace falta: al iniciar, si la colección de Qdrant está vacía, se cargan solos.
+
+En **Panel → Asistente** también se puede subir un documento extra (`.md` o `.txt`), eliminarlo, **probar la búsqueda** para ver qué secciones recibiría el asistente ante una pregunta, **sincronizar el índice de incidencias** (si Qdrant no estuvo disponible por un tiempo) y revisar las **valoraciones** de los vecinos: las respuestas marcadas como "no me sirvió" muestran qué falta en la ayuda.
+
+### 17.3 Crear las cuentas
+
+1. **Groq** (https://console.groq.com): crea una cuenta, entra a **API Keys → Create API Key** y copia la clave (empieza con `gsk_`). El plan gratuito tiene límites por minuto y por día: si el chat responde "está recibiendo muchas preguntas", se llegó a ese límite; puedes probar con otro modelo en `GROQ_MODEL` (debe soportar *tool use*, por ejemplo `llama-3.3-70b-versatile`).
+2. **Qdrant Cloud** (https://cloud.qdrant.io): crea un clúster gratuito, copia su **URL** (`https://xxxx.<región>.cloud.qdrant.io`) y crea una **API Key** para el clúster. El clúster debe tener **Cloud Inference** con el modelo `intfloat/multilingual-e5-small`: revísalo en la consola del clúster, pestaña **Inference**. La colección la crea la aplicación sola. Si la carga falla, el log muestra la respuesta de Qdrant.
+
+### 17.4 Variables de configuración
+
+| Variable                    | Obligatoria | Ejemplo / valor por defecto                                   |
+| --------------------------- | ----------- | ------------------------------------------------------------- |
+| `GROQ_API_KEY`              | Sí, para que aparezca el chat | `gsk_...`                                   |
+| `GROQ_MODEL`                | No          | `openai/gpt-oss-120b` (por defecto)                           |
+| `QDRANT_ENDPOINT`           | No          | `https://xxxx.us-east-1-1.aws.cloud.qdrant.io`                |
+| `QDRANT_API_KEY`            | No          | clave del clúster                                             |
+| `QDRANT_COLLECTION`         | No          | `alerta_vecinal_conocimiento` (por defecto)                   |
+| `QDRANT_COLLECTION_INCIDENCIAS` | No      | `alerta_vecinal_incidencias` (por defecto)                    |
+| `ASISTENTE_LIMITE_MENSAJES` | No          | `20` (por defecto)                                            |
+| `ASISTENTE_LIMITE_MINUTOS`  | No          | `10` (por defecto)                                            |
+
+```bash
+dotnet user-secrets set "GROQ_API_KEY" "gsk_..."
+dotnet user-secrets set "QDRANT_ENDPOINT" "https://xxxx.us-east-1-1.aws.cloud.qdrant.io"
+dotnet user-secrets set "QDRANT_API_KEY" "<clave del clúster>"
+```
+
+En Render: **Environment → Environment Variables**, con los mismos nombres. **Nunca** pongas estas claves en `appsettings.json` ni en el código.
+
+### 17.5 Sin configurar
+
+- **Sin `GROQ_API_KEY`**: el chat no aparece y el resto de la página funciona igual. El log indica `Groq no está configurado`.
+- **Sin Qdrant** (o si Qdrant no responde): el asistente funciona igual y busca la ayuda **por palabras** en los archivos de `Conocimiento/`. Encuentra menos cuando la pregunta usa palabras distintas a las del documento.
+

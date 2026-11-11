@@ -19,8 +19,14 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
     <PackageReference Include="Microsoft.ML" Version="5.0.0" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.82.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="StackExchange.Redis" Version="3.4.31" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Documentos de ayuda del asistente virtual: se cargan en Qdrant (o se leen directamente si Qdrant no está configurado). -->
+    <None Update="Conocimiento\*.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -43,10 +49,8 @@
     <None Update="MLModels\CategoriaModel.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
 
     <!-- Datos de entrenamiento: los usan los botones "Reentrenar" del panel también en la app publicada. -->
-    <None Include="ML\sentimentAnalysisNLP\trainingData\comentarios_entrenamiento.csv" Link="MLModels\comentarios_entrenamiento.csv"
-          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <None Include="ML\categorizacionIncidencias\trainingData\incidencias_entrenamiento.csv" Link="MLModels\incidencias_entrenamiento.csv"
-          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="ML\sentimentAnalysisNLP\trainingData\comentarios_entrenamiento.csv" Link="MLModels\comentarios_entrenamiento.csv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="ML\categorizacionIncidencias\trainingData\incidencias_entrenamiento.csv" Link="MLModels\incidencias_entrenamiento.csv" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

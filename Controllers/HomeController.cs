@@ -9,6 +9,7 @@ using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Constants;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.Asistente.Conocimiento;
 using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
 using proyectoGrupal.Services.Sentimiento;
@@ -22,6 +23,7 @@ public class HomeController : Controller
     private readonly FotoIncidenciaService _fotos;
     private readonly BusquedaIncidenciasService _busqueda;
     private readonly IAlgoliaIncidenciaService _algolia;
+    private readonly IIncidenciasSemanticasService _semanticas;
     private readonly IPieSocketRealtimeService _realtime;
     private readonly ILimiteReportesService _limiteReportes;
     private readonly ISentimientoService _sentimiento;
@@ -35,6 +37,7 @@ public class HomeController : Controller
         FotoIncidenciaService fotos,
         BusquedaIncidenciasService busqueda,
         IAlgoliaIncidenciaService algolia,
+        IIncidenciasSemanticasService semanticas,
         IPieSocketRealtimeService realtime,
         ILimiteReportesService limiteReportes,
         ISentimientoService sentimiento,
@@ -46,6 +49,7 @@ public class HomeController : Controller
         _fotos = fotos;
         _busqueda = busqueda;
         _algolia = algolia;
+        _semanticas = semanticas;
         _realtime = realtime;
         _limiteReportes = limiteReportes;
         _sentimiento = sentimiento;
@@ -76,12 +80,14 @@ public class HomeController : Controller
     }
 
     // GET: /Home/Reportar?categoria=alumbrado
-    // Requiere sesión iniciada: un visitante es enviado a /Account/Login y vuelve aquí al entrar.
+    // GET: /Home/Reportar?titulo=...&descripcion=...&ubicacion=...&categoria=...  (botón del asistente virtual)
+    // Requiere sesión iniciada: un visitante es enviado a /Account/Login y vuelve aquí (con los datos) al entrar.
+    // Los datos de la URL solo rellenan el formulario: el vecino los revisa y el POST los valida como siempre.
     [Authorize]
-    public async Task<IActionResult> Reportar(string? categoria)
+    public async Task<IActionResult> Reportar(string? categoria, string? titulo, string? descripcion, string? ubicacion)
     {
-        // El parámetro "categoria" (slug de la URL) queda en ModelState y el <select> lo usaría
-        // en lugar del modelo. Se limpia para que se aplique el nombre completo de abajo.
+        // Los parámetros de la URL quedan en ModelState y los campos los usarían en lugar del modelo.
+        // Se limpia para que se apliquen los valores ya normalizados de abajo (y el nombre completo de la categoría).
         ModelState.Clear();
 
         // Si ya llegó al límite de reportes, se avisa antes de que llene el formulario.
@@ -91,10 +97,14 @@ public class HomeController : Controller
             ModelState.AddModelError(string.Empty, limite.Mensaje());
         }
 
-        // Permite llegar desde una tarjeta de categoría con la categoría ya elegida.
+        // Permite llegar desde una tarjeta de categoría con la categoría ya elegida, o desde el asistente
+        // con el reporte preparado. Los textos se normalizan y se recortan a los máximos del formulario.
         var modelo = new CrearIncidenciaViewModel
         {
-            Categoria = CatalogoCategorias.PorSlug(categoria)?.Nombre
+            Categoria = CatalogoCategorias.PorSlug(categoria)?.Nombre,
+            Titulo = TextoFormulario.Recortar(UnaLinea(titulo), CrearIncidenciaViewModel.TituloMaximo),
+            Descripcion = TextoFormulario.Recortar(TextoLargo(descripcion), CrearIncidenciaViewModel.DescripcionMaximo),
+            Ubicacion = TextoFormulario.Recortar(UnaLinea(ubicacion), CrearIncidenciaViewModel.UbicacionMaximo)
         };
 
         return View(modelo);
@@ -242,6 +252,9 @@ public class HomeController : Controller
         // administrador puede resincronizar el índice desde el panel.
         await _algolia.IndexarAsync(incidencia);
 
+        // Índice semántico del asistente (Qdrant): igual que Algolia, si falla no se deshace nada.
+        await _semanticas.IndexarAsync(incidencia, HttpContext.RequestAborted);
+
         // Aviso en tiempo real al panel de administración. Solo DESPUÉS de confirmar SQLite:
         // si PieSocket falla, la incidencia y su historial ya están guardados y no se deshacen.
         await _realtime.NotificarIncidenciaCreadaAsync(incidencia);
@@ -268,30 +281,11 @@ public class HomeController : Controller
         return await _limiteReportes.ConsultarAsync(usuarioId, HttpContext.RequestAborted);
     }
 
-    // Título y ubicación: una sola línea, sin espacios al inicio/final ni repetidos.
-    // No cambia mayúsculas ni el resto del texto. Si solo había espacios, queda null (campo obligatorio).
-    private static string? UnaLinea(string? texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto))
-        {
-            return null;
-        }
+    // Título y ubicación: una sola línea (ver Helpers/TextoFormulario.cs). Si solo había espacios, queda null.
+    private static string? UnaLinea(string? texto) => TextoFormulario.UnaLinea(texto);
 
-        return string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-    }
-
-    // Descripción: se respeta lo escrito (incluidos los saltos de línea); solo se quitan los espacios
-    // del inicio y el final, y los saltos "\r\n" del navegador se guardan como "\n" (1 carácter,
-    // igual que en el contador del formulario).
-    private static string? TextoLargo(string? texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto))
-        {
-            return null;
-        }
-
-        return texto.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
-    }
+    // Descripción: se respetan los saltos de línea; solo se quitan los espacios del inicio y el final.
+    private static string? TextoLargo(string? texto) => TextoFormulario.TextoLargo(texto);
 
     // GET: /Home/Incidencias?buscar=poste&categoria=alumbrado&estado=EnRevision
     public async Task<IActionResult> Incidencias(string? buscar, string? categoria, EstadoIncidencia? estado)
@@ -425,6 +419,46 @@ public class HomeController : Controller
         });
     }
 
+    // GET: /Home/Cercanas?latitud=-12.1&longitud=-76.9  (lo llama reportar.js al marcar el punto en el mapa)
+    // Incidencias abiertas (Pendiente o En revisión) a menos de RadioCercanas metros del punto, para avisar al
+    // vecino antes de reportar algo que ya fue reportado. Solo datos públicos (los mismos del listado).
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> Cercanas(string? latitud, string? longitud)
+    {
+        var punto = CoordenadasGeograficas.Leer(latitud, longitud);
+        if (!punto.EsValido || punto.Latitud is not { } lat || punto.Longitud is not { } lng)
+        {
+            return Json(new { incidencias = Array.Empty<object>() });
+        }
+
+        // Pocas incidencias tienen coordenadas: se filtran en memoria (SQLite guarda los decimales como texto).
+        var abiertas = await _context.Incidencias
+            .AsNoTracking()
+            .Where(i => i.Estado != EstadosIncidencia.Atendida && i.Latitud != null && i.Longitud != null)
+            .Select(i => new { i.Id, i.Titulo, i.Categoria, i.Estado, i.Latitud, i.Longitud })
+            .ToListAsync(HttpContext.RequestAborted);
+
+        var cercanas = abiertas
+            .Select(i => (Incidencia: i, Metros: CoordenadasGeograficas.DistanciaMetros(lat, lng, i.Latitud!.Value, i.Longitud!.Value)))
+            .Where(x => x.Metros <= RadioCercanas)
+            .OrderBy(x => x.Metros)
+            .Take(3)
+            .Select(x => new
+            {
+                id = x.Incidencia.Id,
+                titulo = x.Incidencia.Titulo,
+                categoria = x.Incidencia.Categoria,
+                estado = x.Incidencia.Estado,
+                metros = (int)Math.Round(x.Metros),
+                url = Url.Action(nameof(Detalle), new { id = x.Incidencia.Id })
+            });
+
+        return Json(new { radio = RadioCercanas, incidencias = cercanas });
+    }
+
+    private const int RadioCercanas = 150;
+
     private const int LargoMinimoParaSugerir = 8;
     private const float ConfianzaMinimaSugerencia = 0.40f;
 
@@ -432,10 +466,16 @@ public class HomeController : Controller
         texto == null ? string.Empty : texto.Length <= maximo ? texto : texto[..maximo];
 
     // GET: /Home/Contacto
+    // GET: /Home/Contacto?mensaje=...  (botón del asistente virtual: mensaje ya redactado)
     // Página pública. Si hay sesión, el nombre y el correo vienen llenos (se pueden cambiar).
-    public async Task<IActionResult> Contacto()
+    // El mensaje de la URL solo rellena el campo: el POST lo valida como siempre.
+    public async Task<IActionResult> Contacto(string? mensaje)
     {
-        var modelo = new ContactoViewModel();
+        ModelState.Clear();
+        var modelo = new ContactoViewModel
+        {
+            Mensaje = TextoFormulario.Recortar(TextoLargo(mensaje), ContactoViewModel.MensajeMaximo)
+        };
 
         var usuario = await _userManager.GetUserAsync(User);
         if (usuario != null)

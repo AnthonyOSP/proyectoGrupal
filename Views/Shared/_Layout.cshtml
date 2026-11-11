@@ -163,5 +163,8 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+
+    @* Asistente virtual (chat). Solo se dibuja si Groq está configurado. *@
+    <partial name="_Asistente" />
 </body>
 </html>

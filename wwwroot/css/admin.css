@@ -1271,3 +1271,92 @@ section[aria-labelledby="titulo-reporte"] + .vacio {
   color: #fff;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
 }
+
+/* ---------- Asistente virtual (/Admin/Asistente) ---------- */
+.asistente-admin__estado {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 992px) {
+  .asistente-admin__estado { grid-template-columns: 1fr 1fr; }
+}
+
+/* Las dos tarjetas de estado van en grilla: sin el margen superior de ".admin-card + .admin-card". */
+.asistente-admin__estado > .admin-card { margin-top: 0; }
+
+.asistente-admin__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.asistente-admin__subir,
+.asistente-admin__probar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: 1 1 320px;
+}
+
+.asistente-admin__subir .form-control,
+.asistente-admin__probar .form-control {
+  flex: 1 1 220px;
+  min-height: 44px;
+}
+
+.asistente-admin__tabla {
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius);
+}
+
+.asistente-admin__resultados {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.asistente-admin__resultado-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--av-ink);
+}
+
+.asistente-admin__resultado p {
+  margin: 0.25rem 0 0;
+  color: var(--av-muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1199.98px) {
+  .admin-tabla td[data-label="Origen"]::before,
+  .admin-tabla td[data-label="Fragmentos"]::before,
+  .admin-tabla td[data-label="Cargado"]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--av-muted);
+  }
+}
+
+.asistente-admin__valoraciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.asistente-admin__valoraciones p { margin: 0; color: var(--av-muted); }
+.asistente-admin__valoraciones strong { font-size: 1.25rem; color: var(--av-ink); }
+.asistente-admin__fuentes { font-size: 0.8125rem; }

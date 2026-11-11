@@ -1,12 +1,20 @@
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using proyectoGrupal.Controllers;
 using proyectoGrupal.Data;
 using proyectoGrupal.Helpers;
 using proyectoGrupal.Models;
 using proyectoGrupal.Services;
 using proyectoGrupal.Services.Algolia;
+using proyectoGrupal.Services.Asistente;
+using proyectoGrupal.Services.Asistente.Conocimiento;
+using proyectoGrupal.Services.Asistente.Plugins;
 using proyectoGrupal.Services.GoogleMaps;
 using proyectoGrupal.Services.LimiteReportes;
 using proyectoGrupal.Services.PieSocket;
@@ -178,6 +186,98 @@ builder.Services.AddSingleton<ISentimientoService, SentimientoService>();
 builder.Services.AddSingleton<ICategoriaSugeridaService, CategoriaSugeridaService>();
 builder.Services.AddSingleton<IZonasCriticasService, ZonasCriticasService>();
 
+// Asistente virtual (chat): agente de Semantic Kernel sobre Groq, con la ayuda de la página en Qdrant.
+// Claves en variables de entorno o User Secrets (ver README, sección 17). Sin GROQ_API_KEY el chat no aparece;
+// sin QDRANT_* el asistente funciona igual y busca la ayuda en los archivos de Conocimiento/.
+builder.Services.Configure<AsistenteOptions>(opciones =>
+{
+    opciones.ApiKey = builder.Configuration["GROQ_API_KEY"];
+    var modelo = builder.Configuration["GROQ_MODEL"];
+    if (!string.IsNullOrWhiteSpace(modelo))
+    {
+        opciones.Modelo = modelo.Trim();
+    }
+    if (int.TryParse(builder.Configuration["ASISTENTE_LIMITE_MENSAJES"], out var mensajes) && mensajes > 0)
+    {
+        opciones.LimiteMensajes = mensajes;
+    }
+    if (int.TryParse(builder.Configuration["ASISTENTE_LIMITE_MINUTOS"], out var minutosChat) && minutosChat > 0)
+    {
+        opciones.LimiteMinutos = minutosChat;
+    }
+});
+builder.Services.Configure<QdrantOptions>(opciones =>
+{
+    opciones.Endpoint = builder.Configuration["QDRANT_ENDPOINT"];
+    opciones.ApiKey = builder.Configuration["QDRANT_API_KEY"];
+    var coleccion = builder.Configuration["QDRANT_COLLECTION"];
+    if (!string.IsNullOrWhiteSpace(coleccion))
+    {
+        opciones.Coleccion = coleccion.Trim();
+    }
+    var coleccionIncidencias = builder.Configuration["QDRANT_COLLECTION_INCIDENCIAS"];
+    if (!string.IsNullOrWhiteSpace(coleccionIncidencias))
+    {
+        opciones.ColeccionIncidencias = coleccionIncidencias.Trim();
+    }
+});
+builder.Services.AddHttpClient(ClienteQdrant.NombreClienteHttp, cliente =>
+{
+    // Cargar todos los documentos puede tardar (Qdrant genera los vectores); cada operación tiene además su propio límite.
+    cliente.Timeout = TimeSpan.FromMinutes(2);
+});
+builder.Services.AddSingleton<ClienteQdrant>();
+builder.Services.AddSingleton<IBaseConocimientoService, BaseConocimientoService>();
+builder.Services.AddSingleton<IIncidenciasSemanticasService, IncidenciasSemanticasService>();
+builder.Services.AddHostedService<SincronizacionInicialConocimiento>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<SesionAsistente>();
+builder.Services.AddScoped<AyudaPlugin>();
+builder.Services.AddScoped<IncidenciasPlugin>();
+builder.Services.AddScoped<ReportePlugin>();
+builder.Services.AddScoped<ContactoPlugin>();
+builder.Services.AddScoped<MisReportesPlugin>();
+builder.Services.AddScoped<IAsistenteService, AsistenteService>();
+
+// Sesión del servidor: guarda el historial de la conversación con el asistente (en memoria).
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.Name = "AlertaVecinal.Asistente";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.IsEssential = true;
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+});
+
+// Límite de mensajes al asistente por persona (usuario con sesión o, si no, su IP): cuida la cuota de Groq.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(AsistenteController.PoliticaLimite, contexto =>
+    {
+        var opciones = contexto.RequestServices.GetRequiredService<IOptions<AsistenteOptions>>().Value;
+        var clave = contexto.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? contexto.Connection.RemoteIpAddress?.ToString()
+                    ?? "anonimo";
+        return RateLimitPartition.GetFixedWindowLimiter(clave, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = opciones.LimiteMensajes,
+            Window = TimeSpan.FromMinutes(opciones.LimiteMinutos),
+            QueueLimit = 0
+        });
+    });
+    options.OnRejected = async (contexto, cancellationToken) =>
+    {
+        var opciones = contexto.HttpContext.RequestServices.GetRequiredService<IOptions<AsistenteOptions>>().Value;
+        contexto.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+        await contexto.HttpContext.Response.WriteAsync(
+            $"Llegaste al límite de {opciones.LimiteMensajes} preguntas cada {opciones.LimiteMinutos} minutos. Espera unos minutos y vuelve a intentarlo.",
+            cancellationToken);
+    };
+});
+
 var app = builder.Build();
 
 // Crea la base de datos y aplica las migraciones pendientes al iniciar.
@@ -211,6 +311,11 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["GOOGLE_MAPS_API_KEY"]))
 {
     app.Logger.LogInformation("Google Maps no está configurado (GOOGLE_MAPS_API_KEY): los mapas muestran un aviso.");
 }
+if (string.IsNullOrWhiteSpace(builder.Configuration["GROQ_API_KEY"]))
+{
+    app.Logger.LogInformation("Groq no está configurado (GROQ_API_KEY): el asistente virtual no aparece.");
+}
+app.Services.GetRequiredService<IBaseConocimientoService>();
 
 app.UseForwardedHeaders();
 
@@ -233,6 +338,10 @@ app.UseRouting();
 // Primero se identifica al usuario (cookie) y después se comprueban sus permisos.
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Límite de mensajes del asistente (después de la autenticación: se cuenta por usuario) y sesión del chat.
+app.UseRateLimiter();
+app.UseSession();
 
 app.MapStaticAssets();
 
