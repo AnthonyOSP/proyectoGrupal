@@ -303,6 +303,10 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
+    // Mensajes de contacto de demostración (solo si la bandeja está vacía). Se guardan sin sentimiento:
+    // el paso siguiente los clasifica con el modelo de ML.NET.
+    await MensajesDemoSeeder.SeedAsync(scope.ServiceProvider);
+
     // Mensajes de contacto guardados sin sentimiento (anteriores al modelo o sin modelo disponible).
     var analizados = await SentimientoService.AnalizarMensajesAsync(
         scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
